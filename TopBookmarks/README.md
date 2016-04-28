@@ -12,7 +12,7 @@ You can specify the number of recent activity days to include in top bookmarks o
 <br><b>(B) Minimum Count:</b> The minimum number of bookmarks for a discussion to be considered "Top Bookmarked".  
 Pick a number not too high as to have an empty list and not too low as to water down the meaning ot "Top Bookmarks".
 
-Note: TO help you decide the Minimum Count, the plugin will inform you dusring configuration of the current highest number of bookmarks a discussion has in your forum.
+Note: To help you decide the Minimum Count, the plugin will inform you during configuration of the current highest number of bookmarks a discussion has in your forum.
 
 <b>Display Options:</b>
 
@@ -31,11 +31,8 @@ Option 5: Add an options gear (❁) a pop up link to show who bookmarked the dis
 <b>Permission Settings:</b>
 
 Two permissions settings are provided:
-1. Option to require "TopBookmarks View" permission in "Roles and Permissions" to see the Top Bookmarks.  If this option is turned on display options 1, 2, 3, and 4 are not available to a user lacking the permission.
-2. Option to require "TopBookmarks ViewMarkers" permission in "Roles and Permissions" to see who bookmarked the top bookmarked discussions.  If this option is turned on display options 4 and 5 are not available to a user lacking the permission.
+<br>1. Option to require "TopBookmarks View" permission in "Roles and Permissions" to see the Top Bookmarks.  If this option is turned on display options 1, 2, 3, and 4 are not available to a user lacking the permission.
+<br>2. Option to require "TopBookmarks ViewMarkers" permission in "Roles and Permissions" to see who bookmarked the top bookmarked discussions.  If this option is turned on display options 4 and 5 are not available to a user lacking the permission.
 
-<b>No performance impact is expected by the use of this plugin:  
-- Both aging and the minimum number of bookmarks per discussion will affect the size of the Top-Bookmarks discussion list.  However the list is using the standard Vanilla Discussion list access further filtered but these two parameters, both of which are in the discussion table.  Thus this should not affect performance.
-- The list of users who bookmarked a discussion is limited to 200 (a hard coded limit in the plugin source). The list is displayed on demand (user click on the link) and access a single table.   
-
+<br><b>Note:</b>During installation on Vanilla 2.2 a one-time discussion table update is performed.  THe duration of this one-time setup depends on the size of the Discussion table.
 ​
