@@ -1,6 +1,6 @@
 ​The Top Bookmarks plugin displays information of top bookmarked discussions (those with the highest number of bookmarks).  
 What is considered "Top bookmarked" and what to display is highly customizable and subject to permissions set by the configuration screen.
-Change log: 
+Change log:  
 Version 1.1 - 	Added Aging support.
 
 <b>Top Bookmarks Definition:</b>
