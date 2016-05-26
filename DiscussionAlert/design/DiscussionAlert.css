@@ -1,0 +1,53 @@
+.Alertcss {
+  /*This is a trasnparent png. Visual created by border. Change png to have other visual*/
+  background: url('InformOff32x32.png');
+  background-repeat: no-repeat !Important;
+  width: 16px;
+  height: 16px;
+  font-size: 0.001px;
+  color: rgba(0, 0, 0, 0) !important;
+  float: right;
+  margin: 2px 0px 0px 14px;
+  border-width: 1px;
+  border-color: back;
+  border-radius: 13px;
+  padding: 0px 0px 0px 0px;
+  border-style: ridge;
+}
+.Alertcss.on {
+  background: url('AlertOn16x16.png'); 
+  border-width: 0px;  
+}
+.Informcssoff {
+   /*Trasnparent placeholder - keeps evrything aligned*/
+  background: url('InformOff32x32.png');
+  background-repeat: no-repeat !Important;
+  width: 16px;
+  height: 16px;
+  font-size: 0.001px;
+  color: rgba(0, 0, 0, 0) !important;
+  float: right;
+  margin: 2px 0px 0px 14px; 
+}
+.Informcsson {
+  background: url('AlertOn16x16.png');
+  background-repeat: no-repeat !Important;
+  width: 16px;
+  height: 16px;
+  font-size: 0.001px;
+  color: rgba(0, 0, 0, 0) !important;
+  float: right;
+  margin: 2px 0px 0px 14px; 
+}
+
+.Optionscss {
+  /*Uncomment the following two lines to add an icon to the toggle menu*/
+  /*background: url('AlertToggle.png');			
+    text-indent: 12px; */
+  background-repeat: no-repeat !Important;
+  background-size: 24px;
+  font-size: 10pt; 
+}
+.Optionscss.on {
+   background: url('AlertToggle.png');			/*Remove background if you dislike the image in the menu*/
+}
