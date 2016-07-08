@@ -1,0 +1,39 @@
+
+.TopicInPost {
+    background-color: #FFE0E0;
+    display: inline;
+}
+.TopicInView {
+    background-color: #FFE0E0;
+    display: inline;
+}
+.TopicInList {
+    background-color: #FFE0E0;
+    display: inline;
+}
+.SetTopiccss {
+  background-repeat: no-repeat !Important;
+  background-size: 24px;
+  font-size: 10pt; 
+}
+.TopicSearch {
+  background-repeat: no-repeat !Important;
+  background-size: 24px;
+  font-size: 10pt; 
+}
+.TopicBox {
+	width: 99%;
+	color:blue;
+}
+.Topichead {
+    background-Color: rgba(123, 119, 107, 0.07);
+    color: #23355C;
+    text-align: center;
+	font-weight: bold;
+	font-size: larger;
+}
+.Titlesortnotice {
+    font-weight: bold;
+    color: light-gray;
+	font-size: normal;
+}

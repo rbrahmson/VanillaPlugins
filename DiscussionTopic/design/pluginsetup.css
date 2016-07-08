@@ -1,0 +1,211 @@
+.Popup .Border .Body {
+ width: 800px;
+ max-width:800px;
+ min-height: 500px;
+ background: rgb(255, 255, 222); 
+}
+.TestWideInputBox {
+    width: 68%;
+	color:red !Important;
+}
+.Textbox {
+    margin-left: 19px !Important;
+}
+.RadioLabel {
+	display: block !Important;
+	padding-left: 16px;
+}
+.ul:before {
+  content: '\a RED RED';
+  white-space: pre;
+  background-color: red;
+}
+.Optionlist {
+	margin-left: 19px !Important;
+}
+.CheckBoxList li {
+    float: left !Important;
+	padding: 0px;
+	padding-left: 3px !Important;
+	background-color:light-blue;
+}
+.Error  {
+	color:black;
+}
+.SettingTest {
+    background: #fff4bf;
+    color: black;
+    margin-bottom: 4px;
+    max-width: 80%;
+    border-style: solid;
+    border-width: 2pt;
+    border-radius: 4pt;
+    border-color: darkgrey;
+    margin-left: auto;
+    margin-right: auto;
+}
+.SettingNote {
+    background: #003671;
+    color: #dbf3fc;
+    max-width: 500px;
+    margin-bottom: 4px;
+	display: inline-block;
+}
+.SettingError:before {
+    content: "Error:";
+    margin-right: 4px;
+    background: #D50A0A;
+    color: white;
+}
+.SettingError {
+	margin-left: 2px;
+}
+.SettingWarning:before {
+    content: "Warning:";
+    background: #F9B900;
+    margin-right: 4px;
+    color: black;
+    font-weight: bold;
+}
+.SettingWarning {
+	margin-left: 2px;
+	color: inherit;
+}
+.SettingGardenWarning {
+	margin-left: 2px;
+    color: inherit;
+    background: #FFE1A9;
+    display: inline;
+}
+.SettingPostCatlist   {
+	color: black;
+    font-size: 12pt;
+    text-shadow: 1px 1px #e0e0e0;
+    text-decoration: underline;
+	max-width: 500px;
+	line-height: 13pt;
+	display: table;
+    left: 1px;
+    padding: 2px;
+    width: 99%;
+	
+}
+.SettingPostCatlist:before {
+  content: '_______________________________________';
+  white-space: pre;
+  text-decoration: none;
+  color: white;
+  display:none;
+}
+.SettingPostCatlist:after {
+  content: '________________________________________________________________________________________________________________________________';
+  white-space: pre;
+  text-decoration: none;
+  color: white;
+}
+.SettingLink {
+    border-style: solid;
+    border-radius: 5px;
+    background-color: #a3e3fd;
+    border-width: thin;
+    border-color: blue;
+    padding: 0px 4px 0px 4px;
+    margin: 0px 0px 0px 0px;
+    line-height: 22pt;
+    color: black;
+}
+.SettingAside {
+    max-width: 30%;
+    padding-top: 0px !Important;
+    padding-bottom: 0px !Important;
+    font-size: large;
+    line-height: 10pt;
+    float: right;
+    border-style: solid;
+    border-radius: 1px 1px 11px 11px;
+    background-color: #f6f6f6;
+    border-width: thin;
+    border-color: #8bc1de;
+    margin-left: 0px !Important;
+    margin-bottom: 9px !Important;
+    display: block;
+}
+.SettingAsideWide {
+    max-width: 50%;
+    padding-top: 0px !Important;
+    padding-bottom: 0px !Important;
+    font-size: large;
+    line-height: 10pt;
+    float: right;
+    border-style: solid;
+    border-radius: 1px 1px 11px 11px;
+    background-color: #f6f6f6;
+    border-width: thin;
+    border-color: #8bc1de;
+    margin-left: 0px !Important;
+    margin-bottom: 9px !Important;
+    display: block;
+}
+.SettingAsideN{
+    padding-bottom: 10px;
+    padding-left: 10pt;
+	padding-top: 4px;
+    font-size: 12px;
+    color: black;
+    text-decoration: none;
+	font-weight:normal;
+}
+.SettingAsideP {
+    padding-bottom: 10px;
+    padding-left: 0pt;
+    font-size: 12px;
+    color: black;
+    text-decoration: none;
+	font-weight:normal;
+}
+.SettingAsideU {
+    padding-bottom: 10px;
+    padding-left: 0pt;
+    font-size: 12px;
+    color: black;
+    text-decoration: underline;
+	font-weight:normal;
+}
+.Button {
+margin: 0 0 0 6px;
+}
+.SettingHead {
+	color: black;
+    font-size: 12pt;
+    text-shadow: 1px 1px #e0e0e0;
+    text-decoration: underline;
+	max-width: 500px;
+	line-height: 13pt;
+}
+.SettingSubh {
+	color: #777;
+    font-size: 11pt;
+    font-weight: bold;
+	line-height: 12pt;
+}
+.SettingSep {
+    color: black;
+    height: 0.001px;
+	text-decoration: underline;;
+    max-width: 500px;
+	margin-top:10px;
+}
+.SettingText {
+	color: black;
+    font-size: 10pt;
+}
+.SettingTextContinue {
+    color: black;
+    font-size: 10pt;
+    margin-left: 31px;
+    margin-top: -7px;
+}
+.Settingsqueeze {
+    font-size: 1pt;
+	line-height: 2pt;
+}
