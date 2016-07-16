@@ -4,12 +4,19 @@
  min-height: 500px;
  background: rgb(255, 255, 222); 
 }
-.TestWideInputBox {
+.TextWideInputBox {
     width: 68%;
 	color:red !Important;
 }
-.Textbox {
-    margin-left: 19px !Important;
+.Snippet {
+    max-width: 300px;
+    border-radius: 1px 1px 11px 11px;
+    border-width: 1px;
+    border-color: #8bc1de;
+    border-style: solid;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
 }
 .RadioLabel {
 	display: block !Important;
@@ -34,15 +41,8 @@
 }
 .SettingTest {
     background: #fff4bf;
-    color: black;
-    margin-bottom: 4px;
-    max-width: 80%;
-    border-style: solid;
-    border-width: 2pt;
-    border-radius: 4pt;
-    border-color: darkgrey;
-    margin-left: auto;
-    margin-right: auto;
+    margin-bottom: 7px;
+    max-width: 69%;
 }
 .SettingNote {
     background: #003671;
@@ -77,7 +77,7 @@
     background: #FFE1A9;
     display: inline;
 }
-.SettingPostCatlist   {
+.SettingNewSection   {
 	color: black;
     font-size: 12pt;
     text-shadow: 1px 1px #e0e0e0;
@@ -90,14 +90,14 @@
     width: 99%;
 	
 }
-.SettingPostCatlist:before {
+.SettingNewSection:before {
   content: '_______________________________________';
   white-space: pre;
   text-decoration: none;
   color: white;
   display:none;
 }
-.SettingPostCatlist:after {
+.SettingNewSection:after {
   content: '________________________________________________________________________________________________________________________________';
   white-space: pre;
   text-decoration: none;
@@ -113,6 +113,15 @@
     margin: 0px 0px 0px 0px;
     line-height: 22pt;
     color: black;
+}
+.UpdateTopMessage {
+    background-color: #fdfda3;
+    color: black;
+    top: 32px;
+    left: 12px;
+    line-height: 12px;
+    position: absolute;
+    padding-left: 3px;
 }
 .SettingAside {
     max-width: 30%;
@@ -134,6 +143,8 @@
     max-width: 50%;
     padding-top: 0px !Important;
     padding-bottom: 0px !Important;
+	padding-left: 4px;
+    padding-right: 4px;
     font-size: large;
     line-height: 10pt;
     float: right;
@@ -142,9 +153,18 @@
     background-color: #f6f6f6;
     border-width: thin;
     border-color: #8bc1de;
-    margin-left: 0px !Important;
+    margin-left: 6px !Important;
     margin-bottom: 9px !Important;
     display: block;
+}
+.SettingAsideSubhead{
+    padding-bottom: 6px;
+    padding-top: 6px;
+    font-size: 14px;
+    color: black;
+    text-decoration: underline;
+    font-weight: bolder;
+    text-align: center;
 }
 .SettingAsideN{
     padding-bottom: 10px;
@@ -154,6 +174,15 @@
     color: black;
     text-decoration: none;
 	font-weight:normal;
+}
+.SettingAsideRedN{
+    padding-bottom: 10px;
+    padding-left: 10pt;
+	padding-top: 4px;
+    font-size: 12px;
+    color: red !Important;
+    text-decoration: none;
+	font-weight:bold;
 }
 .SettingAsideP {
     padding-bottom: 10px;
@@ -170,6 +199,28 @@
     color: black;
     text-decoration: underline;
 	font-weight:normal;
+}
+.ContinueButton {
+    align-items: flex-start;
+    text-align: center;
+    cursor: default;
+    color: buttontext;
+    background-color: #efefef;
+    box-sizing: border-box;
+    padding: 1px 8px 2px 6px;
+    margin: 0px 2px 0px 3px;
+    border-width: 1px;
+    border-style: ridge;
+    border-color: rgba(156, 156, 156, 0.99);
+    text-decoration: initial;
+    font-weight: initial;
+    font: 13.3333px Arial;
+    font-size: 11pt;
+    background: #efefef;
+    background: -webkit-linear-gradient(left top, whitesmoke, #e4e4e4);
+    background: -o-linear-gradient(bottom right, whitesmoke, #e4e4e4);
+    background: -moz-linear-gradient(bottom right, whitesmoke, #e4e4e4w);
+    background: linear-gradient(to bottom right, whitesmoke, #e4e4e4);
 }
 .Button {
 margin: 0 0 0 6px;

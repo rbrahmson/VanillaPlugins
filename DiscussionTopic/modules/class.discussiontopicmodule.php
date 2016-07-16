@@ -2,37 +2,37 @@
 //  Module to add related discussions to the side panel.
 class DiscussionTopicModule extends Gdn_Module {
 
- protected $AlsoString;
+ protected $TopicString;
 
 /////////////////////////////////////
   public function toString ($Sender,$Args) {
-	global $AlsoString ;
+	global $TopicString ;
 	//$Msg = __FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'].debug_backtrace()[0]['line'].' ---> '. 	debug_backtrace()[0]['function'];
 	//return $Msg;
-	return $AlsoString;
+	return $TopicString;
   }
 /////////////////////////////////////
   public function GetAlso($DiscussionID, $Limit = 10, $Debug = false) {
-	global $AlsoString ;
-	//This function will return the discussions that have the same "Alsoname" value as the current discussion
+	global $TopicString ;
+	//This function will return the discussions that have the same "Topic" value as the current discussion
 	//
 	if ($Debug) {
 			$Msg = __FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'].debug_backtrace()[0]['line'].' ---> '. debug_backtrace()[0]['function'];
 			echo Wrap($Msg,'br');
 	}
 	//
-	$AlsoString = '';
+	$TopicString = '';
 	$DiscussionModel = new DiscussionModel();
 	$Discussion = $DiscussionModel->getID($DiscussionID);
 	if (!$Discussion) {
-		$AlsoString = 'no discussion';
+		$TopicString = 'no discussion';
 		return;
 	}
-	//First get the Alsoname field for the current discussion
+	//First get the Topic field for the current discussion
 	//
 	if ($Debug) {
 		$this->Showdata($DiscussionID,__LINE__.'---DiscussionID---','',0,' ',true);
-		$this->Showdata($Discussion->Alsoname,__LINE__.'---Alsoname---','',0,' ',true);
+		$this->Showdata($Discussion->Topic,__LINE__.'---Topic---','',0,' ',true);
 	}	
 	//
 	// Get the list of categories this plugin is enabled to work on
@@ -58,24 +58,24 @@ class DiscussionTopicModule extends Gdn_Module {
 	}
 	if ($Debug) $this->Showdata($Categorycount,__LINE__.'---Categorycount---','',0,' ',true);
 	if ($Categorycount == 0) {
-		$AlsoString = '';
+		$TopicString = '';
 		return;
 	}
 	if ($Debug) $this->Showdata($Categorylist,__LINE__.'---Categorylist---','',0,' ',true);
 	//
 	
-	$Alsoname = $Discussion->Alsoname;
-	if ($Debug) $this->Showdata($Alsoname,__LINE__.'---Alsoname---','',0,' ',true); 
+	$Topic = $Discussion->Topic;
+	if ($Debug) $this->Showdata($Topic,__LINE__.'---Topic---','',0,' ',true); 
 	$Uselimit = $Limit + 1;
 	$AlsoSql = clone Gdn::sql();	//Don't interfere with any other sql process
 	$AlsoSql->Reset();				//Clean slate
-	$Sqlfields = 'd.DiscussionID,d.Name,d.CategoryID,d.Alsoname';
+	$Sqlfields = 'd.DiscussionID,d.Name,d.CategoryID,d.Topic';
 	$Discussionlist = $AlsoSql		//Get expanded tag info for this discussion
 		->select($Sqlfields)
 		->from('Discussion d')
 		->where('d.DiscussionID <>', $DiscussionID)
-		->where('d.Alsoname <>', 0)
-		->where('d.Alsoname', $Alsoname)
+		->where('d.Topic <>', 0)
+		->where('d.Topic', $Topic)
 		->wherein('d.CategoryID', $Categorylist)
 		->limit($Uselimit)
 		->get();
@@ -84,12 +84,11 @@ class DiscussionTopicModule extends Gdn_Module {
 	$Rowcount = count($Discussionlist);
 	if ($Debug) echo '<br>'.__LINE__.' Rowcount:'.$Rowcount;
 	if ($Debug) $this->Showdata($Discussionlist,__LINE__.'---Discussionlist---','',0,' ',true);
-	$Panelhead = c('Plugins.DiscussionTopic.Paneltitle');
-	if (trim($Panelhead) =='') $Panelhead = t('See Also');
+	$Panelhead = c('Plugins.DiscussionTopic.Paneltitle',t('Related Topics'));
 	SaveToConfig('Plugins.DiscussionTopic.Paneltitle',$Panelhead);
 	if ($Rowcount == 0) {
 		if (!$Debug) return;
-		$AlsoString = wrap(panelHeading($Panelhead.' - '.t('None Found')),
+		$TopicString = wrap(panelHeading($Panelhead.' - '.t('None Found')),
 		'DIV class="Box BoxCategories" Title="'.t('Nothing else has this set of hashtags:').$Tagnamelist.'"');
 		return;
 	}
@@ -106,9 +105,9 @@ class DiscussionTopicModule extends Gdn_Module {
 		$CategoryID = $Discussion->CategoryID;
 		if (in_array($CategoryID,$Categorylist)) {	//Support Vanilla permission model -verify user can see discussions in the category
 			$Tag = $Entry->FullName;
-			//if ($Debug) echo '<br>'.__LINE__.' ConversationString:'.$AlsoString; 
-			$Anchor = wrap(Anchor(SliceString($Discussion->Name,40),'/discussion/'.$DiscussionID.'/?Key=('.$Discussion->Alsoname.')','RelatedHashtagItemLink '),'li class=Discussions ');
-			$AlsoString =  ' ' . $AlsoString . ' ' . $Anchor;
+			//if ($Debug) echo '<br>'.__LINE__.' ConversationString:'.$TopicString; 
+			$Anchor = wrap(Anchor(SliceString($Discussion->Name,40),'/discussion/'.$DiscussionID.'/?Key=('.$Discussion->Topic.')','RelatedHashtagItemLink '),'li class=Discussions Title="'.$Discussion->Name.'"');
+			$TopicString =  ' ' . $TopicString . ' ' . $Anchor;
 			$Listcount = $Listcount + 1;
 		//} else {
 		//	echo '<br>'.__LINE__.'Not allowed- CategoryID:'.$CategoryID.' DiscussionID:'.$DiscussionID; 
@@ -117,13 +116,13 @@ class DiscussionTopicModule extends Gdn_Module {
 	if (!$Listcount) {
 		return;
 		if (c('Plugins.DiscussionTopic.HideEmptyPanel',true)) return;
-		$AlsoString = wrap(panelHeading($Panelhead.' - '.t('None Found')),
+		$TopicString = wrap(panelHeading($Panelhead.' - '.t('None Found')),
 			'DIV class="Box BoxCategories"  title="'.t('Nothing else has this set of hashtags:').$Tagnamelist.'"');
 		return;
 	}
-	$AlsoString =  $AlsoString . ' ' . $More; 
-	$AlsoString =	wrap(panelHeading($Panelhead).
-							wrap($AlsoString,'ul class="PanelInfo PanelCategories" title="'.t('click to view discussion').'"'),
+	$TopicString =  $TopicString . ' ' . $More; 
+	$TopicString =	wrap(panelHeading($Panelhead).
+							wrap($TopicString,'ul class="PanelInfo PanelCategories" title="'.t('click to view discussion').'"'),
 								'DIV class="Box BoxCategories"  title="'.t('Discussions with these hashtags:').$Tagnamelist.'"');
 	//
 	return false;		

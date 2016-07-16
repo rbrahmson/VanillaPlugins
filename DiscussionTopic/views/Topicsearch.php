@@ -22,4 +22,4 @@ echo '<div  >';
 echo $this->Form->button(t('Search'));
 echo $this->Form->button(t('Cancel')); 
 echo '</div></div>';
-?>
+
