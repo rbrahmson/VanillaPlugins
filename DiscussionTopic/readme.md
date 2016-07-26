@@ -8,7 +8,9 @@ The most effective result is through the plugin side panel which shows the title
 I ran a test on the Vanilla forum (using the forum feed) and after simple tuning of the plugin through the configuration screen I was able to see positive results.  Your results may vary.  
 
 Changes:
+
 Release 2.1 - First public release (Ported from an intranet implementation)
+
 Release 2.2 Changes:
 - Added detailed customiation guide
 - Added explanations to the customiation screen
