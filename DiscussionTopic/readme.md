@@ -16,6 +16,7 @@ Release 2.2 Changes:
 - Fixed manual update form error 
 - Enhanced reporting of multiple record update during setup/customization
 - Some code cleaning & style standardization 
+
 Release 3.1 Changes:
 - The side panel as well as the topic in the meta area are refreshed when the discussion is saved or when the discussion topic is updated
 - Added the ability to mark a discussions as "Top Topic" so that they would appear first on the side panel of discussions with the same topic
