@@ -12,6 +12,21 @@ class DiscussionTopicModule extends Gdn_Module {
 	return $TopicString;
   }
 /////////////////////////////////////
+  public function Refresh($DiscussionID, $Limit = 10, $Debug = false) {
+	global $TopicString ;
+	//
+	$AlsoSql = clone Gdn::sql();	//Don't interfere with any other sql process
+	$AlsoSql->Reset();				//Clean slate
+	$Discussionlist = $AlsoSql		//Get expanded tag info for this discussion
+		->select('d.DiscussionID')
+		->from('Discussion d')
+		->where('d.DiscussionID', $DiscussionID)
+		->get();
+	//
+	$this->GetAlso($DiscussionID, $Limit, $Debug);
+	return $TopicString;
+  }
+/////////////////////////////////////
   public function GetAlso($DiscussionID, $Limit = 10, $Debug = false) {
 	global $TopicString ;
 	//This function will return the discussions that have the same "Topic" value as the current discussion
@@ -34,6 +49,10 @@ class DiscussionTopicModule extends Gdn_Module {
 		$this->Showdata($DiscussionID,__LINE__.'---DiscussionID---','',0,' ',true);
 		$this->Showdata($Discussion->Topic,__LINE__.'---Topic---','',0,' ',true);
 	}	
+	if ($Discussion->Topic == '') {
+		$TopicString = wrap('','span id=TitleBox');
+		return;
+	}
 	//
 	// Get the list of categories this plugin is enabled to work on
 	$Catnums = c('Plugins.DiscussionTopic.CategoryNums');
@@ -58,27 +77,31 @@ class DiscussionTopicModule extends Gdn_Module {
 	}
 	if ($Debug) $this->Showdata($Categorycount,__LINE__.'---Categorycount---','',0,' ',true);
 	if ($Categorycount == 0) {
-		$TopicString = '';
+		$TopicString = wrap('','span id=TitleBox');
 		return;
 	}
 	if ($Debug) $this->Showdata($Categorylist,__LINE__.'---Categorylist---','',0,' ',true);
 	//
 	
 	$Topic = $Discussion->Topic;
+	$TopicTitle = str_replace(array('\'', '"'), '', $Topic); 
 	if ($Debug) $this->Showdata($Topic,__LINE__.'---Topic---','',0,' ',true); 
 	$Uselimit = $Limit + 1;
 	$AlsoSql = clone Gdn::sql();	//Don't interfere with any other sql process
 	$AlsoSql->Reset();				//Clean slate
-	$Sqlfields = 'd.DiscussionID,d.Name,d.CategoryID,d.Topic';
+	$Sqlfields = 'd.DiscussionID,d.Name,d.CategoryID,d.Topic,d.TopicAnswer';
 	$Discussionlist = $AlsoSql		//Get expanded tag info for this discussion
 		->select($Sqlfields)
 		->from('Discussion d')
-		->where('d.DiscussionID <>', $DiscussionID)
-		->where('d.Topic <>', 0)
 		->where('d.Topic', $Topic)
 		->wherein('d.CategoryID', $Categorylist)
+		->where('d.DiscussionID <>', $DiscussionID)
+		->orderby('d.TopicAnswer','DESC')
+		->orderby('d.DiscussionID','DESC')
 		->limit($Uselimit)
 		->get();
+	//
+	//
 	if ($Debug) $this->Showdata($Discussionlist,__LINE__.'---$Discussionlist---','',0,' ',true);
 	//
 	$Rowcount = count($Discussionlist);
@@ -87,16 +110,15 @@ class DiscussionTopicModule extends Gdn_Module {
 	$Panelhead = c('Plugins.DiscussionTopic.Paneltitle',t('Related Topics'));
 	SaveToConfig('Plugins.DiscussionTopic.Paneltitle',$Panelhead);
 	if ($Rowcount == 0) {
-		if (!$Debug) return;
-		$TopicString = wrap(panelHeading($Panelhead.' - '.t('None Found')),
-		'DIV class="Box BoxCategories" Title="'.t('Nothing else has this set of hashtags:').$Tagnamelist.'"');
+		$TopicString = wrap('','span id=TitleBox');
 		return;
 	}
 	$More = '';
 	if ($Rowcount >  $Limit) {
-		$More = wrap(t('There are more').'...','li class=HashTagsMore ');
+		$More = wrap(t('There are more').'...','li class=HashTagsMore Title="'.t('There are more discussions with the same topic').'"');
 	}
 	//
+	$TopAnswerMode = c('Plugins.DiscussionTopic.TopAnswerMode',false);
 	$Listcount = 0;
 	foreach($Discussionlist as $Entry){
 		if ($Debug) $this->Showdata($Entry,__LINE__.'---Entry---','',0,' ',true);
@@ -104,9 +126,20 @@ class DiscussionTopicModule extends Gdn_Module {
 		$Discussion = $DiscussionModel->getID($DiscussionID);
 		$CategoryID = $Discussion->CategoryID;
 		if (in_array($CategoryID,$Categorylist)) {	//Support Vanilla permission model -verify user can see discussions in the category
-			$Tag = $Entry->FullName;
+			$Title = $Discussion->Name;
+			$EntryTitle = str_replace(array('\'', '"'), '', $Discussion->Name); 
+			$TopicAnswer = $Discussion->TopicAnswer;
+			$Emphsize = ' ';
+			if ($TopAnswerMode) {
+				$Emphasize = '○';
+				if ($TopicAnswer) {
+					$EntryTitle = t('Top Topic').':'.$EntryTitle;
+					$Emphasize = '◉';
+				}
+			}
 			//if ($Debug) echo '<br>'.__LINE__.' ConversationString:'.$TopicString; 
-			$Anchor = wrap(Anchor(SliceString($Discussion->Name,40),'/discussion/'.$DiscussionID.'/?Key=('.$Discussion->Topic.')','RelatedHashtagItemLink '),'li class=Discussions Title="'.$Discussion->Name.'"');
+			$Anchor = wrap(wrap($Emphasize,'span class=Emphasize id=Emphasize'.$DiscussionID).
+				Anchor(SliceString($Discussion->Name,40),'/discussion/'.$DiscussionID.'/?Key=('.$Discussion->Topic.')','RelatedItemLink '),'li class=RelatedDiscussions Title="'.$EntryTitle.'"');
 			$TopicString =  ' ' . $TopicString . ' ' . $Anchor;
 			$Listcount = $Listcount + 1;
 		//} else {
@@ -114,16 +147,14 @@ class DiscussionTopicModule extends Gdn_Module {
 		}
 	}
 	if (!$Listcount) {
-		return;
-		if (c('Plugins.DiscussionTopic.HideEmptyPanel',true)) return;
-		$TopicString = wrap(panelHeading($Panelhead.' - '.t('None Found')),
-			'DIV class="Box BoxCategories"  title="'.t('Nothing else has this set of hashtags:').$Tagnamelist.'"');
+		$TopicString = wrap('','span id=TitleBox');
 		return;
 	}
 	$TopicString =  $TopicString . ' ' . $More; 
+	$Panelhead = anchor($Panelhead,'/plugin/DiscussionTopic/DiscussionTopicSearch?s='.$Topic,$Panelhead);
 	$TopicString =	wrap(panelHeading($Panelhead).
 							wrap($TopicString,'ul class="PanelInfo PanelCategories" title="'.t('click to view discussion').'"'),
-								'DIV class="Box BoxCategories"  title="'.t('Discussions with these hashtags:').$Tagnamelist.'"');
+								'DIV class="Box BoxCategories"  id=TitleBox title="'.t('Discussions with this title:').$TopicTitle.'"');
 	//
 	return false;		
   }

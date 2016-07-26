@@ -1,7 +1,7 @@
-
 .TopicInPost {
     background-color: #FFE0E0;
-    display: inline;
+    display: table;
+    line-height: 11pt;
 }
 .TopicInView {
     background-color: #FFE0E0;
@@ -21,9 +21,31 @@
   background-size: 24px;
   font-size: 10pt; 
 }
+.SearchTopicBox {
+	min-width: 600px;
+	color:blue;
+}
 .TopicBox {
 	width: 99%;
 	color:blue;
+}
+.RelatedDiscussions {
+    padding-left: 19px !Important;
+    text-indent: -14px;
+    line-height: 10pt;
+}
+.RelatedItemLink {
+	display:inline;
+}
+.Emphasize {
+    font-size: large;
+    font-weight: bold;
+    margin-right: 4px;
+}
+.NoEmphasize {
+    font-size: large;
+    font-weight: bold;
+    margin-right: 4px;
 }
 .Topichead {
     background-Color: rgba(123, 119, 107, 0.07);

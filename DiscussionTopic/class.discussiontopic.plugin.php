@@ -2,7 +2,7 @@
 $PluginInfo['DiscussionTopic'] = array(
     'Name' => 'DiscussionTopic',
 	'Description' => 'Adds a side panel of discussions sharing similar topics.  Topics can automatically be derived through discussion title language analysis, administrator defined reserved "Priority Phrases", double quoted phrases, or entered manually.',
-    'Version' => '2.2',
+    'Version' => '3.1',
     'RequiredApplications' => array('Vanilla' => '2.2'),
     'RequiredTheme' => false,
 	'MobileFriendly' => false,
@@ -26,6 +26,8 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 			$Msg = 'Saving Discussion... '. __FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'].' ---> '. debug_backtrace()[0]['function'];;
 			//**Gdn::controller()->informMessage($Msg);
 			echo Wrap($Msg,'br');
+			$this->ShowData($Sender->EventArguments,__LINE__.'---$Sender->EventArguments---','',0,' ',true);
+			$this->ShowData($Sender->EventArguments,__LINE__.'---$Sender->EventArguments---','',0,' ',true);
 		}
 		//
 		$FormPostValues = val('FormPostValues', $Sender->EventArguments, array());
@@ -46,21 +48,31 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 		$Name = val('Name', $FormPostValues, '');
 		$Body = val('Body', $FormPostValues, '');
 		$Topic = val('Topic', $FormPostValues, '');	
+		$TopicAnswer  = val('TopicAnswer ', $FormPostValues, '');	
+		if ($DiscussionID == 0) $TopicAnswerVal = false;
+		if ($TopicAnswer != '') {
+			$TopicAnswerVal = true;
+		}
 		if ($Debug) {
-			$this->ShowData($DiscussionID,'---DiscussionID---','',0,' ',true);
-			$this->ShowData($CategoryID,'---CategoryID---','',0,' ',true);
-			$this->ShowData($CommentID,'---CommentID---','',0,' ',true);
-			$this->ShowData($Name,'---Name---','',0,' ',true);
-			$this->ShowData($Topic,'---Topic---','',0,' ',true);
+			$this->ShowData($Sender->EventArguments,__LINE__.'---$Sender->EventArguments---','',0,' ',true);
+			$this->ShowData($Args,__LINE__.'---$Args---','',0,' ',true);
+			$this->ShowData($DiscussionID,__LINE__.'---DiscussionID---','',0,' ',true);
+			$this->ShowData($CategoryID,__LINE__.'---CategoryID---','',0,' ',true);
+			$this->ShowData($CommentID,__LINE__.'---CommentID---','',0,' ',true);
+			$this->ShowData($Name,__LINE__.'---Name---','',0,' ',true);
+			$this->ShowData($Topic,__LINE__.'---Topic---','',0,' ',true);
+			$this->ShowData($TopicAnswerVal,__LINE__.'---TopicAnswerVal---','',0,' ',true);
 			//$this->ShowData($FormPostValues,'---FormPostValues---','',0,' ',true);
+			$Debug = false;
 		}
 		//
-		if (substr($Body.'          ',0,9) == "**DEBUG*!") $Debug = true;
+		//if (substr($Body.'          ',0,9) == "**DEBUG*!") $Debug = true;
 		//
 		$Extract = $this->GetSubject($Sender,$Name,'',$Debug);
 		//
 		if ($Debug) $this->ShowData($Extract,__LINE__.'---Extract---','',0,' ',true);
 		$Sender->EventArguments['FormPostValues']['Topic'] = $Extract;
+		$Sender->EventArguments['FormPostValues']['TopicAnswer'] = $TopicAnswerVal;
 		if (substr($Body.'          ',0,10)  == "**DEBUG*!/") die(0);
 	}
 	/////////////////////////////////////////////////////////
@@ -76,12 +88,15 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 		if ($Sender->RequestArg[0] == 'Search') {
 			$this->Controller_DiscussionTopicSearch($Sender,$Args);
 			return;
+		} elseif ($Sender->RequestArg[0] == 'SubjectSearch') {
+			$this->Controller_DiscussionSubjectSearch($Sender,$Args);
+			return;
 		}
 		$this->Dispatch($Sender, $Sender->RequestArgs);
 		//
 	}
 	/////////////////////////////////////////////////////////
-	//Handle Discussion Topic update request
+	//Handle Discussion Topic update request from the gear (options menu)
 	public function Controller_DiscussionTopicSetTopic($Sender,$Args) {
 		$Debug = false;
 		if ($Debug) {
@@ -109,25 +124,47 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 				return;
 			}
 		}
+		
 		// Now we know that passed parameters are fine
 		$DiscussionModel = new DiscussionModel();
 		$Discussion = $DiscussionModel->GetID($DiscussionID);
+		$Topic = $Discussion->Topic;		
+		
+		$Referer = $_SERVER["HTTP_REFERER"];
+		$DisplayingDiscussion = strpos($Referer, 'discussion/'.$DiscussionID);	//Non zero value indicates we're browing a single discussion (so side panel is possible)
+		$PreTopic = $Discussion->Topic;							//Save value before the form is displayed
+		$PreTopicAnswer = $Discussion->TopicAnswer;
+		$Update = false;
+		
+		$this->ShowTopicForm($Sender,$Discussion,$Debug);	//Display the form		
+		
 		$Topic = $Discussion->Topic;
-		if ($Debug) $this->ShowData($Topic,__LINE__.'---Topic---','',0,' ',true);
-		$this->ShowTopicForm($Sender,$Discussion,$Debug);	//Display the form
-		$Topic = $Discussion->Topic;
-		SaveToConfig('Plugins.DiscussionTopic.Cleared',false);
-		if ($Debug) $this->ShowData($Topic,__LINE__.'---Topic---','',0,' ',true);
-		Gdn::sql() ->update('Discussion')
-				->set('Topic', $Topic) ->where('DiscussionID', $DiscussionID)
-				->put();
-		// Refresh the screen topic with the newly updated value (only if topic shown in the discussion list)
-		if (c('Plugins.DiscussionTopic.Showinlist')) {			
-			$Sender->JsonTarget('#Topic' . $DiscussionID,
-					wrap($Topic, 'div', array('id' => 'Topic'.$DiscussionID,'class' => 'TopicInList')),'ReplaceWith');
+		$TopicAnswer = $Discussion->TopicAnswer;
+		if ($Topic != $PreTopic | $TopicAnswer != $PreTopicAnswer) {				//Don't bther to change anything if nothing was changed
+			SaveToConfig('Plugins.DiscussionTopic.Cleared',false);
+			Gdn::sql() ->update('Discussion')
+					->set('TopicAnswer', $TopicAnswer) 
+					->set('Topic', $Topic) 
+					->where('DiscussionID', $DiscussionID)
+					->put();
+			// 
+			$Sender->JsonTarget('#Topic'.$DiscussionID,
+					$this->DisplayTopicAnswer($Sender, $Topic, $TopicAnswer, $DiscussionID, t('Discussion Topic'),'','','TopicInPost '),
+					'ReplaceWith');
+			// 
+			if ($DisplayingDiscussion > 0) {									//Refresh side panel only when displaying a single discussion.
+				$ModuleContent = new DiscussionTopicModule($Sender);
+				$Limit = c('Plugins.DiscussionTopic.Panelsize',8);
+				$TopicBox =  wrap($ModuleContent->Refresh($DiscussionID,$Limit,$Debug));
+				$Sender->JsonTarget('#TitleBox', $TopicBox, 'ReplaceWith');			
+			}
 		}
 		$Sender->Render('Blank', 'Utility', 'Dashboard');
 	}	
+	/////////////////////////////////////////////////////////
+	public function assetTarget() {
+		return 'Content';
+	}
 	/////////////////////////////////////////////////////////
 	// Display the Topic form
 	private function ShowTopicForm($Sender,$Discussion, $Debug = false) {
@@ -139,7 +176,9 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 		$DefaultTopic = $this->GetSubject($Sender,$Discussion->Name,'',$Debug);
 		$Sender->setData('Topic', $Topic);
 		$Sender->setData('DefaultTopic',$DefaultTopic);
-		$Sender->setData('DiscussionName', $Discussion->Name);
+		$Sender->setData('DiscussionName', $Discussion->Name);	
+		$Sender->setData('TopAnswerMode', c('Plugins.DiscussionTopic.TopAnswerMode',false));	
+		$Sender->setData('TopicAnswer', $Discussion->TopicAnswer);
 		//Modes: 1=manual, 2=Deterministic, 3=Heuristic, 4=Progressive (Both 2&3)
 		$Mode = 1 + c('Plugins.DiscussionTopic.Mode',0); 
 		$ModeArray = Array(0 => '?', 1 =>'Manual', 2 =>'Deterministic', 3 => 'Heuristic', 4 => 'Progressive');
@@ -162,6 +201,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 			default:
 				$FormMsg = wrap(t('Default (autogenerated) topic:').'<b>'.$DefaultTopic.'</b>','div ');
 		}		
+		if ($Discussion->TopicAnswer) $FormMsg .= wrap('<br><b>'.t('Current topic is marked as top topic').'</b>','div');
 		$Sender->setData('FormMsg',$FormMsg);
 		//
 		$Sender->Form = new Gdn_Form();
@@ -176,18 +216,31 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 					return;
 				}
 				//
+				$this->ShowData($FormPostValues,__LINE__.'---$FormPostValues---','',0,' ',true);
 				if (isset($FormPostValues['Remove'])) {
 					$Discussion->Topic = "";
+					$Discussion->TopicAnswer = false;
 					return;
-				} elseif (isset($FormPostValues['Generate'])) {
+				} elseif (isset($FormPostValues[t('Generate')])) {
 					$Discussion->Topic = $DefaultTopic;
 					$Sender->Form->SetFormValue('Topic', $DefaultTopic);
-					$Sender->Form->addError(t('Topic was auto-generated but not saved yet. Click the "Save" button to save it.'), 'Topic');
-					//return;
-				} elseif (isset($FormPostValues['Save'])) {
-					$Topic = $FormPostValues['Topic'];
+					$Discussion->TopicAnswer = false;
+					$Sender->Form->SetFormValue('TopicAnswer', false);
+					$Sender->Form->addError(t('Topic was auto-generated but not saved yet.'), 'Topic');
+				} elseif (isset($FormPostValues['RegularSave'])) {
+					$Topic = strip_tags($FormPostValues['Topic']);
 					$Discussion->Topic = $Topic;
-					return;
+					$Discussion->TopicAnswer = false;
+					if (trim($Topic) != '') return;
+					$Sender->Form->addError(t('You cannot save an empty topic.'), 'Topic');
+				} elseif (isset($FormPostValues[t('TopSave')])) {	
+					$Topic = strip_tags($FormPostValues['Topic']);
+					$Discussion->Topic = $Topic;
+					$Discussion->TopicAnswer = true;
+					if (trim($Topic) != '') return;
+					$Sender->Form->addError(t('You cannot save an empty topic.'), 'Topic');
+				} else {
+					$Sender->Form->addError(t('Verify entered data and press one of the buttons.'), 'Topic');
 				}
             } else {
 				$Sender->Form->setData($FormPostValues);
@@ -195,6 +248,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 		}
 		$View = $this->getView('Topic.php');
 		$Sender->render($View);
+		return ;
 	}
 	/////////////////////////////////////////////////////////
 	// Process the Guide Review request
@@ -223,39 +277,40 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 			//**Gdn::controller()->informMessage($Msg);
 			echo Wrap($Msg,'br');
 		}
-		//$this->ShowData($Sender->$Args,__LINE__.'---Args---','',0,' ',true);	
 		if (!CheckPermission('Plugins.DiscussionTopic.View')) return;
-		if ($Debug) $this->ShowData($_GET,__LINE__.'---$_GET---','',0,' ',true);
 		foreach ($_GET as $Key => $Value) {		
-			if ($Key == "s") {	
-				$Search = $Value;
-			} elseif ($Key == "limit") {	
-				$Limit = $Value;
-			} elseif ($Key == "!DEBUG!") {	
+			if ($Key == "!DEBUG!") {	
 				$Debug = $Value;
+			} elseif ($Key == "try") {	
+				$Search = $Value;
+				$SearchSubject = true;
+				if ($Search != '') $this->FilterTopic($Search, $SearchSubject, $Debug);
+			} elseif ($Key == "s") {	
+				$Search = $Value;
+				$SearchSubject = false;
+				if ($Search != '') $this->FilterTopic($Search, $SearchSubject, $Debug);
 			}			
 		}
 		if ($Debug) $this->ShowData($Search,__LINE__.'---Search---','',0,' ',true);
-		$Search = $this->ShowSearchForm($Sender,$Search,$Debug);	//Display the form
+		$this->ShowSearchForm($Sender,$Search,$SearchSubject,$Debug);	//Display the form
 		if ($Debug) $this->ShowData($Search,__LINE__.'---Search---','',0,' ',true);
-		//
 		$Sender->Render('Blank', 'Utility', 'Dashboard');
 	}
 	/////////////////////////////////////////////////////////
-	// Display the Search form
-	private function ShowSearchForm($Sender,$Search, $Debug = false) {
+	// Display the Topic Search form
+	private function ShowSearchForm($Sender, $Search, $SearchSubject = false, $Debug = false) {
 		if ($Debug) {
-			////**Gdn::controller()->informMessage("".__FUNCTION__.__LINE__);
 			$this->ShowData($Search,__LINE__.'---Search---','',0,' ',true);
 		}
 		//
-		$Sender->setData('Searchstring', $Search);
 		$Sender->Form = new Gdn_Form();
 		$Validation = new Gdn_Validation();
+		$Sender->setData('Searchstring', $Search);
 		$Postback=$Sender->Form->authenticatedPostBack();
 		if(!$Postback) {					//Before form submission	
 			$Sender->Form->setValue('Searchstring', $Search);
 			$Sender->Form->setFormValue('Searchstring', $Search);
+			$Sender->Form->setFormValue('SearchSubject', $SearchSubject);
 		} else {								//After form submission	
 			$FormPostValues = $Sender->Form->formValues();
 			//if ($Debug) $this->ShowData($FormPostValues,__LINE__.'---FormPostValues---','',0,' ',true);
@@ -265,33 +320,25 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 				if (isset($FormPostValues['Cancel'])) {;
 					return '';
 				}
-				if (isset($FormPostValues['Search'])) {
-					//if ($Debug) $this->ShowData($Search,__LINE__.'---Search---','',0,' ',true);
+				if (isset($FormPostValues['TopicSearch'])) {
 					$Search = $FormPostValues['Searchstring'];
-					//if ($Debug) $this->ShowData($Search,__LINE__.'---Search---','',0,' ',true);
-					//if ($Debug) ////**Gdn::controller()->informMessage($Search.__LINE__);
 					$Sender->Form->SetFormValue('Searchstring', $Search);
-					if ($Debug) $this->ShowData($Search,__LINE__.'---Search---','',0,' ',true);
-					if ($Search != '') {
-						$Url = '/discussions/Filterdiscussion/?!msg=Topic Search&Topic=LK:'.$Search;
-						$Url = '/plugin/DiscussionTopic/DiscussionTopicUpdate/?&restart=0&limit=-1';
-						//if ($Debug) $this->ShowData($Url,__LINE__.'---Url---','',0,' ',true);
-						$Sender->Form->close();
-						redirect($Url);
-						//die(0);
-					}
-				}
-				$Sender->Form->close();
-				return $Search;
+					$this->FilterTopic($Search, false, $Debug);
+					return;			//just in case...
+				} elseif (isset($FormPostValues['SubjectSearch'])) {
+					$Search = $FormPostValues['Searchstring'];
+					$Sender->Form->SetFormValue('Searchstring', $Search);
+					$this->FilterTopic($Search, true, $Debug);
+					return;			//just in case...
+				} 
             } else {
-				//if ($Debug) ////**Gdn::controller()->informMessage("".__FUNCTION__.__LINE__);
 				$Sender->Form->setData($FormPostValues);
 			}
 		}
 		//
 		$View = $this->getView('Topicsearch.php');
-		if ($Debug) echo wrap(__FUNCTION__.__LINE__.'View:'.$View,'div');
 		$Sender->render($View);
+		return;
 	}
 	/////////////////////////////////////////////////////////
 	//Place a topic search menu on the menu bar
@@ -303,18 +350,26 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 			echo Wrap($Msg,'br');
 		}
 		//
+		$ErrorMsg = Gdn::session()->stash('IBPTopicMsg');
+		if ($ErrorMsg != '') {
+			Gdn::session()->stash('IBPTopicMsg', '');
+			Gdn::controller()->informMessage($ErrorMsg);
+		}
+		//
 		$Controller = $Sender->ControllerName;						//Current Controller
 		$MasterView = $Sender->MasterView;
-		$DisallowedControllers = Array('settingscontroller');		//Add other controllers if you want
-		if (InArrayI($Controller, $DisallowedControllers)) return;
+		$AllowedControllers = Array('discussionscontroller','discussioncontroller','categoriescontroller');		//Add other controllers if you want
+		//$this->ShowData($Controller,__LINE__.'---Controller---','',0,' ',true);
+		//$this->ShowData($MasterView,__LINE__.'---MasterView---','',0,' ',true);
+		
 		if (!c('Plugins.DiscussionTopic.Showmenu', false)) return;				
 		if (!CheckPermission('Plugins.DiscussionTopic.View')) return;
-		//if ($Debug)	echo "<br>".__FUNCTION__.'  '.__LINE__."<BR>";
-		$Css = 'hijack Popup hijack';
-		$Css = 'TopicSearch ';
-		//>addLink('Discussions', t('Discussions'), '/discussions', false, ['Standard' => true]);
-		$Sender->Menu->AddLink("Menu", t('Topic-Search'),'/plugin/DiscussionTopic/DiscussionTopicSearch?s=',false,
-								 array('class' => $Css));
+		
+		if (InArrayI($Controller, $AllowedControllers)) {
+			$Css = 'Popup TopicSearch"  Target="_self';
+			$Sender->Menu->AddLink("Menu", t('Topic-Search'),'/plugin/DiscussionTopic/DiscussionTopicSearch?s=',false,
+								 array('class' => $Css, 'target' => '_self'));
+		}
 	} 
 	/////////////////////////////////////////////////////////
 	//Handle Database update request
@@ -350,6 +405,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 			$SqlHandle->Reset();
 			$Updates = $SqlHandle->update('Discussion d')
 					->set('d.Topic', null)
+					->set('d.TopicAnswer', null)
 					->where('d.DiscussionID <>', 0)
 					->put();
 			$RowCount = count($Updates);
@@ -434,18 +490,16 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 			$Newgen = 1 + $UpdateGen;
 			SaveToConfig('Plugins.DiscussionTopic.HighupdateID',0);
 			$Title = 'New update batch'.str_repeat("&nbsp",40).' (Batch#'.$Newgen.')';
-			//if ($Debug) $this->ShowData($UpdateGen,__LINE__.'---Updategen---','',0,' ',true);
 		} else {			/*Continued batch*/
 			$StartID = c('Plugins.DiscussionTopic.HighupdateID',0);
-			$Title = 'Continuing update batch'.str_repeat("&nbsp",40).' (Session#'.$UpdateGen.')';
-			//if ($Debug) $this->ShowData($UpdateGen,__LINE__.'---Updategen---','',0,' ',true);
+			$Title = 'Continuing update batch'.str_repeat("&nbsp",40).' (Batch#'.(1+$UpdateGen).')';
 		}
 		if ($Debug) $this->ShowData($StartID,__LINE__.'---StartID---','',0,' ',true);
 		$UseLimit = $Limit + 1;
 		$SqlHandle = clone Gdn::sql();	//Don't interfere with any other sql process
 		$SqlHandle->Reset();				//Clean slate
-		$SqlFields = 'd.DiscussionID,d.Name,d.CategoryID,d.Topic';
-		$Discussionlist = $SqlHandle		//Get expanded tag info for this discussion
+		$SqlFields = 'd.DiscussionID,d.Name,d.CategoryID,d.Topic,d.TopicAnswer';
+		$Discussionlist = $SqlHandle		
 			->select($SqlFields)
 			->from('Discussion d')
 			->where('d.DiscussionID >', $StartID)
@@ -487,10 +541,15 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 				$Name = $Entry->Name;
 				$Topic = $this->GetSubject($Sender,$Name,'',$Debug);	
 				$ReportRowNumber += 1;
-				echo wrap('<br>'.$ReportRowNumber.' ID:<b>'.$DiscussionID.' </b>Title:<b>'.SliceString($Name,60).' </b>Keywords:<b>'.$Topic.'</b>','span');
+				$TopicAnswerNote = '';
+				if ($Entry->TopicAnswer) $TopicAnswerNote = wrap(' ***Was Top Topic*** ','span style="color:red"');
+					
+				echo wrap('<br>'.$ReportRowNumber.' ID:<b>'.$DiscussionID.$TopicAnswerNote.' </b>Title:<b>'.SliceString($Name,60).' </b>Keywords:<b>'.$Topic.'</b>','span');
 				$SqlHandle->update('Discussion d')
 					->set('d.Topic', $Topic)
+					->set('d.TopicAnswer', false)
 					->where('d.DiscussionID', $DiscussionID)
+					
 					->put();
 				$HighWatermark = $DiscussionID;
 			}
@@ -598,8 +657,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 			echo wrap('DiscussionTopic plugin - Missing Analyzer name','h1');
 			return '';	
 		}
-		//Analyze the words
-		//if ($Debug) $this->ShowData($String,__LINE__.'---String---','',0,' ',true);
+		//Analyze the words - in this section we perform language analysis.  This is where you will place your own language analyzer.
 		if ($AnalyzerName == 'PosTagger') {
 			$Tagger = new PosTagger('lexicon.txt');
 			$Tags = $Tagger->tag($String);
@@ -641,7 +699,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 			$Keywords = Array();
 			foreach ($Words as $Entry) {
 				if ($Debug) $this->ShowData($Entry,__LINE__.'---Entry---','',0,' ',true);
-				/*Sample structure:	Entry--- array 
+				/*Sample structure:	Entry--- array   - This is the expected structure of language analysis.  Use it with otter language analyzers
 				//....(1) _integer:position value:"0"
 				//....(1) _integer:startingPos value:"0"
 				//....(1) _integer:endingPos value:"9"
@@ -652,16 +710,17 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 				$Token = strtolower($Entry['token']);
 				$Stem = $Entry['stem'];
 				$Partofspeech = $Entry['partOfSpeech'];
+				//$Partofspeech = "NN";						//Uncomment this line to disable language analysis
 				if (strlen($Token) > 1 && !in_array($Token,$NoiseArray)) {
 					$i += 1;
-					$Catchprefix = substr($Partofspeech,0,2);
+					$Catchprefix = substr($Partofspeech,0,2);	//The first two letters denotic the part of speech in a sentence
 					switch ($Catchprefix) {
-						case "NN":
+						case "NN":								//The only accepted words are nouns and verbs
 						case "XC":
 							$Nouns[$n] = $Stem;
 							$n += 1;
 							break;
-						case "VB":
+						case "VB":								//Accepting verbs
 							$Verbs[($v)] = $Stem;
 							$v += 1;
 							break;
@@ -672,10 +731,10 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 			if ($Debug) $this->ShowData($Nouns,__LINE__.'---Nouns---','',0,' ',true);
 			//
 			if ($Debug) $this->ShowData($Verbs,__LINE__.'---Verbs---','',0,' ',true);
-			for ($j = 0;$j<count($Nouns); $j++ ) {
+			for ($j = 0;$j<count($Nouns); $j++ ) {									//Give priority to nouns
 				$Keywords[$j] = $Nouns[$j];
 			}
-			for ($k = 0;$k<count($Verbs); $k++ ) {
+			for ($k = 0;$k<count($Verbs); $k++ ) {									//Only then look at verbs
 				$j += 1;
 				$Keywords[$j] = $Verbs[$k];
 				if ($Debug) echo wrap('k:'.$k.' j:'.$j.', $Verbs[$k]:'.$Verbs[$k],'div');
@@ -684,7 +743,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 			//
 			$Keywords = array_unique($Keywords);
 			$Keywords = array_filter($Keywords); 
-			ksort($Keywords);
+			ksort($Keywords);														//Standardize topic order (login failed == failed login)
 			//if ($Debug) $this->ShowData($Keywords,__LINE__.'---Keywords---','',0,' ',true);
 			$Keywords = array_slice($Keywords, 0, $SigWords);
 			$String = implode(",",$Keywords);
@@ -903,6 +962,8 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 		$this->SetVariableDefault('Plugins.DiscussionTopic.Parttialupdate',0);
 		$this->SetVariableDefault('Plugins.DiscussionTopic.HighupdateID',0);
 		$this->SetVariableDefault('Plugins.DiscussionTopic.Mode',3);
+		$this->SetVariableDefault('Plugins.DiscussionTopic.Showmenu',true);
+		$this->SetVariableDefault('Plugins.DiscussionTopic.TopAnswerMode',false);
 		SaveToConfig('Plugins.DiscussionTopic.RedoConfig',false);
 		SaveToConfig('Plugins.DiscussionTopic.FirstSetupDone',false);
 		SaveToConfig('Plugins.DiscussionTopic.ReportRowNumber',0);
@@ -913,6 +974,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         Gdn::database()->structure()
             ->table('Discussion')
             ->column('Topic', 'varchar(100)', true)
+			->column('TopicAnswer',  'tinyint(1)', '0')
             ->set();
     }
 	/////////////////////////////////////////////////////////
@@ -1178,7 +1240,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 							wrap('The substitute words specified on this screen are adeed to the substitute word definitions in the plugin LOCALE file mentioned above.','span  class=SettingAsideN').
 							wrap('Hint: If you substitute the word with a double-quoted phrase, it will behave as a Priority Phrase.','span  class=SettingAsideN').
 							' ','span '),'div class=SettingAside');							
-		$CustomizationGuide	= wrap('○ Click '.Anchor('here','plugin/DiscussionTopic/DiscussionTopicGuide',Array('class'=>"Popup")).
+		$CustomizationGuide	= wrap('○ Click '.Anchor('here','plugin/DiscussionTopic/DiscussionTopicGuide',Array('class'=>"NoPopup",'target'=>"Popup")).
 									' for the Customization Guide.','span  class=SettingAsideN');
 		$GeneralNotes = wrap(wrap('<b>General Notes</b>','h3').wrap(
 							$SimulatedNote.$CustomizationGuide.
@@ -1259,7 +1321,14 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 			'Default' => false,
 			'Options' => array('Class' => 'Optionlist ')),
 		//
-		/**************  To be completed in a future release ******
+			'Plugins.DiscussionTopic.TopAnswerMode' => array(
+			'Control' => 'Checkbox',
+			'LabelCode' => 	wrap('5. Provide the ability to mark discussions as "Top Topics". Top topics will be pushed to the top of the side panel.','span class=SettingText').  				 wrap('Useful when discussions offer solutions to frequently asked questions','span class=SettingTextContinue').
+							wrap('(Important: Requires options 4 above (Setting topics through the options menu).','span class=SettingTextContinue'),
+			'Description' => 	'',	
+			'Default' => false,
+			'Options' => array('Class' => 'Optionlist ')),
+		//
 			'Plugins.DiscussionTopic.Showmenu' => array(
 			'Control' => 'Checkbox',
 			'LabelCode' => 	wrap('Display a "Topic-Search" menu in the menu bar',
@@ -1267,7 +1336,6 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 			'Description' => 	'',	
 			'Default' => false,
 			'Options' => array('Class' => 'Optionlist ')),
-		*************/
 		//
 			'Plugins.DiscussionTopic.Mode' => array(
 			'Control' => 'Radiolist',
@@ -1470,24 +1538,45 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 		//$CommentID = getValueR('CommentID',$Object);
 		$DiscussionID = getValueR('DiscussionID',$Object);
 		$Showtopic = $this->GetTopicToShow($Sender, getValueR('Topic',$Object), 'Showindiscussion', $Debug);
-		if ($Showtopic == '') return;
-		echo wrap(t('Discussion topic').':'.$Showtopic.'<br>','div class=TopicInView id=Topic'.$DiscussionID);
+		$TopicAnswer = getValueR('TopicAnswer',$Object);
+		echo $this->DisplayTopicAnswer($Sender, $Showtopic, $TopicAnswer, $DiscussionID, 'Discussion Topic','','','TopicInPost ','div' );
 	}
+	/////////////////////////////////////////////////////////
+	private function DisplayTopicAnswer($Sender, $Topic, $TopicAnswer, $DiscussionID, $Prefix = 'Discussion Topic', $DefaultEmphasize = '○',$Emphasize = '◉',$Style = 'TopicInPost') {
+		if ($Topic== '') {
+			return wrap(wrap(' ','span class=Emphasize id=Emphasize'.$DiscussionID).' ','span '.'id=Topic'.$DiscussionID);
+		}
+		$Anchor = anchor($Topic,'/plugin/DiscussionTopic/DiscussionTopicSearch?s='.$Topic,array('Title' => t('click to view discussions with matching topics')));
+		$AnswerMsg = $Topic;
+		if ($Prefix != '') $AnswerMsg = t($Prefix).':'.$Anchor;//$Topic;
+		if ($TopicAnswer) {
+			$Title = 'Title="'.t('This topic is marked as top topic').'"';
+		} else {
+			$Emphasize = $DefaultEmphasize;
+			$Title = '';
+		}
+		
+		return wrap(wrap($Emphasize,'span class=Emphasize id=Emphasize'.$DiscussionID).$AnswerMsg,'span class='.$Style.' '.'id=Topic'.$DiscussionID.' '.$Title);
+		//
+		
+		;
+    }
 	/////////////////////////////////////////////////////////
 	public function PostController_afterDiscussionFormOptions_handler($Sender,$Args) {
 		$Debug = false;
         // 
 		$Discussion = getvalue('Discussion', $Sender->Data);
-		
-		$Showtopic = $this->GetTopicToShow($Sender,getvalue('Topic', $Discussion), 'Showindiscussion', $Debug);
+		$TopicAnswer = getvalue('TopicAnswer', $Discussion);
+		$Topic = getvalue('Topic', $Discussion);
+		$Showtopic = $this->GetTopicToShow($Sender, $Topic, 'Showindiscussion', $Debug);
 		if ($Showtopic == '') return;
-        //$Sender->addCssFile('discussiontopic.css', 'plugins/DiscussionTopic');
-		echo wrap(t('Saved discussion topic').':'.$Showtopic,'div class=TopicInPost');
+		echo $this->DisplayTopicAnswer($Sender, $Showtopic, $TopicAnswer, $Discussion->DiscussionID, 'Saved discussion topic','',' ','TopicInPost ' );
     }
 	/////////////////////////////////////////////////////////
 	public function DiscussionController_BeforeDiscussionRender_Handler($Sender) {
 		$Debug = false;
 		//if (!c('Plugins.DiscussionTopic.Showrelated',false)) return;
+		$Sender->addCssFile('discussiontopic.css', 'plugins/DiscussionTopic');	
         $Limit = c('Plugins.DiscussionTopic.Panelsize',8);
         $ModuleToAdd = new DiscussionTopicModule($Sender);
 		$Sender->AddModule($ModuleToAdd, 'Panel' ,$Sender);
@@ -1517,10 +1606,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 	private function ListInline($Sender,$Discussion,$Debug = false) {
 		//if ($Debug) echo "<br><b>".__FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'];
 		$Showtopic = $this->GetTopicToShow($Sender,$Discussion->Topic, 'Showinlist', $Debug);
-		if ($Showtopic == '') return;
-        //$Sender->addCssFile('discussiontopic.css', 'plugins/DiscussionTopic');
-		echo wrap(t('Discussion topic').':'.$Showtopic,
-					'div class=TopicInList id=Topic'.$Discussion->DiscussionID); 
+		echo $this->DisplayTopicAnswer($Sender, $Showtopic, $Discussion->TopicAnswer, $Discussion->DiscussionID, 'Discussion topic','','','TopicInList ' );
 	}
 	///////////////////////////////////////////////////////// 
 	// Add gear option
@@ -1571,7 +1657,6 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 		$SimpleKey =(367+Gdn::Session()->UserID); 
 		$Encode = $DiscussionID ^ $SimpleKey;
 		$Url = '/dashboard/plugin/DiscussionTopic/DiscussionTopicSetTopic/?D='.$DiscussionID.'&S='.$Encode;
-		$Css = 'Hijack SetTopiccss';
 		$Css = 'Popup SetTopiccss';
 		$Sender->Options .= '<li>'.anchor(t($Text), $Url,$Css).'</li>';  
 	}
@@ -1586,9 +1671,11 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 	private function ShowData($Data, $Message, $Find, $Nest=0, $BR='<br>', $Echo = true) {
 		//var_dump($Data);
 		$Line = "<br>".str_repeat(".",$Nest*4)."<B>(".($Nest).") ".$Message."</B>";
-		if ($Echo) echo $Line;
-		else //**Gdn::controller()->informMessage($Line);
-		
+		if ($Echo) {
+			echo $Line;
+		} else {
+			Gdn::controller()->informMessage($Line);
+		}
 		$Nest +=1;
 		if ($Nest > 20) {
 			echo wrap('****Nesting Truncated****','h1');
@@ -1619,8 +1706,31 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 		}
 	}
 	////////////////////////////////////////////////////////
+	// Filter by topic
+	private function FilterTopic($Search, $SearchSubject = false, $Debug) {
+		if ($Search == '') {
+			Gdn::session()->stash('IBPTopicMsg', t('Error: Search argument not specified'));
+			Redirect('..'.url('/discussions'));
+		}
+		if ($SearchSubject) $Search = $this->GetSubject($Sender,$Search,'',$Debug);
+		Gdn::session()->stash('IBPTopicMsg', '');
+		Gdn::session()->stash('IBPTopicSearch', $Search);
+		$Title = t('Topic').':'.str_replace(array('\'', '"'), '', $Search);
+		Redirect('..'.url('/discussions'));
+	}
+	////////////////////////////////////////////////////////
+	// This hook does two things:  filtering (facilitates the search function) and 
 	// Overriding discussion list sort order (for debugging/analysis only).
 	public function DiscussionModel_BeforeGet_Handler($Sender) {
+		//
+		$Search = Gdn::session()->stash('IBPTopicSearch');
+		if ($Search) {
+			Gdn::session()->stash('IBPTopicSearch', '');
+			$Sender->SQL->Where('d.Topic',$Search);
+			Gdn::Controller()->Title(t('Searching Topic').':'.strip_tags(str_replace(array('\'', '"'), '', $Search)));
+			return;
+		}
+		//
 		$IsAdmin = Gdn::Session()->CheckPermission('Garden.Users.Edit');
 		if (!$IsAdmin) return;
 		if (!c('Plugins.DiscussionTopic.SortByTopic',false)) return;

@@ -16,4 +16,11 @@ Release 2.2 Changes:
 - Fixed manual update form error 
 - Enhanced reporting of multiple record update during setup/customization
 - Some code cleaning & style standardization
+Release 3.1 Changes:
+- The side panel as well as the topic in the meta area are refreshed when the discussion is saved or when the discussion topic is updated
+- Added the ability to mark a discussions as "Top Topic" so that they would appear first on the side panel of discussions with the same topic
+- Clicking on the topic value shown in the meta area will display a filtered discussion list with the same topic
+- Added the ability to add a "Topic-Search" option on the main menu bar.  If enabled, users will be able to quickly search for exact topics or enter a free form discussion title and it would search for the generated topic.  In effect, this provides an easy way to find answers before posting questions.
+- Added explanation on how to use the plugin with non-English languages
+- Some more code cleaning & style standardization
 

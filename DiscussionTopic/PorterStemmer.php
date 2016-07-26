@@ -41,6 +41,8 @@ class PorterStemmer  {
         * @return string       Stemmed word
         */
         public static function Stem($word)
+		//Uncomment the followingline to disable word stemming (Useful when you deal with non-English content)
+		// return $word;	//  Uncomment for non-English languages
         {
             if (strlen($word) <= 2) {
                 return $word;
@@ -409,4 +411,3 @@ class PorterStemmer  {
                    AND $matches[1]{2} != 'y';
         }
     }
-?>
