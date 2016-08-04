@@ -24,3 +24,9 @@ Version 2:
 - Added sidepanel
 - Minor code formatting
 - Annotated screen captures
+Version 2.1.1:
+- Decreased setting for minimum number of letters in a hashtag from 4 to 2
+- Fixed the bug that marked html tags with an hashtag as a true use-intented hashtag
+- Tighten up the validation of valid hashtags 
+- Limit the maximum number of hashtags processed per dicussion to the 'Plugin.Tagging.Max' settings of the Tagging Plugin (the default maximum is 5).
+- Added verification that the taggin plugin was not disabled after the hashtag plugin was enabled.

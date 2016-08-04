@@ -8,7 +8,7 @@ $PluginInfo['Hashtag'] = array(
 	'RequiredPlugins' => array('Tagging' => '1.8.2'),
 	'MobileFriendly' => true,
     'HasLocale' => true,
-	'SettingsUrl' => '/settings/Hashtag',
+	'SettingsUrl' => '/settings//Hashtag',
     'SettingsPermission' => 'Garden.Settings.Manage',
 	'RegisterPermissions' => array('Plugins.Hashtag.View','Plugins.Hashtag.Add'),
     'Author' => "Roger Brahmson",
@@ -60,7 +60,7 @@ class HashtagPlugin extends Gdn_Plugin {
 			$Panelontop = getvalue('Plugins.Hashtag.Panelontop',$Data);
 			//
 			$FieldErrors = $this->CheckField($Sender,$Minletters,
-							Array('Integer'=>'?','Required'=> 'Integer','Min'=> 4,'Max'=>10),
+							Array('Integer'=>'?','Required'=> 'Integer','Min'=> 2,'Max'=>10),
 							'Minimum number of letters in a #hashtag','Plugins.Hashtag.Minletters');
 			//  Maximum number of letters in an #Hashtag
 			$Maxletters = getvalue('Plugins.Hashtag.Maxletters',$Data);
@@ -140,6 +140,8 @@ class HashtagPlugin extends Gdn_Plugin {
 		} else {
 			if (c('Plugins.Hashtag.IncompleteSetup')) 
 				$TopWarning = 'Previously saved settings are incomplete/invalid.  Review and save correct values.';
+			if (!c('EnabledPlugins.Tagging',false)) 
+				$TopWarning = 'The Tagging plugin must be enabled for the Hashtag plugin to be operational.';
 			$Sender->Form->SetData($ConfigurationModel->Data);
         }
 		$Feedbackrray['TopWarning'] = $TopWarning;
@@ -193,7 +195,7 @@ class HashtagPlugin extends Gdn_Plugin {
 		}
 	}
 	/////////////////////////////////////////////////////////
-// Set Confogiration Array
+// Set Configiration Array
 	public function SetConfig($Sender,$Errors = Array(),$Debug) {
 		$Separator = '<span class=SettingSep>&nbsp</span>';
 		$Headstyle = '<span class=SettingHead>#&nbsp&nbsp';
@@ -208,7 +210,7 @@ class HashtagPlugin extends Gdn_Plugin {
 		$WarnGarden = '';
 		if (c('Garden.Format.Hashtags')) $WarnGarden = '<span class=SettingGardenWarning>'.t('Currently it is <b>not</b> turned off').'</span>';
 		if (c('Plugins.Hashtag.Showrelated')) 
-			$Showrelatednote = wrap('<br><b>Note:</b>The internal name of the sidepanel is "TagRelatedModule"',
+			$Showrelatednote = wrap('<br><b>Note:</b>The internal name of the sidepanel is "TagRelatedModule". You may need it for the ModuleSort plugin.',
 									'span class="SettingText"');
 		//
 		$PluginConfig = array(
@@ -219,7 +221,12 @@ class HashtagPlugin extends Gdn_Plugin {
 								$Subhstyle.'<b>General Note:</b></span>'.
 								$Textstyle.'This plugin auto-creates tags from #Hashtags embedded in the discussion.  This does not override the required Vanilla permissions.'.'</span>'.
 								$Textstyle.'For this plugin to work the following two permissions must be set in Roles and Permissions:'.'</span>'.
-								$Textstyle.'<b>(1)</b> Plugins.Tagging.Add  and <b>(2)</b> Plugins.Hashtag.Add'.'<br><br></span>'.$Separator.
+								$Textstyle.'<b>(1)</b> Plugins.Tagging.Add  and <b>(2)</b> Plugins.Hashtag.Add'.'<br><br></span>'.
+								$Textstyle.'Also note that the maximum number of tags (#Hashtags are real tags) is defined by the Tagging plugin.</span>'.
+								$Textstyle.'This plugin honors that maximum.  It is currently set to <b>'.c('Plugin.Tagging.Max', 5).'. </b>'.
+											'Within a discussion Hashtags beyong that number will be ignored.</span>'.
+								$Textstyle.'You can set that value by adding/altering<b> "$Configuration[\'Plugin\'][\'Tagging\'][\'Max\'] = \''.c('Plugin.Tagging.Max', 5).'\';" </b>in Vanilla\'s config.php.</span>'.
+								$Separator.
 								$Headstyle.'<b>Check Body for #Hashtags'.'</span>',
 			'LabelCode' => 		$Textstyle.'Search the discussion and comment bodies for #Hashtags (otherwise only the discussion title is scanned)</span>'.$Squeeze,
 			'Default' => true),
@@ -415,6 +422,7 @@ class HashtagPlugin extends Gdn_Plugin {
 		if (!c('Plugins.Hashtag.EmbedLinks')) 	return;
 		if (!c('Plugins.Hashtag.SearchBody')) 	return;
 		if (!Gdn::session()->checkPermission('Plugins.Hashtag.View')) return; //This requires View Hashtags permission
+		if (!c('EnabledPlugins.Tagging',false)) return;
 		//
         $Object = $Sender->EventArguments['Object'];
 		$FormatBody = $Object->FormatBody;
@@ -432,17 +440,20 @@ class HashtagPlugin extends Gdn_Plugin {
 		//
 		// Handle #hashtag embedded in the body 
 		// creating links like: /discussions/tagged/hashtag
-		$Mixed = Gdn_Format::replaceButProtectCodeBlocks(
-			'/(^|[\s,\.>])\#([\w\-]+)(?=[\s,\.!?<]|$)/i',
-			'\1'.anchor('#\2', '/discussions/tagged/\2 ').'\3',
-			$FormatBody);
+		$NumTagsMax = c('Plugin.Tagging.Max', 5);
+		$TagPattern = $this->GetTagPattern();
+		$TagAnchor  = anchor('\1\2\3\4\5\6', '/discussions/tagged/\2\3\4\5\6');
+		$Mixed = preg_replace($TagPattern, $TagAnchor, $FormatBody,$NumTagsMax); 
+		//
 		if ($Debug) $this->Showdata($Mixed,__LINE__.'---Mixed---','',0,' ',true);
 		$Sender->EventArguments['Object']->FormatBody = $Mixed;
 	}
 	/////////////////////////////////////////////////////////
+	//Show hashtag sidepanel
 	public function DiscussionController_BeforeDiscussionRender_Handler($Sender) {
 		$Debug = false;
 		if (!c('Plugins.Hashtag.Showrelated',false)) return;
+		if (!c('EnabledPlugins.Tagging',false)) return;
         $Limit = c('Plugins.Hashtag.Panelsize',8);
         $ModuleToAdd = new TagRelatedModule($Sender);
 		$Sender->AddModule($ModuleToAdd, 'Panel' ,$Sender);
@@ -453,6 +464,7 @@ class HashtagPlugin extends Gdn_Plugin {
 		$Debug = false;
 		//if ($Debug) echo "<br><b>".__FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'];
 		if (!c('Plugins.Hashtag.Showinline',false)) return;
+		if (!c('EnabledPlugins.Tagging',false)) return;
 		$Discussion = $Args['Discussion'];
 		$this->Listinline($Sender,$Discussion,$Debug);
 	}
@@ -461,6 +473,7 @@ class HashtagPlugin extends Gdn_Plugin {
 		$Debug = false;
 		//if ($Debug) echo "<br><b>".__FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'];
 		if (!c('Plugins.Hashtag.Showinline',false)) return;
+		if (!c('EnabledPlugins.Tagging',false)) return;
 		$Discussion = $Args['Discussion'];
 		$this->Listinline($Sender,$Discussion,1,$Debug);
 	}
@@ -549,34 +562,26 @@ class HashtagPlugin extends Gdn_Plugin {
 			echo Wrap($Msg,'br');
 		}
         //$Debug = true;
+		//if (substr($Body.'          ',0,10)  == "**DEBUG*!/")  $Debug = true;
 		//Search for hashtags
-		$Body = str_replace("&nbsp;"," ",$Name.' '.$Body." ");						//These html spaces interfere with parsing blanks...
-		preg_match_all('/#([^\s]+)/',$Body, $Matches);
-		$Tagarray = $Matches[0];
-		//var_dump($Matches);
-		var_dump($Matches[0]);
-		$Minletters = c('Plugins.Hashtag.Minletters',4);
-		$Maxletters = c('Plugins.Hashtag.Maxletters',140);
-		$Pattern = '/^(?=.{'.$Minletters.','.$Maxletters.'}$)(#|\x{ff03}){1}([0-9_\p{L}]*[_\p{L}][0-9_\p{L}]*)$/u';
-		$unwantedChars = array(',', '.', "'", '"', '!', '?' ,'&nbsp;'); // create array with unwanted chars
+		$Body = strip_tags(str_replace("&nbsp;",' ',$Name.' '.$Body.' '),'<br>');						//These html spaces interfere with parsing blanks...
+		//
+		$TagPattern = $this->GetTagPattern();
+		preg_match_all($TagPattern,$Body, $Matches);
+		$Tagarray = array_unique($Matches[0]);
+		//if ($Debug) $this->Showdata($Tagarray,__LINE__.' Tagarray:','',0,' ',true);
 		$Hashtags = '';
+		$NumTagsMax = c('Plugin.Tagging.Max', 5);
+		$NumTags = 0;
 		foreach ($Tagarray as $Key => $Tag) {
-			if ($Debug) $this->Showdata($Tag,__LINE__.' Tag:','',0,' ',true);
-			if ($Debug) echo "<br>Key:".$Key."Tag:".$Tag.'<br>';
-			$Sanitized = trim(rtrim(strip_tags($Tag),',!?."'."'"));
-			$Sanitized = strtok(str_replace($unwantedChars, '  ', strtolower(strip_tags($Tag))).' ',' '); // remove unwanted chars and use lowecase
-			if (!preg_match($Pattern, $Sanitized)) {
-				if ($Debug) $this->Showdata($Sanitized,'Invalid hashtag:','',0,' ',true);
-				if ($Debug) echo '<br>Invalid hashtag:'.$Sanitized,'<br>';
-				unset($Tagarray[$Key]);
-			} else {
-				$Hashtags = $Sanitized .', '.$Hashtags;
-				//if ($Debug) $this->Showdata($Hashtags,__LINE__.' Hashtags:','',0,' ',true);
-			}
+			if ($NumTags >= $NumTagsMax) break;
+			//if ($Debug) $this->Showdata($Tag,__LINE__.' Tag:','',0,' ',true);
+			$Hashtags =  $Hashtags . ',' . strtolower($Tag);
+			$NumTags += 1;
 		}
-		$Hashtags = rtrim($Hashtags,', ');
-		if ($Debug) $this->Showdata($Hashtags,__LINE__.' Hashtags:','',0,' ',true);
-		if ($Debug) die(0);
+		$Hashtags = ltrim($Hashtags,', ');
+		//if ($Debug) $this->Showdata($Hashtags,__LINE__.' Hashtags:','',0,' ',true);
+		//if ($Debug) die(0);
 		return $Hashtags;
     }
 	/////////////////////////////////////////////////////////
@@ -590,6 +595,7 @@ class HashtagPlugin extends Gdn_Plugin {
 		}
 		if (!Gdn::session()->checkPermission('Plugins.Tagging.Add')) return; //This required Add Tags permission
 		if (!Gdn::session()->checkPermission('Plugins.Hashtag.Add')) return; //This required Add Hashtags permission
+		if (!c('EnabledPlugins.Tagging',false)) return;
 		if (!c('Plugins.Hashtag.SearchBody')) 	return;		//If not porcessing the body then we're done here
 		//
 		$Discussion = $Sender->EventArguments['Discussion'];
@@ -615,6 +621,14 @@ class HashtagPlugin extends Gdn_Plugin {
 		TagModel::instance()->saveDiscussion($Discussion->DiscussionID, $Hashtags, $Types, $Discussion->CategoryID);
 	}
 	/////////////////////////////////////////////////////////	
+	//Get the tags pattern for the regex expressions
+	private function GetTagPattern() {
+		$Minletters = c('Plugins.Hashtag.Minletters',4);
+		$Maxletters = c('Plugins.Hashtag.Maxletters',140);
+		$Range = '{' . ($Minletters-2) . ',' . ($Maxletters-2) . '}';		//Account for the hashtag and the first letter in the regex catch groups
+		return '/(?=[\b\s\W])(\#){1}([a-zA-Z]{1})([a-zA-Z0-9]' . $Range . ')(?!\#)([\w\-])(?=[\s,\.!?;<]|$)/im';
+	}
+	/////////////////////////////////////////////////////////	
 	//This hook handles the saving of the initial discussion body (but not comments).
 	public function TaggingPlugin_SaveDiscussion_handler($Sender,$Args) {
 		$Debug = false;
@@ -626,6 +640,7 @@ class HashtagPlugin extends Gdn_Plugin {
 		// Verify user can auto-add hashtags
 		if (!Gdn::session()->checkPermission('Plugins.Tagging.Add')) return; //This required Add Tags permission
 		if (!Gdn::session()->checkPermission('Plugins.Hashtag.Add')) return; //This required Add Hashtags permission
+		if (!c('EnabledPlugins.Tagging',false)) return;
 		//
 		$FormPostValues = val('Data', $Sender->EventArguments, array());
 		$Tags = val('Tags', $Sender->EventArguments,0);
@@ -667,7 +682,7 @@ class HashtagPlugin extends Gdn_Plugin {
 	}
 	/////////////////////////////////////////////////////////
 	// Display data for debugging
-	public function Showdata($Data, $Message, $Find, $Nest=0, $BR='<br>', $Echo = true) {
+	private function Showdata($Data, $Message, $Find, $Nest=0, $BR='<br>', $Echo = true) {
 		//var_dump($Data);
 		$Line = "<br>".str_repeat(".",$Nest*4)."<B>(".($Nest).") ".$Message."</B>";
 		if ($Echo) echo $Line;
