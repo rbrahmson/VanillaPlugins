@@ -2,7 +2,7 @@
 $PluginInfo['Hashtag'] = array(
     'Name' => 'Hashtag',
 	'Description' => 'Provides #Hashtag support (Automatic creation of Vanilla Tags, side panel display, auto-links and meta area display).',
-    'Version' => '2.1.1',
+    'Version' => '2.1.2',
     'RequiredApplications' => array('Vanilla' => '2.2'),
     'RequiredTheme' => false,
 	'RequiredPlugins' => array('Tagging' => '1.8.2'),
@@ -428,24 +428,34 @@ class HashtagPlugin extends Gdn_Plugin {
 		$FormatBody = $Object->FormatBody;
 		$CommentID = getValueR('CommentID',$Object);
 		$DiscussionID = getValueR('DiscussionID',$Object);
-		$Name = '';
-		//
+		/*
 		if ($Debug) {
 			$this->Showdata($DiscussionID,__LINE__.'---DiscussionID---','',0,' ',true);
 			$this->Showdata($CommentID,__LINE__.'---CommentID---','',0,' ',true);
-			$this->Showdata($Name,__LINE__.'---Name---','',0,' ',true);
 			$this->Showdata($Object->FormatBody,__LINE__.'---$Object->FormatBody---','',0,' ',true);
 			$this->Showdata($Object,__LINE__.'---Object---','',0,' ',true);
 		}
-		//
+		if (substr($FormatBody.'          ',0,10)  == "**DEBUG*!/")  $Debug = true;
+		*/
 		// Handle #hashtag embedded in the body 
 		// creating links like: /discussions/tagged/hashtag
 		$NumTagsMax = c('Plugin.Tagging.Max', 5);
-		$TagPattern = $this->GetTagPattern();
-		$TagAnchor  = anchor('\1\2\3\4\5\6', '/discussions/tagged/\2\3\4\5\6');
-		$Mixed = preg_replace($TagPattern, $TagAnchor, $FormatBody,$NumTagsMax); 
 		//
-		if ($Debug) $this->Showdata($Mixed,__LINE__.'---Mixed---','',0,' ',true);
+		//Search for hashtags
+		$TagPattern = $this->GetTagPattern();
+		if ($Debug) $this->Showdata($TagPattern,__LINE__.'---TagPattern---','',0,' ',true);
+		$TagAnchor  = anchor('$1$2$3$4$5', '/discussions/tagged/$3$4$5');
+		$Mixed = preg_replace($TagPattern, $TagAnchor, $FormatBody,$NumTagsMax,$Replacements); 
+		//if ($Debug) $this->Showdata($NumTagsMax,__LINE__.'---NumTagsMax---','',0,' ',true);
+		//if ($Debug) $this->Showdata($Replacements,__LINE__.'---Replacements---','',0,' ',true);
+		if ($Mixed == NULL) {
+			$Mixed = $FormatBody;
+			$Msg = __FUNCTION__.' '.__LINE__.' encountered an error in hashtag plugin ';
+			Gdn::controller()->informMessage($Msg);
+			decho ($Msg);
+			return;
+		}
+		//
 		$Sender->EventArguments['Object']->FormatBody = $Mixed;
 	}
 	/////////////////////////////////////////////////////////
@@ -524,7 +534,7 @@ class HashtagPlugin extends Gdn_Plugin {
 		//
 		$TagSql = clone Gdn::sql();	//Don't interfere with any other sql process
 		$TagSql->Reset();			//Clean slate
-		$Taglist = $TagSql		//Get expanded tag info for this discussion
+		$Taglist = $TagSql			//Get expanded tag info for this discussion
 			->select($Sqlfields)
             ->from('TagDiscussion td')
 			->join('Tag t', 't.TagID = td.TagID')
@@ -562,24 +572,24 @@ class HashtagPlugin extends Gdn_Plugin {
 			echo Wrap($Msg,'br');
 		}
         //$Debug = true;
-		//if (substr($Body.'          ',0,10)  == "**DEBUG*!/")  $Debug = true;
+		if (substr($Body.'          ',0,10)  == "**DEBUG*!/")  $Debug = true;
 		//Search for hashtags
-		$Body = strip_tags(str_replace("&nbsp;",' ',$Name.' '.$Body.' '),'<br>');						//These html spaces interfere with parsing blanks...
+		$Body = strip_tags(str_replace("&nbsp;",' ',$Name.' '.$Body.' '),'<br>');		//These html spaces interfere with parsing blanks...
 		//
 		$TagPattern = $this->GetTagPattern();
-		preg_match_all($TagPattern,$Body, $Matches);
-		$Tagarray = array_unique($Matches[0]);
-		//if ($Debug) $this->Showdata($Tagarray,__LINE__.' Tagarray:','',0,' ',true);
+		$MatchCount = preg_match_all($TagPattern,$Body, $Matches);
+		//if ($Debug) $this->Showdata($Matches,__LINE__.' Matches:','',0,' ',true);
 		$Hashtags = '';
 		$NumTagsMax = c('Plugin.Tagging.Max', 5);
 		$NumTags = 0;
-		foreach ($Tagarray as $Key => $Tag) {
+		for ($i = 0; $i <= $MatchCount; $i++) {
+			$Tag = strtolower($Matches[0][$i]);
+			if ($Matches[1][$i] != '') $Tag = ltrim($Tag,$Matches[1][$i]);
 			if ($NumTags >= $NumTagsMax) break;
-			//if ($Debug) $this->Showdata($Tag,__LINE__.' Tag:','',0,' ',true);
-			$Hashtags =  $Hashtags . ',' . strtolower($Tag);
+			$Hashtags =  $Hashtags . ',' . $Tag;
 			$NumTags += 1;
-		}
-		$Hashtags = ltrim($Hashtags,', ');
+		}		
+		$Hashtags = trim($Hashtags,', ');
 		//if ($Debug) $this->Showdata($Hashtags,__LINE__.' Hashtags:','',0,' ',true);
 		//if ($Debug) die(0);
 		return $Hashtags;
@@ -626,7 +636,8 @@ class HashtagPlugin extends Gdn_Plugin {
 		$Minletters = c('Plugins.Hashtag.Minletters',4);
 		$Maxletters = c('Plugins.Hashtag.Maxletters',140);
 		$Range = '{' . ($Minletters-2) . ',' . ($Maxletters-2) . '}';		//Account for the hashtag and the first letter in the regex catch groups
-		return '/(?=[\b\s\W])(\#){1}([a-zA-Z]{1})([a-zA-Z0-9]' . $Range . ')(?!\#)([\w\-])(?=[\s,\.!?;<]|$)/im';
+		$Pattern =	'/(^|[\b]|[;*\/\s,\.>])(\#){1}([a-zA-Z]{1})([a-zA-Z0-9]' . $Range . ')(?!\#)([\w\-])(?=[&\s,\.!?;"<]|$)/im';
+		return $Pattern;
 	}
 	/////////////////////////////////////////////////////////	
 	//This hook handles the saving of the initial discussion body (but not comments).
