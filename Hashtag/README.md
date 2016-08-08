@@ -24,6 +24,7 @@ Version 2:
 - Added sidepanel
 - Minor code formatting
 - Annotated screen captures
+
 Version 2.1.2:
 - Decreased setting for minimum number of letters in a hashtag from 4 to 2
 - Fixed the bug that marked html tags with an hashtag as a true use-intented hashtag
