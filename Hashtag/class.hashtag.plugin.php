@@ -31,7 +31,6 @@ class HashtagPlugin extends Gdn_Plugin {
 		$Sender->addCssFile('hashtag.css', 'plugins/Hashtag');
         $Sender->setData('Title', t('Settings for the Hashtag Plugin'));
         $Sender->addSideMenu('dashboard/settings/plugins');
-		$this->SettingDefaults($Sender,'settingsController');
 		$Goterror =false;
 		$TopWarning = '';
 		$FieldErrors = '';
@@ -150,50 +149,28 @@ class HashtagPlugin extends Gdn_Plugin {
 		$ConfigurationModule->initialize($PluginConfig);
 		$ConfigurationModule->renderAll();
     }
-	///////////////////////////////////////////////////////// 
-   public function SettingDefaults($Sender,$CallType = '') {
-	   //Set default config options
-	   $Debug = false;
-	   
-	   $Minletters = c('Plugins.Hashtag.Minletters',4);
-	   SaveToConfig('Plugins.Hashtag.Minletters',intval($Minletters));
-	   
-	   $Maxletters = c('Plugins.Hashtag.Maxletters',140);
-	   SaveToConfig('Plugins.Hashtag.Maxletters',$Maxletters);
-	   
-	   $SearchBody = c('Plugins.Hashtag.SearchBody',false);
-	   SaveToConfig('Plugins.Hashtag.SearchBody',$SearchBody);
-	   
-	   $EmbedLinks = c('Plugins.Hashtag.EmbedLinks',false);
-	   SaveToConfig('Plugins.Hashtag.EmbedLinks',$EmbedLinks);
-	  
-	   $Showrelated = c('Plugins.Hashtag.Showrelated',false);
-	   SaveToConfig('Plugins.Hashtag.Showrelated',intval($Showrelated));	
-	   
-	   $Panelhead = c('Plugins.Hashtag.Panelhead');
-	   if ($Panelhead == '') {
-			$Panelhead = t('Similar Hashtag Set');
-		}
-	   SaveToConfig('Plugins.Hashtag.Panelhead',$Panelhead);	
-	   
-	   $HideEmptyPanel = c('Plugins.Hashtag.HideEmptyPanel',true);
-	   SaveToConfig('Plugins.Hashtag.HideEmptyPanel',$HideEmptyPanel);
-	   
-	   $Panelsize = c('Plugins.Hashtag.Panelsize',8);
-	   SaveToConfig('Plugins.Hashtag.Panelsize',$Panelsize);
-	   
-	   $Showinline = c('Plugins.Hashtag.Showinline');
-	   if ($Showinline == '') {
-		   SaveToConfig('Plugins.Hashtag.Showinline',false);
-		} else {
-			SaveToConfig('Plugins.Hashtag.Showinline',true);
-		}
-		
-	   $Panelontop = c('Plugins.Hashtag.Panelontop');
-	   if ($Panelontop == '') {
-		   SaveToConfig('Plugins.Hashtag.Panelontop',false);
-		}
-	}
+    /**
+     * This function is called automatically when the plugin is enabled.
+     *
+     * @return void.
+     */
+    public function setup() {
+        //Set default config options
+        touchConfig(
+            array(
+                'Plugins.Hashtag.Minletters' => 4,
+                'Plugins.Hashtag.Maxletters' => 140,
+                'Plugins.Hashtag.SearchBody' => false,
+                'Plugins.Hashtag.EmbedLinks' => false,
+                'Plugins.Hashtag.Showrelated' => false,
+                'Plugins.Hashtag.Panelhead' => t('Similar Hashtag Set'),
+                'Plugins.Hashtag.HideEmptyPanel' => true,
+                'Plugins.Hashtag.Panelsize' => 8,
+                'Plugins.Hashtag.Showinline' => false,
+                'Plugins.Hashtag.Panelontop' => false
+            )
+        );
+    }
 	/////////////////////////////////////////////////////////
 // Set Configiration Array
 	public function SetConfig($Sender,$Errors = Array(),$Debug) {
