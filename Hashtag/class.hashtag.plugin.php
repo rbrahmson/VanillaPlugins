@@ -2,7 +2,7 @@
 $PluginInfo['Hashtag'] = array(
     'Name' => 'Hashtag',
 	'Description' => 'Provides #Hashtag support (Automatic creation of Vanilla Tags, side panel display, auto-links and meta area display).',
-    'Version' => '2.1.2',
+    'Version' => '2.1.3',
     'RequiredApplications' => array('Vanilla' => '2.2'),
     'RequiredTheme' => false,
 	'RequiredPlugins' => array('Tagging' => '1.8.2'),
@@ -31,7 +31,6 @@ class HashtagPlugin extends Gdn_Plugin {
 		$Sender->addCssFile('hashtag.css', 'plugins/Hashtag');
         $Sender->setData('Title', t('Settings for the Hashtag Plugin'));
         $Sender->addSideMenu('dashboard/settings/plugins');
-		$this->SettingDefaults($Sender,'settingsController');
 		$Goterror =false;
 		$TopWarning = '';
 		$FieldErrors = '';
@@ -151,52 +150,24 @@ class HashtagPlugin extends Gdn_Plugin {
 		$ConfigurationModule->renderAll();
     }
 	///////////////////////////////////////////////////////// 
-   public function SettingDefaults($Sender,$CallType = '') {
-	   //Set default config options
-	   $Debug = false;
-	   
-	   $Minletters = c('Plugins.Hashtag.Minletters',4);
-	   SaveToConfig('Plugins.Hashtag.Minletters',intval($Minletters));
-	   
-	   $Maxletters = c('Plugins.Hashtag.Maxletters',140);
-	   SaveToConfig('Plugins.Hashtag.Maxletters',$Maxletters);
-	   
-	   $SearchBody = c('Plugins.Hashtag.SearchBody',false);
-	   SaveToConfig('Plugins.Hashtag.SearchBody',$SearchBody);
-	   
-	   $EmbedLinks = c('Plugins.Hashtag.EmbedLinks',false);
-	   SaveToConfig('Plugins.Hashtag.EmbedLinks',$EmbedLinks);
-	  
-	   $Showrelated = c('Plugins.Hashtag.Showrelated',false);
-	   SaveToConfig('Plugins.Hashtag.Showrelated',intval($Showrelated));	
-	   
-	   $Panelhead = c('Plugins.Hashtag.Panelhead');
-	   if ($Panelhead == '') {
-			$Panelhead = t('Similar Hashtag Set');
-		}
-	   SaveToConfig('Plugins.Hashtag.Panelhead',$Panelhead);	
-	   
-	   $HideEmptyPanel = c('Plugins.Hashtag.HideEmptyPanel',true);
-	   SaveToConfig('Plugins.Hashtag.HideEmptyPanel',$HideEmptyPanel);
-	   
-	   $Panelsize = c('Plugins.Hashtag.Panelsize',8);
-	   SaveToConfig('Plugins.Hashtag.Panelsize',$Panelsize);
-	   
-	   $Showinline = c('Plugins.Hashtag.Showinline');
-	   if ($Showinline == '') {
-		   SaveToConfig('Plugins.Hashtag.Showinline',false);
-		} else {
-			SaveToConfig('Plugins.Hashtag.Showinline',true);
-		}
-		
-	   $Panelontop = c('Plugins.Hashtag.Panelontop');
-	   if ($Panelontop == '') {
-		   SaveToConfig('Plugins.Hashtag.Panelontop',false);
-		}
+	public function Setup() {
+	//Set default config options
+		touchConfig(array(
+                'Plugins.Hashtag.Minletters' => 4,
+                'Plugins.Hashtag.Maxletters' => 140,
+                'Plugins.Hashtag.SearchBody' => false,
+                'Plugins.Hashtag.EmbedLinks' => false,
+                'Plugins.Hashtag.Showrelated' => false,
+                'Plugins.Hashtag.Panelhead' => t('Similar Hashtag Set'),
+                'Plugins.Hashtag.HideEmptyPanel' => true,
+                'Plugins.Hashtag.Panelsize' => 8,
+                'Plugins.Hashtag.Showinline' => false,
+                'Plugins.Hashtag.Panelontop' => false
+			));
 	}
 	/////////////////////////////////////////////////////////
 // Set Configiration Array
-	public function SetConfig($Sender,$Errors = Array(),$Debug) {
+	private function SetConfig($Sender,$Errors = Array(),$Debug) {
 		$Separator = '<span class=SettingSep>&nbsp</span>';
 		$Headstyle = '<span class=SettingHead>#&nbsp&nbsp';
 		$Subhstyle = '<span class=SettingSubh>';
@@ -297,13 +268,14 @@ class HashtagPlugin extends Gdn_Plugin {
 	
 		/*- Control whether a sidepanel of discussions with the same set of tags is to be displayed-*/
 		$XPluginConfig = array_merge($PluginConfig,$SimilarConfig);	
-		//if ($Debug) $this->Showdata($XPluginConfig,__LINE__.'---XPluginConfig---','',0,' ',true);
+		//$this->DebugData($XPluginConfig,'---XPluginConfig---', $Debug);
+		//$this->DebugData($XPluginConfig,'---XPluginConfig---', $Debug);
 		return $XPluginConfig;
 	}
 	///////////////////////////////////////////////////////// 
 // Check Configuration Settings
-	public function CheckSettings($Sender,$Type='All',$Debug) {
-		 if ($Debug) echo "<br><b>".__FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'];
+	private function CheckSettings($Sender,$Type='All',$Debug) {
+		 //$this->DebugData('','',$Debug,true);		//Trace Function calling
 		//
 		$Warn = '';
 		$Error = '';
@@ -368,7 +340,7 @@ class HashtagPlugin extends Gdn_Plugin {
 	}
 	///////////////////////////////////////////////////////// 
 // Check speicific field, return error message 
-	public function CheckField($Sender,$Field=false,$Checks=Array('Required'),$Title = 'Field', $Fieldname = '', $Style = 'span class=SettingError',
+	private function CheckField($Sender,$Field=false,$Checks=Array('Required'),$Title = 'Field', $Fieldname = '', $Style = 'span class=SettingError',
 							$Debug = false) {
 		$Errormsg='';
 		foreach ($Checks as $Test => $Value) {
@@ -411,12 +383,8 @@ class HashtagPlugin extends Gdn_Plugin {
 	/////////////////////////////////////////////////////////
 	//Handle auto-linking #hashtags embedded in the body 
 	public function DiscussionController_AfterCommentFormat_Handler($Sender) {
-		$Debug = false;
-		if ($Debug) {
-			$Msg = __FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'];
-			Gdn::controller()->informMessage($Msg);
-			echo Wrap($Msg,'br');
-		}
+		//$Debug = true;
+		//$this->DebugData('','',$Debug,true);		//Trace Function calling
 		//  Do this only if Vanilla doesn't format hashtgs and the admin asked for this option
 		if (c('Garden.Format.Hashtags')) 		return;  
 		if (!c('Plugins.Hashtag.EmbedLinks')) 	return;
@@ -429,13 +397,14 @@ class HashtagPlugin extends Gdn_Plugin {
 		$CommentID = getValueR('CommentID',$Object);
 		$DiscussionID = getValueR('DiscussionID',$Object);
 		/*
-		if ($Debug) {
-			$this->Showdata($DiscussionID,__LINE__.'---DiscussionID---','',0,' ',true);
-			$this->Showdata($CommentID,__LINE__.'---CommentID---','',0,' ',true);
-			$this->Showdata($Object->FormatBody,__LINE__.'---$Object->FormatBody---','',0,' ',true);
-			$this->Showdata($Object,__LINE__.'---Object---','',0,' ',true);
-		}
 		if (substr($FormatBody.'          ',0,10)  == "**DEBUG*!/")  $Debug = true;
+		if ($Debug) {
+			$this->DebugData($DiscussionID,'DiscussionID', $Debug);
+			$this->DebugData($CommentID,'CommentID', $Debug);
+			$this->DebugData($Object->FormatBody,'$Object->FormatBody', $Debug);
+			$this->DebugData($DiscussionID,'DiscussionID', $Debug);
+			$this->DebugData($Object,'Object', $Debug);
+		}
 		*/
 		// Handle #hashtag embedded in the body 
 		// creating links like: /discussions/tagged/hashtag
@@ -443,11 +412,11 @@ class HashtagPlugin extends Gdn_Plugin {
 		//
 		//Search for hashtags
 		$TagPattern = $this->GetTagPattern();
-		if ($Debug) $this->Showdata($TagPattern,__LINE__.'---TagPattern---','',0,' ',true);
+		$this->DebugData($TagPattern,'TagPattern', $Debug);
 		$TagAnchor  = anchor('$1$2$3$4$5', '/discussions/tagged/$3$4$5');
 		$Mixed = preg_replace($TagPattern, $TagAnchor, $FormatBody,$NumTagsMax,$Replacements); 
-		//if ($Debug) $this->Showdata($NumTagsMax,__LINE__.'---NumTagsMax---','',0,' ',true);
-		//if ($Debug) $this->Showdata($Replacements,__LINE__.'---Replacements---','',0,' ',true);
+		//$this->DebugData($NumTagsMax,'NumTagsMax', $Debug);
+		//$this->DebugData($Replacements,'Replacements', $Debug);
 		if ($Mixed == NULL) {
 			$Mixed = $FormatBody;
 			$Msg = __FUNCTION__.' '.__LINE__.' encountered an error in hashtag plugin ';
@@ -472,7 +441,7 @@ class HashtagPlugin extends Gdn_Plugin {
 	/////////////////////////////////////////////////////////
 	public function categoriesController_afterCountMeta_handler($Sender,$Args) {
 		$Debug = false;
-		//if ($Debug) echo "<br><b>".__FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'];
+		//$this->DebugData('','',$Debug,true);		//Trace Function calling
 		if (!c('Plugins.Hashtag.Showinline',false)) return;
 		if (!c('EnabledPlugins.Tagging',false)) return;
 		$Discussion = $Args['Discussion'];
@@ -481,23 +450,23 @@ class HashtagPlugin extends Gdn_Plugin {
 	/////////////////////////////////////////////////////////
 	public function discussionsController_afterCountMeta_handler($Sender,$Args) {
 		$Debug = false;
-		//if ($Debug) echo "<br><b>".__FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'];
+		//$this->DebugData('','',$Debug,true);		//Trace Function calling
 		if (!c('Plugins.Hashtag.Showinline',false)) return;
 		if (!c('EnabledPlugins.Tagging',false)) return;
 		$Discussion = $Args['Discussion'];
 		$this->Listinline($Sender,$Discussion,1,$Debug);
 	}
-	public function Listinline($Sender,$Discussion,$Debug = false) {
-		//if ($Debug) echo "<br><b>".__FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'];
-		//if ($Debug) $this->Showdata($Discussion,__LINE__.'---Discussion---','',0,' ',true);
+	private function Listinline($Sender,$Discussion,$Debug = false) {
+		//$this->DebugData('','',$Debug,true);		//Trace Function calling
+		//$this->DebugData($Discussion,'---Discussion---', $Debug);
 		$Currenttags = $this->GetCurrentTags($Sender,$Discussion,0,$Debug);
-		//if ($Debug) $this->Showdata($Currenttags,__LINE__.'---Currenttags---','',0,' ',true);
+		//$this->DebugData($Currenttags,'---Currenttags---', $Debug);
 		$Taglist = '';
 		$Tagcount = 0;
 		$Tagseparator = '';
 		foreach ($Currenttags as $Key => $Tagentry) {
 			//if ($Debug) echo '<br>'.__LINE__.' Key:'.$Key.' Tagentry:'.$Tagentry;
-			//if ($Debug) $this->Showdata($Tagentry,__LINE__.'---Tagentry---','',0,' ',true);
+			//$this->DebugData($Tagentry,'---Tagentry---', $Debug);
 			$Tagname = $Tagentry['Name'];
 			$Tagfullname = $Tagentry['FullName'];
 			if (substr($Tagfullname,0,1) == '#') {
@@ -514,22 +483,18 @@ class HashtagPlugin extends Gdn_Plugin {
 
 	}
 	///////////////////////////////////////////////////////// 
-	public function GetCurrentTags($Sender,$Discussion,$Debug = false) {
-		if ($Debug) {
-			$Msg = __FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'].debug_backtrace()[0]['line'].' ---> '. debug_backtrace()[0]['function'];
-			Gdn::controller()->informMessage($Msg);
-			echo Wrap($Msg,'br');
-		}
+	private function GetCurrentTags($Sender,$Discussion,$Debug = false) {
+		//$this->DebugData('','',$Debug,true);		//Trace Function calling
 		//
 		$DiscussionID = $Discussion->DiscussionID;
 		$Sqlfields = 't.TagID, t.Name, t.FullName, td.DiscussionID, td.TagID';
 		if ($Debug) {
 			$Sqlfields = 't.TagID, t.Name, t.FullName, t.CountDiscussions, t.Dateinserted tDateinserted, td.Dateinserted tdDateinserted, td.DiscussionID, td.TagID';
-			//$this->Showdata($Discussion,__LINE__.'---Discussion---','',0,' ',true);
+			//$this->DebugData($Discussion,'---Discussion---', $Debug);
 			//decho($Discussion);
-			$this->Showdata($DiscussionID,__LINE__.'---DiscussionID---','',0,' ',true);
-			$this->Showdata($Discussion->Name,__LINE__.'---Name---','',0,' ',true);
-			$this->Showdata($Discussion->Body,__LINE__.'---Body---','',0,' ',true);
+			$this->DebugData($DiscussionID,'---DiscussionID---', $Debug);
+			$this->DebugData($Discussion->Name,'---Name---', $Debug);
+			$this->DebugData($Discussion->Body,'---Body---', $Debug);
 		}	
 		//
 		$TagSql = clone Gdn::sql();	//Don't interfere with any other sql process
@@ -540,7 +505,7 @@ class HashtagPlugin extends Gdn_Plugin {
 			->join('Tag t', 't.TagID = td.TagID')
             ->where('td.discussionID', $DiscussionID)
             ->get()->resultArray();
-		if ($Debug) $this->Showdata($Taglist,__LINE__.'---Taglist---','',0,' ',true);
+		$this->DebugData($Taglist,'---Taglist---', $Debug);
 		/*Sample Structure:
 			Taglist--- array 
 			....(1) array(5):[0]: value: array 
@@ -561,16 +526,12 @@ class HashtagPlugin extends Gdn_Plugin {
 			........(2) _integer:DiscussionID value:"1627"
 		*/
 		//$Alltags = rtrim($Hashtags.','.$Tags,', ');
-		//if ($Debug) $this->Showdata($Alltags,__LINE__.'---Alltags---','',0,' ',true);
+		//$this->DebugData($Alltags,'---Alltags---', $Debug);
 		return $Taglist;
 	}
 	/////////////////////////////////////////////////////////
-    public function GetHashTags($Sender,$Name,$Body,$Debug = false) {
-		if ($Debug) {
-			$Msg = __FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'].debug_backtrace()[0]['line'].' ---> '. debug_backtrace()[0]['function'];
-			Gdn::controller()->informMessage($Msg);
-			echo Wrap($Msg,'br');
-		}
+    private function GetHashTags($Sender,$Name,$Body,$Debug = false) {
+		//$this->DebugData('','',$Debug,true);		//Trace Function calling
         //$Debug = true;
 		if (substr($Body.'          ',0,10)  == "**DEBUG*!/")  $Debug = true;
 		//Search for hashtags
@@ -578,7 +539,7 @@ class HashtagPlugin extends Gdn_Plugin {
 		//
 		$TagPattern = $this->GetTagPattern();
 		$MatchCount = preg_match_all($TagPattern,$Body, $Matches);
-		//if ($Debug) $this->Showdata($Matches,__LINE__.' Matches:','',0,' ',true);
+		//$this->DebugData($Matches,' Matches:', $Debug);
 		$Hashtags = '';
 		$NumTagsMax = c('Plugin.Tagging.Max', 5);
 		$NumTags = 0;
@@ -590,7 +551,7 @@ class HashtagPlugin extends Gdn_Plugin {
 			$NumTags += 1;
 		}		
 		$Hashtags = trim($Hashtags,', ');
-		//if ($Debug) $this->Showdata($Hashtags,__LINE__.' Hashtags:','',0,' ',true);
+		//$this->DebugData($Hashtags,' Hashtags:', $Debug);
 		//if ($Debug) die(0);
 		return $Hashtags;
     }
@@ -598,11 +559,7 @@ class HashtagPlugin extends Gdn_Plugin {
 	//This hook handles the saving of comments (but not the initial discussion body).
 	public function PostController_AfterCommentSave_Handler($Sender, $Args) {
 		$Debug = false;
-		if ($Debug) {
-			$Msg = __FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'].' ---> '. debug_backtrace()[0]['function'];
-			Gdn::controller()->informMessage($Msg);
-			echo Wrap($Msg,'br');
-		}
+		//$this->DebugData('','',$Debug,true);		//Trace Function calling
 		if (!Gdn::session()->checkPermission('Plugins.Tagging.Add')) return; //This required Add Tags permission
 		if (!Gdn::session()->checkPermission('Plugins.Hashtag.Add')) return; //This required Add Hashtags permission
 		if (!c('EnabledPlugins.Tagging',false)) return;
@@ -613,16 +570,16 @@ class HashtagPlugin extends Gdn_Plugin {
 		$Body = $Comment->Body;
 		//
 		//if ($Debug) {
-			//$this->Showdata($Discussion,__LINE__.'---Discussion---','',0,' ',true);
+			//$this->DebugData($Discussion,'---Discussion---', $Debug);
 			//decho($Discussion);
-			//$this->Showdata($Discussion->DiscussionID,__LINE__.'---DiscussionID---','',0,' ',true);
-			//$this->Showdata($Discussion->CategoryID,__LINE__.'---CategoryID---','',0,' ',true);
-			//$this->Showdata($Discussion->Name,__LINE__.'---Name---','',0,' ',true);
-			//$this->Showdata($Body,__LINE__.'---Body---','',0,' ',true);
+			//$this->DebugData($Discussion->DiscussionID,'---DiscussionID---', $Debug);
+			//$this->DebugData($Discussion->CategoryID,'---CategoryID---', $Debug);
+			//$this->DebugData($Discussion->Name,'---Name---', $Debug);
+			//$this->DebugData($Body,'---Body---', $Debug);
 		//}	
 		//Get the hashtags embedded in the comment.
 		$Hashtags = $this->GetHashTags($Sender,'',$Body,0,false,0,$Debug);		//Get the content embedded hashtags
-		//if ($Debug) $this->Showdata($Hashtags,__LINE__.'---Hashtags---','',0,' ',true);
+		//$this->DebugData($Hashtags,'---Hashtags---', $Debug);
 		//
 		//if (trim($Hashtags) == '') return;
 		// Now add the hashtags to this discussion
@@ -643,11 +600,7 @@ class HashtagPlugin extends Gdn_Plugin {
 	//This hook handles the saving of the initial discussion body (but not comments).
 	public function TaggingPlugin_SaveDiscussion_handler($Sender,$Args) {
 		$Debug = false;
-		if ($Debug) {
-			$Msg = 'Saving Discussion... '. __FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'].' ---> '. debug_backtrace()[0]['function'];;
-			Gdn::controller()->informMessage($Msg);
-			echo Wrap($Msg,'br');
-		}
+		//$this->DebugData('','',$Debug,true);		//Trace Function calling
 		// Verify user can auto-add hashtags
 		if (!Gdn::session()->checkPermission('Plugins.Tagging.Add')) return; //This required Add Tags permission
 		if (!Gdn::session()->checkPermission('Plugins.Hashtag.Add')) return; //This required Add Hashtags permission
@@ -670,12 +623,12 @@ class HashtagPlugin extends Gdn_Plugin {
 			//echo "<br>Body:".$Body.'<br>';
 			//echo "<br>Tags:".$Tags.'<br>';
 			//decho ($FormPostValues);
-			$this->Showdata($DiscussionID,'---DiscussionID---','',0,' ',true);
-			$this->Showdata($CommentID,'---CommentID---','',0,' ',true);
-			$this->Showdata($Name,'---Name---','',0,' ',true);
-			$this->Showdata($Body,'---Body---','',0,' ',true);
-			$this->Showdata($Tags,'---Tags---','',0,' ',true);
-			$this->Showdata($FormPostValues,'---FormPostValues---','',0,' ',true);
+			$this->DebugData($DiscussionID,'---DiscussionID---', $Debug);
+			$this->DebugData($CommentID,'---CommentID---', $Debug);
+			$this->DebugData($Name,'---Name---', $Debug);
+			$this->DebugData($Body,'---Body---', $Debug);
+			$this->DebugData($Tags,'---Tags---', $Debug);
+			$this->DebugData($FormPostValues,'---FormPostValues---', $Debug);
 			//die(0);
 		}
 		
@@ -685,47 +638,25 @@ class HashtagPlugin extends Gdn_Plugin {
 			$Body = '';										//Don't look at the body
 		}
 		$Hashtags = $this->GetHashTags($Sender,$Name,$Body,$Debug);		//Get the content embedded hashtags
-		if ($Debug) $this->Showdata($Hashtags,__LINE__.'---Hashtags---','',0,' ',true);
+		$this->DebugData($Hashtags,'---Hashtags---', $Debug);
 		$Alltags = rtrim($Hashtags.','.$Tags,', ');
-		if ($Debug) $this->Showdata($Alltags,__LINE__.'---Alltags---','',0,' ',true);
+		$this->DebugData($Alltags,'---Alltags---', $Debug);
 		$Sender->EventArguments['Tags'] = $Alltags;			//and add them to the list of tags on the form
 		//die(0);
 	}
 	/////////////////////////////////////////////////////////
 	// Display data for debugging
-	private function Showdata($Data, $Message, $Find, $Nest=0, $BR='<br>', $Echo = true) {
-		//var_dump($Data);
-		$Line = "<br>".str_repeat(".",$Nest*4)."<B>(".($Nest).") ".$Message."</B>";
-		if ($Echo) echo $Line;
-		else Gdn::controller()->informMessage($Line);
-		
-		$Nest +=1;
-		if ($Nest > 20) {
-			echo wrap('****Nesting Truncated****','h1');
-			return;	
-		}
-		if ($Message == 'DUMP') echo '<br> Type:'.gettype($Data).'<br>';//var_dump($Data);
-		if  (is_object($Data) || is_array($Data)) {
-			echo ' '.gettype($Data).' ';
-			if (is_array($Data) && !count($Data)) echo '....Debug:'.$Data[0];
-			foreach ($Data as $key => $value) {
-				if  (is_object($value)) {
-					$this->Showdata($value,' '.gettype($value).'('.count($value).'):'.$key.' value:','',$Nest,'<n>');
-				} elseif (is_array($value)) {
-					$this->Showdata($value,' '.gettype($value).'('.count($value).'):['.$key.']: value:','',$Nest,'<n>');
-				} elseif (is_bool($value)) {
-					$this->Showdata($value,' '.gettype($value).':'.$key.' value[]:','',$Nest,'<n>');
-				} elseif (is_string($value)) {
-					$this->Showdata($value,' '.gettype($value).':'.$key.' value:','',$Nest,'<n>');
-				} else {
-					$this->Showdata($value,'_'.gettype($value).':'.$key.'   value:','',$Nest,'<n>');
-				}
-			}
+	private function DebugData($Data, $Message, $Debug = true, $Inform = false) {
+		if ($Debug == false) return;
+		if ($Message == '') {
+			$Message = '>'.debug_backtrace()[1]['class'].':'.debug_backtrace()[1]['function'].':'.debug_backtrace()[0]['line'].' called by '.debug_backtrace()[2]['function'];
 		} else {
-			if ($Echo) 
-				echo wrap('"'.$Data.'"','b');
-			else Gdn::controller()->informMessage($Data,'DoNotDismiss');
-			//var_dump($Data);
+			$Message = '>'.debug_backtrace()[1]['class'].':'.debug_backtrace()[1]['function'].':'.debug_backtrace()[0]['line'].' '.$Message;
+		}
+		if ($Inform == true) {
+			Gdn::controller()->informMessage($Message);
+		} else {
+			decho ($Data,$Message);
 		}
 	}
 	/////////////////////////////////////////////////////////
