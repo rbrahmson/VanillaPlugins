@@ -584,6 +584,7 @@ $Definition['DiscussionTopicNoisewords1'] = array(	"a",
 											"weren't",
 											"we've",
 											"what",
+											"whats",
 											"whatever",
 											"what'll",
 											"what's",
@@ -640,9 +641,9 @@ $Definition['DiscussionTopicNoisewords1'] = array(	"a",
 											);
 //
 $Definition['DiscussionTopicAcronyms'] = array(		'Ctrl' => 'Control',
-											"db" => "database",	
+											"db" => "Database",	
 											"config" => "configuration",
-											"btn" => "botton",
+											"btn" => "button",
 											"gdn" => "garden");
 //
 ?>
