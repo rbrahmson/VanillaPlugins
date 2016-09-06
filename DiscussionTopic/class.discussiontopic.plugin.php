@@ -6,8 +6,11 @@
 
 $PluginInfo['DiscussionTopic'] = array(
     'Name' => 'DiscussionTopic',
-    'Description' => 'Adds a side panel of discussions sharing similar topics. Topics can be automatically derived from discussion title language analysis, administrator defined "Priority Phrases", double quoted phrases, or entered manually.',
-    'Version' => '3.1.4',       //Applying some coding Standadrs
+    'Description' => 'Adds a side panel of discussions sharing similar topics. '.
+                    'Topics can be automatically derived from discussion title '.
+                    'language analysis, administrator defined "Priority Phrases", '.
+                    'double quoted phrases, or entered manually.',
+    'Version' => '3.1.5',       // Ensure priority phrases handled first, added explain function.
     'RequiredApplications' => array('Vanilla' => '2.2'),
     'RequiredTheme' => false,
     'MobileFriendly' => false,
@@ -34,7 +37,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 */
     public function discussionModel_beforesavediscussion_handler($Sender, $Args) {
         $Debug = false;
-        //$this->DebugData('','',$Debug,true);  //Trace Function calling
+        //$this->DebugData('', '', $Debug, true);  //Trace Function calling
         //
         $FormPostValues = val('FormPostValues', $Sender->EventArguments, array());
         //
@@ -42,9 +45,9 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         $CategoryID = val('CategoryID', $FormPostValues, 0);
         //
         $CategoryNums = c('Plugins.DiscussionTopic.CategoryNums');
-        if ($Debug) {
-            $this->DebugData($CategoryNums, '---Catnums---', $Debug);
-        }
+        //
+        //$this->DebugData($CategoryNums, '---Catnums---', $Debug);
+        //
         if ($CategoryNums != "") {  //Limited category list?
             if (!in_array($CategoryID, $CategoryNums)) {
                 return;
@@ -62,34 +65,37 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         if ($TopicAnswer != '') {
             $TopicAnswerVal = true;
         }
+        if (Gdn::session()->checkPermission('Plugins.DiscussionTopic.Manage')) {
+            //$Debug = $this->startswith($Body, "**DEBUG*!");
+        }
+        //
         if ($Debug) {
-            $this->DebugData($Sender->EventArguments, '---$Sender->EventArguments---', $Debug);
-            $this->DebugData($Args, '---$Args---', $Debug);
+            //$this->DebugData($Sender->EventArguments, '---$Sender->EventArguments---', $Debug);
+            //$this->DebugData($Args, '---$Args---', $Debug);
             $this->DebugData($DiscussionID, '---DiscussionID---', $Debug);
             $this->DebugData($CategoryID, '---CategoryID---', $Debug);
             $this->DebugData($CommentID, '---CommentID---', $Debug);
             $this->DebugData($Name, '---Name---', $Debug);
             $this->DebugData($Topic, '---Topic---', $Debug);
             $this->DebugData($TopicAnswerVal, '---TopicAnswerVal---', $Debug);
-            //$this->DebugData($FormPostValues,'---FormPostValues---',$Debug);
-            $Debug = false;
+            //$this->DebugData($FormPostValues,'---FormPostValues---', $Debug);
+            //$Debug = false;
         }
-        //
-        //if (substr($Body.'          ',0,9) == "**DEBUG*!") $Debug = true;
         //
         $Extract = $this->gettopic($Name, '', $Debug);
-        //
-        //if (substr($Body.'          ', 0, 9) == "**DEBUG*!") {
-        //  $Debug = true;
+        //if (Gdn::session()->checkPermission('Plugins.DiscussionTopic.Manage')) {
+            //$Debug = $this->startswith($Body, "**DEBUG*!");
         //}
-        if ($Debug) {
-            $this->DebugData($Extract, '---Extract---', $Debug);
-        }
+        //$this->DebugData($Extract, '---Extract---', $Debug);
+        //
         $Sender->EventArguments['FormPostValues']['Topic'] = $Extract.$Debug;
         $Sender->EventArguments['FormPostValues']['TopicAnswer'] = $TopicAnswerVal;
-        //if (substr($Body.'          ', 0, 10)  == "**DEBUG*!/") {
-        //  die(0);//quick and dirty way to see online feedback iteratively
-        //}
+        //
+        if (Gdn::session()->checkPermission('Plugins.DiscussionTopic.Manage')) {
+            if ($this->startswith($Body, "**DEBUG*!/")) {
+                //die(0);  //quick and dirty way to see online debug feedback without it being masked by following rendering
+            }
+        }
     }
 /**
 * Dispatcher.
@@ -101,8 +107,8 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 */
     public function plugincontroller_discussiontopic_create($Sender, $Args) {
         $Debug = false;
-        //$this->DebugData('','',$Debug,true);  //Trace Function calling
-        //if ($Debug) $this->DebugData($Sender->RequestArgs,'---Sender->RequestArgs---',$Debug);
+        //$this->DebugData('', '', $Debug, true);  //Trace Function calling
+        //$this->DebugData($Sender->RequestArgs,'---Sender->RequestArgs---', $Debug);
         if ($Sender->RequestArg[0] == 'Search') {
             $this->Controller_DiscussionTopicSearch($Sender, $Args);
             return;
@@ -122,12 +128,12 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 */
     public function controller_discussiontopicsetTopic($Sender, $Args) {
         $Debug = false;
-        //$this->DebugData('','',$Debug,true);  //Trace Function calling
+        //$this->DebugData('', '', $Debug, true);  //Trace Function calling
         //$DiscussionID = $Args[0];
         $DiscussionID = intval($_GET['D']);
-        if ($Debug) {
-            $this->DebugData($DiscussionID, '---DiscussionID---', $Debug);
-        }
+        //
+        $this->DebugData($DiscussionID, '---DiscussionID---', $Debug);
+        //
         if ($DiscussionID == null) {                        //DiscussionID is required
             $this->DieMessage('DA002 - Missing Parameters');
             return;
@@ -196,14 +202,23 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 *  @return boolean n/a
 */
     private function showTopicform($Sender, $Discussion, $Debug = false) {
-        //$this->DebugData('','',$Debug,true);  //Trace Function calling
+        $this->DebugData('', '', $Debug, true);  //Trace Function calling
+        //
+        $Explain = $Debug;              //Default explain request
+        $ExplainDiscussionID = c('Plugins.DiscussionTopic.ExplainID', 0);
+        //Config request to explain a DiscussionID?
+        if ($ExplainDiscussionID == $Discussion->DiscussionID) {
+            $Explain = true;
+        }
+        //
         $Topic = $Discussion->Topic;
-        $DefaultTopic = $this->gettopic($Discussion->Name, '', $Debug);
         $Sender->setData('Topic', $Topic);
-        $Sender->setData('DefaultTopic', $DefaultTopic);
         $Sender->setData('DiscussionName', $Discussion->Name);
         $Sender->setData('TopAnswerMode', c('Plugins.DiscussionTopic.TopAnswerMode', false));
         $Sender->setData('TopicAnswer', $Discussion->TopicAnswer);
+        $DefaultTopic = $this->gettopic($Discussion->Name, '', $Debug, $Explain);
+        $Sender->setData('DefaultTopic', $DefaultTopic);
+        //
         //Modes: 1=manual, 2=Deterministic, 3=Heuristic, 4=Progressive (Both 2&3)
         $Mode = 1 + c('Plugins.DiscussionTopic.Mode', 0);
         $ModeArray = array(0 => '?', 1 =>'Manual', 2 =>'Deterministic', 3 => 'Heuristic', 4 => 'Progressive');
@@ -211,6 +226,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         //
         $ModeMsg = wrap(t('Current mode is ').$ModeName, 'div');
         $Sender->setData('ModeMsg', $ModeMsg);
+        $Sender->setData('ModeName', $ModeName);
         //
         switch ($DefaultTopic) {
             case '':
@@ -249,6 +265,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
                     $Discussion->TopicAnswer = false;
                     return;
                 } elseif (isset($FormPostValues[t('Generate')])) {
+                    $DefaultTopic = $this->gettopic($Discussion->Name, '', $Debug, $Explain);
                     $Discussion->Topic = $DefaultTopic;
                     $Sender->Form->SetFormValue('Topic', $DefaultTopic);
                     $Discussion->TopicAnswer = false;
@@ -318,7 +335,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 */
     public function controller_discussiontopicsearch($Sender) {
         $Debug = false;
-        //$this->DebugData('','',$Debug,true);  //Trace Function calling
+        //$this->DebugData('', '', $Debug, true);  //Trace Function calling
         if (!CheckPermission('Plugins.DiscussionTopic.View')) {
             return;
         }
@@ -339,9 +356,9 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
                 }
             }
         }
-        //if ($Debug) $this->DebugData($Search, '---Search---', $Debug);
+        //$this->DebugData($Search, '---Search---', $Debug);
         $this->showsearchform($Sender, $Search, $SearchTopic, $Debug);//Display the form
-        //if ($Debug) $this->DebugData($Search, '---Search---', $Debug);
+        //$this->DebugData($Search, '---Search---', $Debug);
         $Sender->Render('Blank', 'Utility', 'Dashboard');
     }
 /**
@@ -355,7 +372,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 *  @return boolean n/a
 */
     private function showsearchform($Sender, $Search, $SearchTopic = false, $Debug = false) {
-        //$this->DebugData('','',$Debug,true);  //Trace Function calling
+        //$this->DebugData('', '', $Debug, true);  //Trace Function calling
         $Sender->Form = new Gdn_Form();
         $Validation = new Gdn_Validation();
         $Sender->setData('Searchstring', $Search);
@@ -366,9 +383,9 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
             $Sender->Form->setFormValue('SearchTopic', $SearchTopic);
         } else {                        //After form submission
             $FormPostValues = $Sender->Form->formValues();
-            //if ($Debug) $this->DebugData($FormPostValues,'---FormPostValues---',$Debug);
+            //$this->DebugData($FormPostValues,'---FormPostValues---', $Debug);
             $Data = $Sender->Form->formValues();
-            if ($Debug) $this->DebugData($Data,'---Data---',$Debug);
+            $this->DebugData($Data, '---Data---', $Debug);
             if ($Sender->Form->ErrorCount() == 0) {
                 if (isset($FormPostValues['Cancel'])) {
                     return;
@@ -400,7 +417,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 */
     public function base_render_before($Sender) {
         $Debug = false;
-        //$this->DebugData('','',$Debug,true);  //Trace Function calling
+        //$this->DebugData('', '', $Debug, true);  //Trace Function calling
         $ErrorMsg = Gdn::session()->stash('IBPTopicMsg');
         if ($ErrorMsg != '') {
             Gdn::session()->stash('IBPTopicMsg', '');
@@ -410,8 +427,8 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         $Controller = $Sender->ControllerName;                  //Current Controller
         $MasterView = $Sender->MasterView;
         $AllowedControllers = array('discussionscontroller','discussioncontroller','categoriescontroller');     //Add other controllers if you want
-        //$this->DebugData($Controller,'---Controller---',$Debug);
-        //$this->DebugData($MasterView,'---MasterView---',$Debug);
+        //$this->DebugData($Controller,'---Controller---', $Debug);
+        //$this->DebugData($MasterView,'---MasterView---', $Debug);
         if (!c('Plugins.DiscussionTopic.Showmenu', false)) {
             return;
         }
@@ -439,7 +456,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 */
     public function controller_discussionTopicUpdate($Sender) {
         $Debug = false;
-        //$this->DebugData('','',$Debug,true);  //Trace Function calling
+        //$this->DebugData('', '', $Debug, true);  //Trace Function calling
         $Sender->permission('Garden.Settings.Manage');
         //
         if (!Gdn::Session()->CheckPermission('Plugins.DiscussionTopic.Manage')) {
@@ -451,14 +468,12 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         }
         //
         $Debug = intval($_GET['!DEBUG!T']);
-        if ($Debug) {
-            $this->DebugData($_GET, '---$_GET---', $Debug);
-        }
+        //
+        $this->DebugData($_GET, '---$_GET---', $Debug);
         //
         $Restart = intval($_GET['restart']);
-        if ($Debug) {
-            $this->DebugData($Restart, '---Restart---', $Debug);
-        }
+        //
+        $this->DebugData($Restart, '---Restart---', $Debug);
         //
         $CssUrl = '/' .  Gdn::Request()->WebRoot() . '/plugins/DiscussionTopic/design/pluginsetup.css?v=2.1.3';
         echo '<link rel="stylesheet" type="text/css" href="' . $CssUrl . '/plugins/DiscussionTopic/design/pluginsetup.css?v=2.1.3" media="all" />';
@@ -466,9 +481,9 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         //  Handle Topic Clearing Requests
         //
         $Clear = intval($_GET['clear']);
-        if ($Debug) {
-            $this->DebugData($Clear, '---Clear---', $Debug);
-        }
+        //
+        $this->DebugData($Clear, '---Clear---', $Debug);
+        //
         if ($Clear) {
             $SqlHandle = clone Gdn::sql();//Don't interfere with any other sql process
             $SqlHandle->Reset();
@@ -478,9 +493,9 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
                     ->where('d.DiscussionID <>', 0)
                     ->put();
             $RowCount = count($Updates);
-            if ($Debug) {
-                $this->DebugData($RowCount, '---Rowcount---', $Debug);
-            }
+            //
+            $this->DebugData($RowCount, '---Rowcount---', $Debug);
+            //
             SaveToConfig('Plugins.DiscussionTopic.Parttialupdate', false);
             SaveToConfig('Plugins.DiscussionTopic.Cleared', true);
             SaveToConfig('Plugins.DiscussionTopic.HighupdateID', 0);
@@ -498,28 +513,29 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         //
         $IncompleteSetup = c('Plugins.DiscussionTopic.IncompleteSetup', true);
         if ($IncompleteSetup) {
-            $Msg = 'DiscussionTopic plugin configuration is incomplete.  The admin needs to complete the configuration without remaining error messages';
+            $Msg = 'DiscussionTopic plugin configuration is incomplete.'.
+            '  The admin needs to complete the configuration without remaining error messages';
             //**Gdn::controller()->informMessage($Msg);
             echo Wrap($Msg, 'H1');
             return;
         }
         //
         $Limit = intval($_GET['limit']);
-        if ($Debug) {
-            $this->DebugData($Limit, '---Limit---', $Debug);
-        }
+        //
+        $this->DebugData($Limit, '---Limit---', $Debug);
+        //
         $Urllimit = 0 +$Limit;
         if ($Urllimit == 0 | !is_numeric($Urllimit)) {
             $Limit = c('Plugins.DiscussionTopic.Maxrowupdates', 10);
-            if ($Debug) {
-                $this->DebugData($Limit, '---Limit---', $Debug);
-            }
+            //
+            $this->DebugData($Limit, '---Limit---', $Debug);
+            //
         }
         //
         $Updatecount = $this->updateextract($Limit, $Restart, $Debug);
-        if ($Debug) {
-            $this->DebugData($Updatecount, '---Updatecount---', $Debug);
-        }
+        //
+        $this->DebugData($Updatecount, '---Updatecount---', $Debug);
+        //
     }
 /**
  * Update old entries with the extract.
@@ -532,11 +548,12 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
  *
  */
     private function updateextract($Limit = 10, $Restart = false, $Debug = false) {
-        //$this->DebugData('','',$Debug,true);  //Trace Function calling
+        //$this->DebugData('', '', $Debug, true);  //Trace Function calling
         //
         $IncompleteSetup = c('Plugins.DiscussionTopic.IncompleteSetup', true);
         if ($IncompleteSetup) {
-            $Msg = 'DiscussionTopic plugin configuration is incomplete.  The admin needs to complete the configuration without remaining error messages';
+            $Msg = 'DiscussionTopic plugin configuration is incomplete.'.
+            '  The admin needs to complete the configuration without remaining error messages';
             //**Gdn::controller()->informMessage($Msg);
             echo Wrap($Msg, 'H1');
             return 0;
@@ -551,11 +568,11 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         //Get the cetegory ids the user is allowed to see
         $Categories = CategoryModel::getByPermission();
         $Categories = array_column($Categories, 'Name', 'CategoryID');
-        //if ($Debug) $this->DebugData($Categories,'---Categories---',$Debug);
+        //$this->DebugData($Categories,'---Categories---', $Debug);
         $Categorycount = 0;
         foreach ($Categories as $CategoryID => $CategoryName) {
-            //$this->DebugData($CategoryID,'---CategoryID---',$Debug);
-            //$this->DebugData($CategoryName,'---CategoryName---',$Debug);
+            //$this->DebugData($CategoryID,'---CategoryID---', $Debug);
+            //$this->DebugData($CategoryName,'---CategoryName---', $Debug);
             if ($CategoryNums != "") {
                 if (in_array($CategoryID, $CategoryNums)) {//In the list?
                     $Categorycount = $Categorycount + 1;
@@ -566,9 +583,8 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
                 $CategoryList[$Categorycount] = $CategoryID;
             }
         }
-        if ($Debug) {
-            $this->DebugData($CategoryList, '---Categorylist---', $Debug);
-        }
+        //
+        //$this->DebugData($CategoryList, '---Categorylist---', $Debug);
         //
         $UpdateGen = c('Plugins.DiscussionTopic.Updategen', 1);
         if ($Restart) {/*New batch*/
@@ -580,9 +596,9 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
             $StartID = c('Plugins.DiscussionTopic.HighupdateID', 0);
             $Title = 'Continuing update batch'.str_repeat("&nbsp", 40).' (Batch#'.(1+$UpdateGen).')';
         }
-        if ($Debug) {
-            $this->DebugData($StartID, '---StartID---', $Debug);
-        }
+        //
+        //$this->DebugData($StartID, '---StartID---', $Debug);
+        //
         $UseLimit = $Limit + 1;
         $SqlHandle = clone Gdn::sql();//Don't interfere with any other sql process
         $SqlHandle->Reset();            //Clean slate
@@ -597,9 +613,9 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
             ->get();
         //
         $RowCount = count($Discussionlist);
-        if ($Debug) {
-            echo '<br>'.__LINE__.' Rowcount:'.$RowCount;
-        }
+        //
+        //$this->DebugData(Rowcount:'.$RowCount, '---Rowcount:'.$RowCount---', $Debug);
+        //
         if ($RowCount == 0) {
             echo wrap(
                 '<br> DiscussionTopic.'.__LINE__.' Nothing available for updating the extracts using the current criteria.
@@ -630,7 +646,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         foreach ($Discussionlist as $Entry) {
             $Listcount += 1;
             if ($Listcount <= $Limit) {
-                //if ($Debug) $this->DebugData($Entry,'---Entry---',$Debug);
+                //$this->DebugData($Entry,'---Entry---', $Debug);
                 $DiscussionID = $Entry->DiscussionID;
                 $Discussion = $DiscussionModel->getID($DiscussionID);
                 $Name = $Entry->Name;
@@ -712,27 +728,35 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         return $CloseScript;
     }
 /**
- * Build a topic from a string.
- *
- * @param  string  $String   String to analyze
- * @param  string  $Simulate Processing mode to simulate (insteat od the saved mode)
- * @param  boolean $Debug    Debug request
- *
- * @return [type]          [description]
- */
-    private function gettopic($String, $Simulate = '', $Debug = false) {
+* Build a topic from a string.
+*
+* @param  string  $String   String to analyze
+* @param  string  $Simulate Processing mode to simulate (insteat od the saved mode)
+* @param  boolean $Debug    Debug request
+* @param  boolean $Explain  Explain request
+*
+* @return [type]          [description]
+*/
+    private function gettopic($String, $Simulate = '', $Debug = false, $Explain = false) {
         if (Gdn::session()->checkPermission('Plugins.DiscussionTopic.Manage')) {
-            if (substr($String, 0, 7) == '!DEBUG!') {
+            if ($this->startswith($String, "!DEBUG!")) {
                 $String = substr($String, 7);
                 $Debug = true;
             }
+            if ($this->startswith($String, "!EXPLAIN!")) {
+                $String = substr($String, 9);
+                $Explain = true;
+            }
+        }
+        if ($Debug) {
+            $Explain = true;
         }
         //
-        if ($Debug) {
-            $this->DebugData('', '', $Debug, true);    //Trace Function calling
-            $this->DebugData($String, ' $String');
-            $this->DebugData($Simulate, ' $Simulate');
-        }
+        $this->DebugData('', '', $Debug, true);    //Trace Function calling
+        //
+        $this->DebugData($String, '---$String---', $Debug);
+        $this->DebugData($Simulate, '---$Simulate---', $Debug);
+        //
         $OriginalString = $String;
         //Modes: 1=manual, 2=Deterministic, 3=Heuristic, 4=Progressive (Both 2&3)
         $Mode = 1 + c('Plugins.DiscussionTopic.Mode', 0);
@@ -743,31 +767,38 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
             $Mode = array_search($Simulate, $ModeArray);
             $ModeName = $Simulate;
         }
-        if ($Debug) {
-            $this->DebugData($Mode, ' $Mode');
-        }
-        if ($Debug) {
-            $this->DebugData($ModeName, ' $ModeName');
-        }
+        //
+        //$this->DebugData($Mode, ' $Mode', $Debug);
+        //$this->DebugData($ModeName, ' $ModeName', $Debug);
+        //
         if ($ModeName == 'Manual') {
+            //
+            if ($Explain | $Debug) {          // Admin requested to explain the discussion topic process?
+                $this->ExplainData('', '---Configured as Manual Mode - automatic processing is disabled.');
+            }
             return;
         }
         //
         //Clean up the sentence;
-        $String = $this->CleanString($String, $ModeName, $Debug);
-        if ($Debug) {
-            decho($String, ' $String');
-        }
+        $String = $this->CleanString($String, $ModeName, $Debug, $Explain);
+        //
+        //$this->DebugData($String, '---$String---', $Debug);
+        //
         //Modes: 1=Manual, 2=Deterministic, 3=Heuristic, 4=Progressive (2 & 3)
         if (substr($String, 0, 1) == '"') {
-            if ($Debug) {
-                decho($String, ' $String');
-            }
+            //$this->DebugData($String, '---$String---', $Debug);
             if ($ModeName != 'Heuristic') {
+                if ($Explain == true) {          // Admin requested to explain the discussion topic process?
+                    $this->ExplainData($String, '--- Resulting Topic:');
+                }
                 return $String;   //Deterministic or Progressive modes
             }
         }
         if ($ModeName == 'Deterministic') {
+            //
+            if ($Explain == true) {          // Admin requested to explain the discussion topic process?
+                $this->ExplainData('', '---Deterministic mode - double quoted phrase not found.');
+            }
             return '';            //No double quoted string and detrministic, so no Topic to return.
         }        //  Handle Heuristic and Progressive modes
         //Get the global update generation number
@@ -775,7 +806,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         SaveToConfig('Plugins.DiscussionTopic.Updategen', $UpdateGen);
         // Get the Noise Words
         $NoiseArray = $this->GetNoiseArray($Debug);
-        //if ($Debug) $this->DebugData($NoiseArray,'---Noisearray---',$Debug);
+        //$this->DebugData($NoiseArray,'---Noisearray---', $Debug);
         //
         //Get the number of significant keywords
         $SigWords = c('Plugins.DiscussionTopic.Sigwords', 2);
@@ -791,7 +822,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
             $Tagger = new PosTagger('lexicon.txt');
             $Tags = $Tagger->tag($String);
             //$Tags = $Tagger->tag($OriginalString);
-            //if ($Debug) $this->DebugData($Tags,'---Tags---',$Debug);
+            //$this->DebugData($Tags,'---Tags---', $Debug);
             //Remap PosTagger to Textrazor response
             $Words = array_map(function ($tag) {
                 return array(
@@ -800,7 +831,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
                     'partOfSpeech' => $tag['tag']
                 );
             }, $Tags);
-            //if ($Debug) $this->DebugData($Words,'---Words---',$Debug);
+            //$this->DebugData($Words,'---Words---', $Debug);
         } elseif ($AnalyzerName == 'TextRazor') {
             $Textrazorkey = c('Plugins.DiscussionTopic.TextRazorKey', c('Plugins.DiscussionTopic.TEXTRAZORAPIKEY', ''));
             if ($Textrazorkey == '') {
@@ -814,7 +845,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
             $Textrazor->setLanguageOverride('eng');
             $text = $String;
             $Response = $Textrazor->analyze($text);
-            //if ($Debug) $this->DebugData($Response,'---Response---',$Debug);
+            //$this->DebugData($Response,'---Response---', $Debug);
             $Words = $Response['response']['sentences'][0]['words'];
         }
         //Parse Response
@@ -829,9 +860,9 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
             $jj = 0;
             $Keywords = array();
             foreach ($Words as $Entry) {
-                if ($Debug) {
-                    decho($Entry, ' $Entry');
-                }
+                //
+                //$this->DebugData($Entry, ' $Entry', $Debug);
+                //
                 /*Sample structure: Entry--- array   - This is the expected structure of language analysis.  Use it with otter language analyzers
                 //....(1) _integer:position value:"0"
                 //....(1) _integer:startingPos value:"0"
@@ -865,15 +896,9 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
                 }
             }
             //
-            if ($Debug) {
-                decho($Nouns, ' $Nouns');
-            }
-            if ($Debug) {
-                decho($Verbs, ' $Verbs');
-            }
-            if ($Debug) {
-                decho($Adjectives, ' $Adjectives');
-            }
+            $this->DebugData($Nouns, ' $Nouns', $Debug);
+            $this->DebugData($Verbs, ' $Verbs', $Debug);
+            $this->DebugData($Adjectives, ' $Adjectives', $Debug);
             //
             for ($j = 0; $j<count($Nouns); $j++) {                      //Give priority to nouns
                 $Keywords[$j] = $Nouns[$j];
@@ -893,14 +918,12 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
                 }
             }
             //
-            if ($Debug) {
-                decho($Keywords, ' $Keywords');
-            }
+            //$this->DebugData($Keywords, ' $Keywords', $Debug);
             //
             $Keywords = array_unique($Keywords);
             $Keywords = array_filter($Keywords);
             ksort($Keywords);                                                   //Standardize Topic order (login failed == failed login)
-            //if ($Debug) $this->DebugData($Keywords,'---Keywords---',$Debug);
+            //$this->DebugData($Keywords,'---Keywords---', $Debug);
             $Keywords = array_slice($Keywords, 0, $SigWords);
             $String = implode(",", $Keywords);
         }
@@ -908,136 +931,159 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
             unset($Textrazor);
         }
         $String = trim($String);
-        if ($Debug) {
-            decho($String, ' $String');
+        //
+        //$this->DebugData($String, ' $String', $Debug);
+        //
+        if ($Explain == true) {          // Admin requested to explain the discussion topic process?
+            $this->ExplainData($String, '--- Using Heuristics. Resulting Topic:');
         }
         return $String;
     }
 /**
- * Extract quoted string (if any).
- *
- * @param  string  $String String to analyze
- * @param  boolean $Debug  Debug request
- *
- * @return string The exctacted quoted string
- */
-    private function getquoted($String, $Debug = true) {
-        //$this->DebugData('','',$Debug,true);  //Trace Function calling
+* Extract quoted string (if any).
+*
+* @param string  $String  String to analyze
+* @param boolean $Debug   Debug request
+* @param boolean $Explain Explain request
+*
+* @return string The exctacted quoted string
+*/
+    private function getquoted($String, $Debug = true, $Explain = false) {
+        //$this->DebugData('', '', $Debug, true);  //Trace Function calling
         preg_match_all('/"([^"]+)"/', $String, $Results);
-        if ($Debug) {
-            $this->DebugData($Results, ' $Results');
-        }
+        //
+        //$this->DebugData($Results, ' $Results', $Debug);
+        //
         foreach ($Results[1] as $Quoted) {
-            if ($Debug) {
-                $this->DebugData($Quoted, ' $Quoted');
-            }
+            //
+            //$this->DebugData($Quoted, ' $Quoted', $Debug);
+            //
             if (strlen(trim($Quoted)) > 2) {
-                return '"'.trim($Quoted).'"';
+                $String = '"'.trim($Quoted).'"';
+                if ($Explain | $Debug) {          // Admin requested to explain the discussion topic process?
+                    $this->ExplainData($String, '---Found double quoted phrase:');
+                }
             }
         }
         return $String;
     }
 /**
- * Prepare String for analyzing.
- *
- * @param  string  $String   String to process
- * @param  string  $ModeName Processing mode
- * @param  boolean $Debug    Debug request
- *
- * @return String  Result String
- */
-    private function cleanstring($String, $ModeName, $Debug = false) {
-        if ($Debug) {
-            //$this->DebugData('','',$Debug,true);  //Trace Function calling;
-            $this->DebugData($String, ' $String');
-            $this->DebugData($ModeName, ' $ModeName');
-        }
-        if ($Debug) {
-            $this->DebugData($String, ' $String');
-        }
-        $String =  $this->ChangeStringByNoise($String, $Debug);
-        if ($Debug) {
-            $this->DebugData($String, ' $String');
-        }
-        ////
-        // Replace multiple spaces with single spaces
-        $String = preg_replace('!\s+!', ' ', $String);
-        if ($Debug) {
-            $this->DebugData($String, ' $String');
-        }
-        // Acronym replacement
-        if ($Debug) {
-            $this->DebugData($String, ' $String');
-        }
-        $String = $this->ChangeByAcronym($String, $Debug);
-        $Newstring = $this->ChangeByPriority($String, $Debug);
-        if ($Debug) {
-            $this->DebugData($Newstring, ' $Newstring');
-        }
-        // Priority phrases replacement
-        if ($Newstring != $String) {
-            return $Newstring;       //Substitution was made
-        }        //
-        if ($Debug) {
-            $this->DebugData($String, ' $String');
-        }
-        // Extract Quoted strings for Deterministic/Progressive modes
-        if ($ModeName != 'Heuristic') {
-            //Following substitution extract quoted string (if any) and if found use it as the Topic
+* Prepare String for analyzing.
+*
+* @param  string  $String   String to process
+* @param  string  $ModeName Processing mode
+* @param  boolean $Debug    Debug request
+* @param  boolean $Explain  Explain request
+*
+* @return String  Result String
+*/
+    private function cleanstring($String, $ModeName, $Debug = false, $Explain = false) {
+        //
+        $this->DebugData('', '', $Debug, true);  //Trace Function calling;
+        //
+        //$this->DebugData($ModeName, ' $ModeName', $Debug);
+        //
+        $this->DebugData($String, '---$String---', $Debug);
+        //
+        //  First thing is to check whether a priority phrase exists in the original text
+        //  (even with the noise words, if any)
+        //
+        if ($ModeName != 'Heuristic') {         //Deterministic or Progressive
+            $Newstring = $this->ChangeByPriority($String, $Debug, $Explain);
+            //
+            $this->DebugData($Newstring, ' $Newstring', $Debug);
+            //
+            $String = $this->GetQuoted($String, $Debug);
+            if (substr($String, 0, 1) == '"') {
+                return $String;
+            }
+            //
+            $this->DebugData($String, '---$String---', $Debug);
+            //
+            // Acronym replacement
+            //
+            $String = $this->ChangeByAcronym($String, $Debug, $Explain);
+            //
+            $this->DebugData($String, '---$String---', $Debug);
+            //
+            $String = $this->GetQuoted($String, $Debug);
+            if (substr($String, 0, 1) == '"') {
+                return $String;
+            }
+            //  Remove Noise Words
+            $String =  $this->ChangeStringByNoise($String, $Debug, $Explain);
+            //
+            $this->DebugData($String, '---$String---', $Debug);
+            //
             $String = $this->GetQuoted($String, $Debug);
             if (substr($String, 0, 1) == '"') {
                 return $String;
             }
         }
-        // No quoted strings, let's start the hard language analysys work.
+        //
+        // No quoted strings processing, let's prepare for the language analysys work.
+        //
+        // Replace multiple spaces with single spaces
+        $String = preg_replace('!\s+!', ' ', $String);
+        //
+        $this->DebugData($String, '---$String---', $Debug);
+        //
         // Clear unnecessary punctioations
         $String = preg_replace("/(?![$])\p{P}/u", " ", strtolower($String));
-        if ($Debug) {
-            $this->DebugData($String, ' $String');
-        }
+        //
+        $this->DebugData($String, '---$String---', $Debug);
         //
         // Clear numbers leaving words with embedded numbers
         $Name = preg_replace("/(\b)[0-9]+(\b)/", ' ', $String);
-        if ($Debug) {
-            $this->DebugData($Name, ' $Name');
-        }
+        //
+        //$this->DebugData($Name, ' $Name', $Debug);
         //
         // Tokenize (except for quoted texts
         preg_match_all("/(['\".'\"])(.*?)\\1|\S+/", $Name, $Result);
         $Tokens = $Result[0];
-        if ($Debug) {
-            $this->DebugData($Tokens, ' $Tokens');
-        }
+        //
+        //$this->DebugData($Tokens, ' $Tokens', $Debug);
         //
         // Remove Noise Words
         $Tokens = $this->ChangeTokensByNoise($Tokens, $Debug);
-        if ($Debug) {
-            $this->DebugData($Tokens, ' $Tokens');
-        }
+        //
+        //$this->DebugData($Tokens, ' $Tokens', $Debug);
         //
         $Count = count($Tokens);
         $i = 0;
         while (($i<$Count) && (strlen($Tokens[$i])>1)) {
             $Token = $Tokens[$i];
-            //if ($Debug) echo '<br>'.__LINE__.' i='.$i.' Before:'.$Token;
+            //
+            //$this->DebugData($Token, ' $Token', $Debug);
+            //
             //Remove quotes
             $Token = strtolower(preg_replace("/[^a-z.\d]+/i", "", $Token));
-            //if ($Debug) echo ' After1:'.$Token;
+            //
+            //$this->DebugData($Token, ' $Token', $Debug);
             //
             //$Token = preg_replace("/(\w)\.(?!\S)/", "$1", $Token);
-            //if ($Debug) echo ' After2:'.$Token;
+            //
+            //$this->DebugData($Token, ' $Token', $Debug);
+            //
             // Clear words with numbers
             //$Token = preg_replace("/ ?\b[^ ]*[0-9][^ ]*\b/i", " ", strtolower($Token));
-            //if ($Debug) echo ' After3:'.$Token;
+            //
+            //$this->DebugData($Token, ' $Token', $Debug);
+            //
             $Tokens[$i] = $Token;
             $i++ ;
         }
-        if ($Debug) {
-            $this->DebugData($Tokens, ' $Tokens');
-        }
+        //
+        //$this->DebugData($Tokens, ' $Tokens', $Debug);
+        //
         $String = implode(" ", $Tokens);
         //
-        //if ($Debug) $this->DebugData($String,' $String');
+        //$this->DebugData($String, '---$String---', $Debug);
+        //
+        if ($Explain | $Debug) {          // Admin requested to explain the discussion topic process?
+            $this->ExplainData($String, '---Processed Title:');
+        }
+        //
         return $String;
     }
 /**
@@ -1048,66 +1094,95 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
  * @return array noise array
  */
     private function getnoisearray($Debug = false) {
-        //$this->DebugData('','',$Debug,true);  //Trace Function calling
+        //$this->DebugData('', '', $Debug, true);  //Trace Function calling
         $NoiseWords = strtolower(c('Plugins.DiscussionTopic.Noisewords', ' '));
         $Localnoisearray = $this->GetExplode($NoiseWords, 0);
         $Globalnoisearray = array('');
         $Globalnoisearray = t('DiscussionTopicNoisewords1');
-        //if ($Debug) $Globalnoisearray = array('1global23');  //T E S T I N G
-        if ($Debug) {
-            $this->DebugData($Tokens, ' Tokens');
-        }
+        //
+        //$this->DebugData($Tokens, '---Tokens---', $Debug);
+        //
         $NoiseArray = array_merge($Localnoisearray, $Globalnoisearray);
         $NoiseArray = array_change_key_case($NoiseArray, CASE_LOWER);
-        if ($Debug) {
-            $this->DebugData($NoiseArray, ' NoiseArray');
-        }
+        //
+        //$this->DebugData($NoiseArray, '---NoiseArray---', $Debug);
+        //
         return $NoiseArray;
         //
     }
 /**
- * Remove noise words from a string.
- *
- * @param  string  $String String to process
- * @param  boolean $Debug  Debug request
- *
- * @return String  Result String
- */
-    private function changestringbynoise($String, $Debug = false) {
-        //$Debug = true;
-        if ($Debug) {
-            //$this->DebugData('','',$Debug,true);  //Trace Function calling
-            decho(func_get_args(), ' Passed Parameters');
+* Remove noise words from a string.
+*
+* @param string  $String  String to process
+* @param boolean $Debug   Debug request
+* @param boolean $Explain Explain request
+*
+* @return String  Result String
+*/
+    private function changestringbynoise($String, $Debug = false, $Explain = false) {
+        //
+        $this->DebugData('', '', $Debug, true);  //Trace Function calling;
+        $this->DebugData($String, '---$String---', $Debug);
+        //
+        if ($Explain | $Debug) {          // Admin requested to explain the discussion topic process?
+            $this->ExplainData($String, '---Noise words processing:');
         }
+        //
+        $NoiseArray = $this->GetNoiseArray($Debug);
+        //
         // Clear unnecessary punctioations
         $String = str_replace(array('.', ','), ' ', $String);
         //
-        if ($Debug) {
-            $this->DebugData($String, ' $String');
-        }
+        $this->DebugData($String, '---$String---', $Debug);
+        //
+        //
         // Clear numbers leaving words with embedded numbers
-        $Name = preg_replace("/(\b)[0-9]+(\b)/", ' ', $String);
-        if ($Debug) {
-            $this->DebugData($Name, ' $Name');
+        $String = preg_replace("/(\b)[0-9]+(\b)/", ' ', $String);
+        //
+        $this->DebugData($String, '---$String---', $Debug);
+        //
+        //$this->DebugData($NoiseArray, ' NoiseArray', $Debug);
+        //
+        $this->DebugData($String, '---$String---', $Debug);
+        //
+        //
+        // Replace each noise word with a null string
+        //
+        $Changes = 0;
+        foreach ($NoiseArray as $Noise) {
+            $SaveString = $String;
+            $String = preg_replace(
+                '/\b' . preg_quote($Noise) . '\b/i',
+                '',
+                $String,
+                (-1),
+                $ChangesInEntry
+            );
+            if ($ChangesInEntry) {
+                $Changes += 1;
+            }
         }
         //
-        // Tokenize (except for quoted texts
-        preg_match_all("/(['\".'\"])(.*?)\\1|\S+/", $Name, $Result);
-        $Tokens = $Result[0];
+        $this->DebugData($String, '---$String---', $Debug);
+        $this->DebugData($Changes, '---$Changes---', $Debug);
         //
-        $NoiseArray = $this->GetNoiseArray($Debug);
-        if ($Debug) {
-            $this->DebugData($NoiseArray, ' NoiseArray');
+        if (!$Changes) {
+            return $String;
         }
         //
-        $Tokens = array_udiff($Tokens, $NoiseArray, 'strcasecmp');
-        if ($Debug) {
-            $this->DebugData($Tokens, ' Tokens');
+        if ($Explain | $Debug) {          // Admin requested to explain the discussion topic process?
+            $this->ExplainData($String, '---Removed noise words:');
         }
-        $String = implode(" ", $Tokens);
-        if ($Debug) {
-            $this->DebugData($String, ' $String');
-        }
+        //
+        // Check whether the changed text contains a priority phrase
+        // and if so return it as the altered string.
+        //
+        // Replace multiple spaces with single spaces
+        $String = preg_replace('!\s+!', ' ', $String);
+        //
+        $String = $this->ChangeByPriority($String, $Debug, $Explain);
+        //
+        $this->DebugData($String, '---$String---', $Debug);
         return $String;
     }
 /**
@@ -1119,90 +1194,124 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
  * @return Array  Result array without the noise words
  */
     private function changetokensbynoise($Tokens, $Debug = false) {
-        //$Debug = true;
-        if ($Debug) {
-            //$this->DebugData('','',$Debug,true);  //Trace Function calling
-            decho(func_get_args(), ' Passed Parameters');
-        }
+        //
+        //$this->DebugData('', '', $Debug, true);  //Trace Function calling
         //
         $NoiseArray = $this->GetNoiseArray($Debug);
-        if ($Debug) {
-            $this->DebugData($NoiseArray, __LINE__);
-        }
+        //
+        //$this->DebugData($NoiseArray, '---NoiseArray---', $Debug);
+        //
         //
         $Tokens = array_values(array_diff($Tokens, $NoiseArray));
-        if ($Debug) {
-            $this->DebugData($Tokens, ' $Tokens');
-        }
+        //
+        //$this->DebugData($Tokens, ' $Tokens', $Debug);
+        //
         return $Tokens;
     }
 /**
- * Add double quotes around priority phrases in a string.
- *
- * @param  string  $String String to process
- * @param  boolean $Debug  Debug request
- *
- * @return String  Result String (original or the priority phrase)
- */
-    private function changebypriority($String, $Debug = false) {
-        //$this->DebugData('','',$Debug,true);  //Trace Function calling
-        //$this->DebugData($String,' $String');
+* Add double quotes around priority phrases in a string.
+*
+* @param  string  $String  String to process
+* @param  boolean $Debug   Debug request
+* @param  boolean $Explain Explain request
+*
+* @return String  Result String (original or the priority phrase)
+*/
+    private function changebypriority($String, $Debug = false, $Explain = false) {
+        $this->DebugData('', '', $Debug, true);  //Trace Function calling
+        //$this->DebugData($String, '---$String---', $Debug);
+        //
+        if ($Explain | $Debug) {          // Admin requested to explain the discussion topic process?
+            $this->ExplainData($String, '---Proirity phrases Processing:');
+        }
         //
         $PriorityList = c('Plugins.DiscussionTopic.Prioritylist', '');
         $PriorityArray = $this->GetExplode($PriorityList, 0);
-        if ($Debug) {
-            $this->DebugData($PriorityArray, ' PriorityArray');
-        }
-        //if ($Debug) $this->DebugData($String,' $String');
+        //
+        //$this->DebugData($PriorityArray, ' PriorityArray', $Debug);
+        //$this->DebugData($String, '---$String---', $Debug);
+        //
         // Priority phrases replacement
         foreach ($PriorityArray as $Entry => $Priority) {
             $SaveString = $String;
-            $String = preg_replace('/\b' . preg_quote($Priority) . '\b/i', '"'.$Priority.'"', $String);
-            //if ($Debug) $this->DebugData($Priority,'---Priority---',$Debug);
-            //if ($Debug) $this->DebugData($String,' $String');
+            $String = preg_replace('/\b' . preg_quote($Priority) . '\b/i', '"'.$Priority.'"', $SaveString);
+            // $String = preg_replace('/\b' . $Priority . '\b/i', '"'.$Priority.'"', $String);
+            $this->DebugData($Priority, '---Priority---', $Debug);
+            $this->DebugData($String, '---$String---', $Debug);
             if ($SaveString != $String) {//Substitution was made
-                if ($Debug) {
-                    $this->DebugData($String, ' $String');
+                //
+                if ($Explain | $Debug) {          // Admin requested to explain the discussion topic process?
+                    $this->ExplainData($String, '---proirity phrases changes:');
                 }
+                //
+                $this->DebugData($String, '---$String---', $Debug);
+                //
                 $String = $this->GetQuoted($String, $Debug);
-                if ($Debug) {
-                    $this->DebugData($String, ' $String');
-                }
                 return $String;
             }
         }
+        $this->DebugData($String, ' $String', $Debug);
+        //
+        if ($Explain | $Debug) {          // Admin requested to explain the discussion topic process?
+            $this->ExplainData($String, '---after proirity phrases processing:');
+        }
+        //
         return $String;
     }
 /**
- * Change string's acronyms with their respective definitions.
- *
- * @param  string  $String String to process
- * @param  boolean $Debug  Debug request
- *
- * @return String  Result String
- */
-    private function changebyacronym($String, $Debug = true) {
+* Change string's acronyms with their respective definitions.
+*
+* @param string  $String  String to process
+* @param boolean $Debug   Debug request
+* @param boolean $Explain Explain request
+*
+* @return String  Result String
+*/
+    private function changebyacronym($String, $Debug = false, $Explain = false) {
         $this->DebugData('', '', $Debug, true);  //Trace Function calling;
-        //$this->DebugData($String,' $String');
+        $this->DebugData($String, '---$String---', $Debug);
+        //
+        if ($Explain | $Debug) {          // Admin requested to explain the discussion topic process?
+            $this->ExplainData($String, '---Acronyn processing:');
+        }
+        //
         //
         $Acronyms = c('Plugins.DiscussionTopic.Acronyms', '');
         $LocalAcronymArray = $this->GetExplodeByKey($Acronyms, 0);
-        if ($Debug) {
-            $this->DebugData($LocalAcronymArray, ' LocalAcronymArray');
-        }
+        //
+        //$this->DebugData($LocalAcronymArray, 'LocalAcronymArray', $Debug);
+        //
         $GlobalAcronymArray = t('DiscussionTopicAcronyms');
         $AcronymArray = array_merge($LocalAcronymArray, $GlobalAcronymArray);
-        if ($Debug) {
-            $this->DebugData($AcronymArray, ' AcronymArray');
-        }
-        if ($Debug) {
-            $this->DebugData($String, ' $String');
-        }
+        //
+        $this->DebugData($AcronymArray, ' AcronymArray', $Debug);
+        $this->DebugData($String, '---$String---', $Debug);
+        //
         // Acronym replacement
-        $String = str_ireplace(array_keys($AcronymArray), array_values($AcronymArray), $String);
-        if ($Debug) {
-            $this->DebugData($String, ' $String');
+        $String = str_ireplace(array_keys($AcronymArray), array_values($AcronymArray), $String, $Changes);
+        //
+        $this->DebugData($Changes, '---$Changes---', $Debug);
+        $this->DebugData($String, '---$String---', $Debug);
+        //
+        if (!$Changes) {
+            return $String;
         }
+        //
+        // Replace multiple spaces with single spaces
+        $String = preg_replace('!\s+!', ' ', $String);
+        //
+        //
+        if ($Explain | $Debug) {          // Admin requested to explain the discussion topic process?
+            $this->ExplainData($String, '--- Acronyn processing changes:');
+        }
+        //
+        // Check whether the changed text contains a priority phrase
+        // and if so return it as the altered string.
+        //
+        $String = $this->ChangeByPriority($String, $Debug, $Explain);
+        //
+        $this->DebugData($String, '---$String---', $Debug);
+        //
         return $String;
     }
 /**
@@ -1284,15 +1393,17 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
     public function settingscontroller_discussiontopic_create($Sender, $Args) {
         $Debug = false;
         $Sender->permission('Garden.Settings.Manage');
-        if ($Debug) {
-            echo __FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'];
-        }
-        //if ($Debug) $this->DebugData($Args,'---Args---',$Debug);
+        //
+        //$this->DebugData('', '', $Debug, true);  //Trace Function calling;
+        //$this->DebugData($Args,'---Args---', $Debug);
+        //
         $Sender->addCssFile('pluginsetup.css', 'plugins/DiscussionTopic');
         $Sender->addSideMenu('dashboard/settings/plugins');
         //
         $PluginInfo = Gdn::pluginManager()->getPluginInfo('DiscussionTopic');
-        //if ($Debug) this->DebugData($PluginInfo,'---Plugininfo---',$Debug);
+        //
+        //$this->DebugData($PluginInfo,'---Plugininfo---', $Debug);
+        //
         $Constants = $PluginInfo['PluginConstants'];
         $MaxBatch = $Constants['Maxbatch'];
         //
@@ -1314,22 +1425,22 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         $Validation = new Gdn_Validation();
         $ConfigurationModel = new Gdn_ConfigurationModel($Validation);
         $Sender->Form->SetModel($ConfigurationModel);
-        if ($Debug) {
-            echo '<br>'.__LINE__.'IncompleteSetup:'.$IncompleteSetup;
-        }
+        //
+        //$this->DebugData($IncompleteSetup, '---$IncompleteSetup---', $Debug);
         //
         if ($Sender->Form->authenticatedPostBack()) {
-            if ($Debug) {
-                echo '<br>'.__LINE__.'IncompleteSetup:'.$IncompleteSetup;
-            }
+            //
+            //$this->DebugData($IncompleteSetup, '---$IncompleteSetup---', $Debug);
+            //
             $Saved = $Sender->Form->showErrors();
             $Saved = $Sender->Form->Save();
             $FormPostValues = $Sender->Form->formValues();
             $Sender->Form->SetData($FormPostValues);
             $Validation = new Gdn_Validation();
             $Data = $Sender->Form->formValues();
-            //if ($Debug) $this->DebugData($Sender->Form,'---Form---',$Debug);
-            //if ($Debug) $this->DebugData($Data,'---Data---',$Debug);
+            //
+            //$this->DebugData($Sender->Form,'---Form---', $Debug);
+            //$this->DebugData($Data,'---Data---', $Debug);
             //
             $NoiseWords = strtolower(getvalue('Plugins.DiscussionTopic.Noisewords', $Data));
             //      Flag to link DiscussionTopics
@@ -1370,8 +1481,8 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
             //
             $ModeName = $ModeArray[$Mode+1];
             SaveToConfig('Plugins.DiscussionTopic.ModeName', $ModeName);
-            //if ($Debug) $this->DebugData($Mode,'---Mode---',$Debug);
-            //if ($Debug) $this->DebugData($ModeName,'---ModeName---',$Debug);
+            //$this->DebugData($Mode,'---Mode---', $Debug);
+            //$this->DebugData($ModeName,'---ModeName---', $Debug);
             //
             $FieldErrors .= $this->CheckField(
                 $Sender,
@@ -1380,13 +1491,8 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
                 'Number of keywords',
                 'Plugins.DiscussionTopic.Sigwords'
             );
-            if ($Debug) {
-                $this->DebugData($FieldErrors, '---FieldErrors---', $Debug);
-            }
             //
-            if ($Debug) {
-                echo '<br>'.__LINE__.'FieldErrors:'.$FieldErrors;
-            }
+            //$this->DebugData($FieldErrors, '---FieldErrors---', $Debug);
             //
             if ($FieldErrors != '') {
                 $GotError=true;
@@ -1398,17 +1504,17 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
                 $GotError=true;
             }
             if ($GotError) {
-                if ($Debug) {
-                    echo '<br>'.__LINE__.'IncompleteSetup:'.$IncompleteSetup;
-                }
+                //
+                //$this->DebugData($IncompleteSetup, '---IncompleteSetup---', $Debug);
+                //
                 SaveToConfig('Plugins.DiscussionTopic.IncompleteSetup', true);
                 $Sender=$Validation->addValidationResult('Plugins.DiscussionTopic.SearchBody', ' ');
             } else {
                 // No errors
                 SaveToConfig('Plugins.DiscussionTopic.FirstSetupDone', true);
-                if ($Debug) {
-                    echo '<br>'.__LINE__.'IncompleteSetup:'.$IncompleteSetup;
-                }
+                //
+                //$this->DebugData($IncompleteSetup, '---IncompleteSetup---', $Debug);
+                //
                 SaveToConfig('Plugins.DiscussionTopic.IncompleteSetup', false);
                 if ($TestTitle != '') {
                     SaveToConfig('Plugins.DiscussionTopic.Testtitle', '');
@@ -1420,13 +1526,15 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
                     $ExtractTitle = '';
                     if ($Extract == '') {
                         if ($ModeName == 'Deterministic') {              //Deterministic mode
-                            $ExtractNote = 'The test discussion name did not generate any title - Deterministic mode is used and double-quoted texts not found';
+                            $ExtractNote = 'The test discussion name did not generate any title'.
+                            ' - Deterministic mode is used and double-quoted texts not found';
                         } elseif ($ModeName == 'Manual') {
                             $ExtractNote = 'No results can be shown in manual mode.';
                         } elseif ($ModeName == 'Heuristic') {
                             $ExtractNote = 'The test discussion name did not generate any title - all the words were noise words.';
                         } elseif ($ModeName == 'Progressive') {
-                            $ExtractNote = 'The test discussion name did not generate any title - quoted texts not found and all the words were noise words.';
+                            $ExtractNote = 'The test discussion name did not generate any title - '.
+                            'quoted texts not found and all the words were noise words.';
                         } else {
                             $ExtractNote = 'The test discussion name did not generate any title - check your current settings.';
                         }
@@ -1436,21 +1544,22 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
                                         wrap($Simulate . ' mode generated Topic: <b>'.$Extract.'</b>', 'span class=Error');
                     }
                     $FeedbackArray['SimulatedTitle'] = $ExtractNote;
-                    $FeedbackArray['SimulatedNote'] = '<a href="#test" class="SettingTest" '.$ExtractTitle.'>🔴 Click to jump to the test results section</a>';
+                    $FeedbackArray['SimulatedNote'] = '<a href="#test" class="SettingTest" '.$ExtractTitle.
+                    '>🔴 Click to jump to the test results section</a>';
                     SaveToConfig('Plugins.DiscussionTopic.Testtitle', '');
                     //$AddError = $Sender->Form->addError(wrap($ExtractNote,'span class=SettingTest'),'Plugins.DiscussionTopic.Testtitle');
                 }
             }
             //
         } else {    // Not postback
-            //SaveToConfig('Plugins.DiscussionTopic.Testtitle','');
+            //SaveToConfig('Plugins.DiscussionTopic.Testtitle', '');
             if (c('Plugins.DiscussionTopic.IncompleteSetup')) {
                 $TopWarning = 'Previously saved settings are incomplete/invalid.  Review and save correct values.';
             }
             $Sender->Form->SetData($ConfigurationModel->Data);
         }
         //
-        $PluginConfig = $this->SetConfig($FeedbackArray, $Debug);// Array('TopWarning' => $TopWarning),$Debug);
+        $PluginConfig = $this->SetConfig($FeedbackArray, $Debug);// Array('TopWarning' => $TopWarning), $Debug);
         $ConfigurationModule->initialize($PluginConfig);
         $ConfigurationModule->renderAll();
     }
@@ -1475,16 +1584,16 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 *  @return  string
 */
     private function getexplode($String, $Debug) {
-        //$this->DebugData('', '',$Debug, true); //Trace Function calling
-        if ($Debug) {
-            $this->DebugData($String, ' $String');
-        }
+        //$this->DebugData('', '', $Debug, true); //Trace Function calling
+        //
+        $this->DebugData($String, '---$String---', $Debug);
+        //
         $Array = explode(',', $String);
         $Array = array_map('trim', $Array);
         $Array = array_filter($Array);
-        if ($Debug) {
-            $this->DebugData($Array, '---Array---', $Debug);
-        }
+        //
+        //$this->DebugData($Array, '---Array---', $Debug);
+        //
         return $Array;
     }
 /**
@@ -1496,10 +1605,9 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 *  @return  keyed array
 */
     private function getexplodebykey($String, $Debug) {
-        //$this->DebugData('', '',$Debug, true); //Trace Function calling
-        if ($Debug) {
-            $this->DebugData($String, ' $String');
-        }
+        //$this->DebugData('', '', $Debug, true); //Trace Function calling
+        //$this->DebugData($String, '---$String---', $Debug);
+        //
         //$String = str_replace("'", "\'", $String);
         $Array = explode(',', $String);
         $Array = array_map('trim', $Array);
@@ -1509,16 +1617,16 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
             $Key = strtolower(trim($Key));
             $Keyarray[$Key] = trim($Value);
         }
-        if ($Debug) {
-            $this->DebugData($Keyarray, '---Keyarray---', $Debug);
-        }
+        //
+        //$this->DebugData($Keyarray, '---Keyarray---', $Debug);
+        //
         return $Keyarray;
     }
 /**
  * Set Confogiration Array
  *
- * @param array  $Errors array or error messages
- * @param bool   $Debug  debug request
+ * @param array $Errors array or error messages
+ * @param bool  $Debug  debug request
  *
 *  @return  config array
 */
@@ -1548,7 +1656,8 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         }
         //
         $PluginInfo = Gdn::pluginManager()->getPluginInfo('DiscussionTopic');
-        //if ($Debug) this->DebugData($PluginInfo,'---Plugininfo---',$Debug);
+        //
+        //$this->DebugData($PluginInfo,'---Plugininfo---', $Debug);
         $Constants = $PluginInfo['PluginConstants'];
         $Title = Wrap($PluginInfo['Name'].'-'.' Version '.$PluginInfo['Version'].' Settings', 'div class=SettingHead');
         //
@@ -1557,7 +1666,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         $Mode = 1+c('Plugins.DiscussionTopic.Mode', 0);
         $ModeArray = array(0 => '?', 1 =>'Manual', 2 =>'Deterministic', 3 => 'Heuristic', 4 => 'Progressive');
         $ModeName = $ModeArray[$Mode];
-        //if ($Debug) $this->DebugData($ModeName,'---ModeName---',$Debug);
+        //$this->DebugData($ModeName,'---ModeName---', $Debug);
         //
         $UpdateGen = c('Plugins.DiscussionTopic.Updategen', 1);
         $Continueurl = '' ;
@@ -1611,48 +1720,67 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         if ($Continueurl.$Restarturl != '') {
             $Initializetext = wrap(wrap('<b>Discussion Table Update</b>', 'h3').wrap(
                 wrap('Titles are attached to discussions when the discussion body (not comments) are saved.', 'span  class=SettingAsideN').
-                            wrap('You can use this Table Update process to attach titles to discussions without Topics (e.g. discussions created before plugin activation) or to reconstruct the Topics when you change some of the settings.', 'span  class=SettingAsideN').
+                            wrap('You can use this Table Update process to attach titles to discussions without Topics '.
+                                '(e.g. discussions created before plugin activation)'.
+                                ' or to reconstruct the Topics when you change some of the settings.', 'span  class=SettingAsideN').
                             $CompletedNote.wrap('The following update options are available:', 'span  class=SettingAsideU').
                             $Continueurl.$Restarturl,
                 'span  class=SettingAsideN'
             ), 'div class=SettingAside');
         }
         $ConstructionNotes = wrap(wrap('<b>Topic Construction notes</b>', 'h3').wrap(
-            wrap('In Deterministic mode Priority phrases add quotes to the phrases in the discussion title.  Then <i>the first</i> double-quoted string within the title is picked as the Topic.', 'span  class=SettingAsideN').
-                            wrap('To increase the matching of related discussions, Heuristic mode uses simulated word roots ("Stems"). The resulting Topic may seem mistyped - this is not a bug.', 'span  class=SettingAsideN').
+            wrap('In Deterministic mode Priority phrases add quotes to the phrases in the discussion title.  '.
+                'Then <i>the first</i> double-quoted string within the title is picked as the Topic.', 'span  class=SettingAsideN').
+                            wrap('To increase the matching of related discussions, Heuristic mode uses simulated word roots ("Stems").'.
+                                ' The resulting Topic may seem mistyped - this is not a bug.', 'span  class=SettingAsideN').
                             wrap('Heuristic process is inherently implerfect, especially with free form user input.', 'span  class=SettingAsideN').
                             ' ',
             'span '
         ), 'div class=SettingAside');
         $NoiseNotes = wrap(wrap('<b>Nose word note</b>', 'h3').wrap(
-            wrap('The noise words specified on this screen are adeed to the noise word definitions in the plugin LOCALE file. For English, the locale is in: '.$LocalPlace, 'span  class=SettingAsideN').
+            wrap('The noise words specified on this screen are added to the noise word definitions in the plugin LOCALE file.'.
+                ' For English, the locale is in: '.$LocalPlace, 'span  class=SettingAsideN').
                             ' ',
             'span '
         ), 'div class=SettingAside');
         $AcronymsNotes = wrap(wrap('<b>Substitute Words note</b>', 'h3').wrap(
-            wrap('The substitute words specified on this screen are adeed to the substitute word definitions in the plugin LOCALE file mentioned above.', 'span  class=SettingAsideN').
-                            wrap('Hint: If you substitute the word with a double-quoted phrase, it will behave as a Priority Phrase.', 'span  class=SettingAsideN').
+            wrap('The substitute words specified on this screen are adeed to the'.
+                ' substitute word definitions in the plugin LOCALE file mentioned above.', 'span  class=SettingAsideN').
+                            wrap('Hint: If you substitute the word with a double-quoted phrase, '
+                                .'it will behave as a Priority Phrase.', 'span  class=SettingAsideN').
                             ' ',
             'span '
         ), 'div class=SettingAside');
-        $CustomizationGuide     = wrap('○ Click '.Anchor('here', 'plugin/DiscussionTopic/DiscussionTopicGuide', array('class'=>"NoPopup",'target'=>"Popup")).
-                                    ' for the Customization Guide.', 'span  class=SettingAsideN');
+        $CustomizationGuide     = wrap('○ Click '.
+            Anchor(
+                'here',
+                'plugin/DiscussionTopic/DiscussionTopicGuide',
+                array('class'=>"NoPopup", 'target'=>"Popup")
+            ).
+            ' for the Customization Guide.', 'span  class=SettingAsideN');
         $GeneralNotes = wrap(wrap('<b>General Notes</b>', 'h3').wrap(
             $SimulatedNote.$CustomizationGuide.
-                            wrap('○ With the exceptions noted below, the Topic analysis takes place when a discussion is saved, so the performance impact should be small.', 'span  class=SettingAsideN').
-                            wrap('○ By limiting the processing to specific categories you can further minimize the performance impact.', 'span  class=SettingAsideN').
-                            wrap('○ If you have a process that saves many discussions at a time (e.g. feed imports) that process will be impacted.', 'span  class=SettingAsideN').
-                            wrap('○ Another example of saving many discussions at a time is the (re)updating of many previosly saved discussions through the <b>Table Update</b> process below.  For that reason the update process is done in batches and you can sepecify the number of records in the update batch.', 'span  class=SettingAsideN').
+                            wrap('○ With the exceptions noted below, the Topic analysis takes place when a discussion is saved,'
+                                .' so the performance impact should be small.', 'span  class=SettingAsideN').
+                            wrap('○ By limiting the processing to specific'.
+                                ' categories you can further minimize the performance impact.', 'span  class=SettingAsideN').
+                            wrap('○ If you have a process that saves many'.
+                                ' discussions at a time (e.g. feed imports) that process will be impacted.', 'span  class=SettingAsideN').
+                            wrap('○ Another example of saving many discussions at'.
+                                ' a time is the (re)updating of many previosly saved discussions through the <b>Table Update</b> process below.  '.
+                                'For that reason the update process is done in batches and '.
+                                'you can sepecify the number of records in the update batch.', 'span  class=SettingAsideN').
                             ' ',
             'span '
         ), 'div class=SettingAsideWide');
+        $Route = '../plugins/DiscussionTopic/';
         $Snippets   =       wrap(wrap('<b>Visibility Options Examples</b>', 'h3').
                             wrap('Side Panel', 'span  class=SettingAsideSubhead').
-                            wrap('<img src="../plugins/DiscussionTopic/sidepanelsnippet.jpg" class=Snippet>').
+                            wrap('<img src="'.$Route.'sidepanelsnippet.jpg" class=Snippet>').
                             wrap('Discussion List', 'span class=SettingAsideSubhead').
-                            wrap('<img src="../plugins/DiscussionTopic/discussionlistmetaareasnippet.jpg" class=Snippet>').
+                            wrap('<img src="'.$Route.'discussionlistmetaareasnippet.jpg" class=Snippet>').
                             wrap('Discussion Meta Area', 'span class=SettingAsideSubhead').
-                            wrap('<img src="../plugins/DiscussionTopic/discussionbodymetaareasnippet.jpg" class=Snippet>'), 'div class=SettingAsideWide');
+                            wrap('<img src="'.$Route.'discussionbodymetaareasnippet.jpg" class=Snippet>'), 'div class=SettingAsideWide');
         //
         $WarnGarden = '';
         $Sidepanelnote = 'FYI, if you use the ModuleSort plugin, the internal name of the sidepanel is \'DiscussionTopicModule\'.';
@@ -1670,7 +1798,8 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
                   'Control' => 'CheckBoxList',
                   'LabelCode' => $Title,
                   'Items' => $Categories,
-                  'Description' => $Topmessage.$GeneralNotes.'<b>Select the categories where this plugin is active </b><br>(no selection enables all categories):',
+                  'Description' => $Topmessage.$GeneralNotes.'<b>Select the categories where this plugin is active </b><br>'.
+                    '(no selection enables all categories):',
                   'Options' => array('ValueField' => 'CategoryID', 'TextField' => 'Name','Class' => 'Categorylist ')
                 ),
         //
@@ -1711,7 +1840,8 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         //
             'Plugins.DiscussionTopic.ShowHeuristic' => array(
             'Control' => 'Checkbox',
-            'LabelCode' =>  wrap('3. For the two options above, display <i>heuristic</i> Topics if deterministic ones are not found.', 'span class=SettingText').
+            'LabelCode' =>  wrap('3. For the two options above, display <i>heuristic</i> Topics '.
+                'if deterministic ones are not found.', 'span class=SettingText').
                     wrap('See below Progressives Topic construction.', 'span class=SettingTextContinue'),
             'Description' =>    '',
             'Default' => false,
@@ -1723,15 +1853,18 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
                 '4. Provide the ability to set the discussion Topic through a link in the discussion option list (the "gear" <b>❅</b>)',
                 'span class=SettingText'
             ).
-                    wrap('(Important: Requires "manage" permission in the plugin section of "Roles and Permissions".)', 'span class=SettingTextContinue'),
+                    wrap('(Important: Requires "manage" permission in the plugin '.
+                        ' section of "Roles and Permissions".)', 'span class=SettingTextContinue'),
             'Description' =>    '',
             'Default' => false,
             'Options' => array('Class' => 'Optionlist ')),
         //
             'Plugins.DiscussionTopic.TopAnswerMode' => array(
             'Control' => 'Checkbox',
-            'LabelCode' =>  wrap('5. Provide the ability to mark discussions as "Top Topics". Top Topics will be pushed to the top of the side panel.', 'span class=SettingText').                wrap('Useful when discussions offer solutions to frequently asked questions', 'span class=SettingTextContinue').
-                            wrap('(Important: Requires options 4 above (Setting Topics through the options menu).', 'span class=SettingTextContinue'),
+            'LabelCode' =>  wrap('5. Provide the ability to mark discussions as "Top Topics". '.
+                'Top Topics will be pushed to the top of the side panel.', 'span class=SettingText').
+                wrap('Useful when discussions offer solutions to frequently asked questions', 'span class=SettingTextContinue').
+                wrap('(Important: Requires options 4 above (Setting Topics through the options menu).', 'span class=SettingTextContinue'),
             'Description' =>    '',
             'Default' => false,
             'Options' => array('Class' => 'Optionlist ')),
@@ -1760,33 +1893,42 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         //
             'Plugins.DiscussionTopic.Prioritylist' => array(
             'Control' => 'TextBox',
-            'Description' =>    wrap('Optionally enter priority phrases to be selected as Topics when they appear <b>without quoted</b> in the    discussion title.', 'span class=SettingText').
-                                wrap('When Discussion Topic Construction mode 1 or 3 are active, discussion title analysis will behave', 'span class=SettingText').
-                                wrap('as if these phrases were entered with double quotes. (Optionally enter comma delimited phrases):', 'span class=SettingText'),
+            'Description' =>    wrap('Optionally enter priority phrases to be selected as Topics '.
+                'when they appear <b>without quoted</b> in the    discussion title.', 'span class=SettingText').
+                wrap('When Discussion Topic Construction mode is "Deterministic" or "Progressive", discussion '.
+                    'title analysis will behave', 'span class=SettingText').
+                wrap('as if these phrases were entered with double quotes. (Optionally enter comma delimited phrases):', 'span class=SettingText'),
             'LabelCode' =>      wrap('<b>Priority&nbspPhrases </b>', 'div class=SettingHead').wrap(' ', 'span class=Settingsqueeze'),
             'Default' => 'something has gone wrong,advanced editor',
             'Options' => array('MultiLine' => true, 'class' => 'TextBox')),
         //
             'Plugins.DiscussionTopic.Noisewords' => array(
             'Control' => 'TextBox',
-            'Description' =>    wrap('Optionally enter comma-separated words to be ignored in the discussion title analysis:', 'span class=SettingText'),
-            'LabelCode' =>      $NoiseNotes.wrap('<b>Ignorable&nbspWords </b>(Noise words)', 'div class=SettingHead').wrap(' ', 'span class=Settingsqueeze'),
+            'Description' =>    wrap('Optionally enter comma-separated words to be ignored '.
+                'in the discussion title analysis:', 'span class=SettingText'),
+            'LabelCode' =>      $NoiseNotes.wrap('<b>Ignorable&nbspWords </b>(Noise words)', 'div class=SettingHead').
+                    wrap(' ', 'span class=Settingsqueeze'),
             'Default' => 'and,or,if',
             'Options' => array('MultiLine' => true, 'class' => 'TextBox')),
         //
             'Plugins.DiscussionTopic.Acronyms' => array(
             'Control' => 'TextBox',
             'Description' =>    wrap('Enter phrases to be substituted for others. Format: acronym=phrase,acronym=phrase', 'span class=SettingText'),
-            'LabelCode' =>      $AcronymsNotes.wrap('<b>Substitute Words</b> (Acronyms)', 'div class=SettingHead').wrap(' ', 'div class=Settingsqueeze'),
+            'LabelCode' =>      $AcronymsNotes.
+                    wrap('<b>Substitute Words</b> (Acronyms)', 'div class=SettingHead').
+                    wrap(' ', 'div class=Settingsqueeze'),
             'Default' => 'btn=button,config=configuration,db=database',
             'Options' => array('MultiLine' => true, 'class' => 'TextBox')),
         //
             'Plugins.DiscussionTopic.Sigwords' => array(
             'Control' => 'TextBox',
             'Description' =>    wrap('Enter the number of keywords to use for matching similar discussion titles.', 'span class=SettingText').
-                                wrap('A high number reduces matching chances (since all keywords must exist in the matching discussion titles)', 'span class=SettingText').
-                                wrap('A small number increases the chances for false positives.  Select a number between 2 to 4:', 'span class=SettingText'),
-            'LabelCode' =>      wrap('<b>Number of Keywords</b> (Only if Heuristic Analysis is active)', 'span class=SettingHead').wrap(' ', 'span class=Settingsqueeze'),
+                    wrap('A high number reduces matching chances '.
+                        '(since all keywords must exist in the matching discussion titles)', 'span class=SettingText').
+                    wrap('A small number increases the chances for false positives.  '.
+                        'Select a number between 2 to 4:', 'span class=SettingText'),
+            'LabelCode' =>      wrap('<b>Number of Keywords</b> (Only if Heuristic Analysis is active)', 'span class=SettingHead').
+                    wrap(' ', 'span class=Settingsqueeze'),
             'Default' => '2',
             'Options' => array('Class' => 'Textbox')),
         /***   This is for future use ***
@@ -1794,7 +1936,8 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
             'Control' => 'Radiolist',
             'Items' => Array('TextRazor (see www.textrazor.com for free or paid license)','PosTagger (internal and free)'),
             'Description' =>    wrap('Select one of these options (see the readme file for differences):','span class=SettingText'),
-            'LabelCode' =>      wrap('<b>Grammatical Analizer</b>  (Only if Heuristic Analysis is active)','span class=SettingHead').wrap(' ','span class=Settingsqueeze'),
+            'LabelCode' =>      wrap('<b>Grammatical Analizer</b>  (Only if Heuristic Analysis is active)','span class=SettingHead').
+                    wrap(' ','span class=Settingsqueeze'),
             'Default' => 'TextRazor'),
         //
         //  'Plugins.DiscussionTopic.Extractor' => array(
@@ -1805,28 +1948,34 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         //
             'Plugins.DiscussionTopic.TextRazorKey' => array(
             'Control' => 'TextBox',
-            'Description' =>    wrap('If you selected "Textrazor" as your Grammatical Analizer, specify the TextRazor API key (See www.textrazor.com for free or paid API key):','span class=SettingText'),
+            'Description' =>    wrap('If you selected "Textrazor" as your Grammatical Analizer, '.
+            'specify the TextRazor API key (See www.textrazor.com for free or paid API key):','span class=SettingText'),
             'LabelCode' =>      wrap(' ','span class=Settingsqueeze'),
             'Default' => '?'),
         ***/
             'Plugins.DiscussionTopic.Testtitle' => array(
             'Control' => 'TextBox',
-            'Description' =>    wrap('<b>After</b> you save your settings you can see the Topic determined by the saved options. <br>Optionally enter a test discussion title below:', 'div class=SettingText'),
+            'Description' =>    wrap('<b>After</b> you save your settings you can see the Topic determined by the saved options. '.
+                '<br>Optionally enter a test discussion title below:'.
+                '<br>(You can start the test title with "!EXPLAIN!" to see how noise words,acronyms and priority phrases'.
+                ' change the title to determine a topic.)', 'div class=SettingText'),
             'LabelCode' =>      wrap('Discussion Testing:', 'span class=SettingHead id="test"'),
             'Options' => array('MultiLine' => false, 'class' => 'TextWideInputBox'),
             'Default' => ' '),
         //
             'Plugins.DiscussionTopic.Maxrowupdates' => array(
             'Control' => 'TextBox',
-            'LabelCode' =>  $SimulatedTitle.$Initializetext.wrap('<b>Table Update-Adding Topics to previously saved discussions</b>', 'span class=SettingHead'),
-            'Description' =>        wrap('Enter the number of rows to update in a single update batch (See the readme file):', 'div class=Settinghead'),
+            'LabelCode' =>  $SimulatedTitle.$Initializetext.
+                    wrap('<b>Table Update-Adding Topics to previously saved discussions</b>', 'span class=SettingHead'),
+            'Description' =>        wrap('Enter the number of rows to update in a single update batch '.
+                '(See the readme file):', 'div class=Settinghead'),
             'Default' => 1000,
             'Options' => array('Class' => 'Textbox')),
         //
         //
         //
         );
-        //if ($Debug) $this->DebugData($XPluginConfig,'---XPluginConfig---',$Debug);
+        //$this->DebugData($XPluginConfig,'---XPluginConfig---', $Debug);
         return $PluginConfig;
     }
 /**
@@ -1839,7 +1988,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 *  @return string - error message
 */
     private function checksettings($Sender, $Type = 'All', $Debug = false) {
-        //$this->DebugData('', '',$Debug, true); //Trace Function calling
+        //$this->DebugData('', '', $Debug, true); //Trace Function calling
         $Warn = '';
         $Error = '';
         //Get the menu filled variables
@@ -1859,15 +2008,15 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         //*****************************************//
         if ($Error) {
             $Error = substr($Error, 4);
-            //$Error = Wrap(substr($Error,4),'span class=SettingError');
         }
         if ($Warn) {
             $Warn = substr($Warn, 4);
             $Warn = Wrap(substr($Warn, 4), 'span class=SettingWarning');
         }
-        if ($Debug) {
-            echo wrap('...'.__LINE__.' Error:'.$Error.' Warn:'.$Warn, 'p class=SettingWarning');
-        }
+        //
+        //$this->DebugData($Error, '---Error---', $Debug);
+        //$this->DebugData($Warn, '---Warn---', $Debug);
+        //
         $Result = $Error.$Warn;
         return $Result;
     }
@@ -1951,7 +2100,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 *  @return string - either the topic or an empty string
 */
     private function gettopictoshow($Topic, $Location = 'inlist', $Debug = false) {
-        //$this->DebugData('', '',$Debug, true); //Trace Function calling
+        //$this->DebugData('', '', $Debug, true); //Trace Function calling
         if (trim($Topic) == '') {
             return '';
         }
@@ -1987,8 +2136,8 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         //$CommentID = getValueR('CommentID',$Object);
         $DiscussionID = getValueR('DiscussionID', $Object);
         $Topic = getValueR('Topic', $Object);
-        //$this->DebugData($DiscussionID,'---DiscussionID---',$Debug);
-        //$this->DebugData($Topic,'---Topic---',$Debug);
+        //$this->DebugData($DiscussionID,'---DiscussionID---', $Debug);
+        //$this->DebugData($Topic,'---Topic---', $Debug);
         $ShowTopic = $this->GetTopicToShow($Topic, 'Showindiscussion', $Debug);
         $TopicAnswer = getValueR('TopicAnswer', $Object);
         echo $this->DisplayTopicAnswer($ShowTopic, $TopicAnswer, $DiscussionID, 'Discussion Topic', '', '', 'TopicInPost ', 'div');
@@ -2097,7 +2246,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 */
     public function categoriescontroller_aftercountmeta_handler($Sender, $Args) {
         $Debug = false;
-        //$this->DebugData('','',$Debug,true);  //Trace Function calling
+        //$this->DebugData('', '', $Debug, true);  //Trace Function calling
         $this->ListInline($Args['Discussion'], $Debug);
     }
 /**
@@ -2110,7 +2259,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 */
     public function discussionscontroller_aftercountmeta_handler($Sender, $Args) {
         $Debug = false;
-        //$this->DebugData('','',$Debug,true);  //Trace Function calling
+        //$this->DebugData('', '', $Debug, true);  //Trace Function calling
         $this->ListInline($Args['Discussion'], $Debug);
     }
 /**
@@ -2122,7 +2271,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 * @return na
 */
     private function listinline($Discussion, $Debug = false) {
-        //$this->DebugData('','',$Debug,true);  //Trace Function calling
+        //$this->DebugData('', '', $Debug,true);  //Trace Function calling
         $ShowTopic = $this->GetTopicToShow($Discussion->Topic, 'Showinlist', $Debug);
         echo $this->DisplayTopicAnswer($ShowTopic, $Discussion->TopicAnswer, $Discussion->DiscussionID, 'Discussion Topic', '', '', 'TopicInList ');
     }
@@ -2169,7 +2318,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         $Encode = $DiscussionID ^ $SimpleKey;
         $Url = '/dashboard/plugin/DiscussionTopic/DiscussionTopicSetTopic/?D='.$DiscussionID.'&S='.$Encode;
         $Css = 'Popup SetTopiccss';
-        //if ($Debug) $this->DebugData($Url,'---Url---',$Debug);
+        //$this->DebugData($Url,'---Url---', $Debug);
         //
         $Args['DiscussionOptions']['DiscussionTopic'] = array('Label' => $Text,'Url' => $Url,'Class' => $Css);
     }
@@ -2193,14 +2342,15 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         $Discussion = $Sender->EventArguments['Discussion'];
         // If limited to specific category numbers and discussion is not listed then exit
         $CategoryNums = c('Plugins.DiscussionTopic.CategoryNums');
-        if ($Debug) {
-            $this->DebugData($CategoryNums, '---Catnums---', $Debug);
-        }
+        //
+        //$this->DebugData($CategoryNums, '---Catnums---', $Debug);
+        //
         if ($CategoryNums != "") {  //Limited category list?
             if (!in_array($Discussion->CategoryID, $CategoryNums)) {//Not in the list?
-                if ($Debug) { //**Gdn::controller()->informMessage($this->DebugData($CategoryID,'---CategoryID---','',0,' ',true));
-                    return;
-                }
+                //
+                //$this->DebugData($CategoryID,'---CategoryID---', '', 0, ' ', true));
+                //
+                return;
             }
         }
         //  Construct the link and add to the gear
@@ -2233,16 +2383,16 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
 * @return na
 */
     private function filtertopic($Search, $SearchTopic = false, $Debug = false) {
-        $this->DebugData('','',$Debug,true);  //Trace Function calling
-        if ($Debug) $this->DebugData($Search,'---Search---',$Debug);
+        $this->DebugData('', '', $Debug, true);  //Trace Function calling
+        $this->DebugData($Search, '---Search---', $Debug);
         if ($Search == '') {
             Gdn::session()->stash('IBPTopicMsg', t('Error: Search argument not specified'));
-            if ($Debug) $this->DebugData($Search,'---Search---',$Debug);
+            $this->DebugData($Search, '---Search---', $Debug);
             Redirect('..'.url('/discussions'));
         }
         if ($SearchTopic) {
             $Search = $this->gettopic($Search, '', $Debug);
-            if ($Debug) $this->DebugData($Search,'---Search---',$Debug);
+            $this->DebugData($Search, '---Search---', $Debug);
             if ($Search == '') {
                 Gdn::session()->stash('IBPTopicMsg', t('Error: Search argument arguments are defined as noise words'));
             }
@@ -2250,7 +2400,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         $this->SetStash($Search, $Debug);
         //Gdn::session()->stash('IBPTopicSearch', $Search);
         $Title = t('Topic').':'.str_replace(array('\'', '"'), '', $Search);
-        if ($Debug) $this->DebugData($Search,'---Search---',$Debug);
+        $this->DebugData($Search, '---Search---', $Debug);
         Redirect('..'.url('/discussions'));
     }
 /**
@@ -2278,7 +2428,7 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
             return '';
         } else {
             $Search = $_COOKIE['IBPTopicSearch'];
-            $this->SetStash('');
+            $this->SetStash('', false);
             return $Search;
         }
     }
@@ -2311,8 +2461,15 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         if (!c('Plugins.DiscussionTopic.SortByTopic', false)) {
             return;
         }
-        Gdn::Controller()->Title(wrap(Anchor('Click to remove sorting by Topic', 'plugin/DiscussionTopic/DiscussionTopicSortbyTopic', array('class'=>"hijack")).
-        '  - list sorted by discussion Topic (for Topic analysis purposes)', 'span class=Titlesortnotice'));
+        Gdn::Controller()->Title(wrap(
+            Anchor(
+                'Click to remove sorting by Topic',
+                'plugin/DiscussionTopic/DiscussionTopicSortbyTopic',
+                array('class'=>"hijack")
+            ).
+            '  - list sorted by discussion Topic (for Topic analysis purposes)',
+            'span class=Titlesortnotice'
+        ));
         $GetPrivateObject = function &($Object, $Item) {
             $Result = &Closure::bind(function &() use ($Item) {
                 return $this->$Item;
@@ -2321,8 +2478,47 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         };
         $OrderBy = &$GetPrivateObject($Sender->SQL, '_OrderBys');
         //echo __LINE__.var_dump($OrderBy);
-        $OrderBy[0] = 'd.Topic ASC';//Force our own sorting order
+        $OrderBy[0] = 'd.Topic ASC';        //Force our own sorting order
     }
+/**
+* Check whether a field starts with another string
+*
+* @param  string $Field field to be tested
+* @param  string $Value value to check for
+*
+* @return boolean  true if field starts with passed value.
+*/
+    private function startswith($Field, $Value) {
+        return $Value === "" || strrpos($Field, $Value, -strlen($Field)) !== false;
+    }
+/**
+* Display data to help admins understand the changes by noise words/acronyms/priority phrases
+*
+* @param [type] $Data    Variable to display
+* @param [type] $Message Message assiciated with the displayed variable
+*
+* @return na
+*/
+    private function explaindata($Data, $Message) {
+        $Color = '';
+        if ($Message == '') {
+            $Message = '>'.debug_backtrace()[1]['class'].':'.
+            debug_backtrace()[1]['function'].':'.debug_backtrace()[0]['line'].' called by '.debug_backtrace()[2]['function'];
+            $Color = 'color:blue;';
+        } else {
+            //$Message = '>'.debug_backtrace()[1]['class'].':'.debug_backtrace()[1]['function'].':'.debug_backtrace()[0]['line'].' '.$Message;
+            $Message = '--<b>DiscussionTopic</b> (' . debug_backtrace()[0]['line'] .
+                        '<-'. debug_backtrace()[1]['line'] . ')'. $Message;
+            $Color = 'color:green;background:white;font-size: larger;';
+        }
+        //
+        echo '<pre style="text-align: left; padding: 0 4px;'.$Color.'">'.$Message.'<B>';
+        if ($Data != '') {
+            var_dump($Data);
+        }
+        echo '</B></pre>';
+    }
+    /////////////////////////////////////////////////////////
 /**
 * Display data for debugging
 *
@@ -2337,18 +2533,24 @@ class DiscussionTopicPlugin extends Gdn_Plugin {
         if ($Debug == false) {
             return;
         }
+        $Color = '';
         if ($Message == '') {
-            $Message = '>'.debug_backtrace()[1]['class'].':'.debug_backtrace()[1]['function'].':'.debug_backtrace()[0]['line'].' called by '.debug_backtrace()[2]['function'];
+            $Message = '>'.debug_backtrace()[1]['class'].':'.
+            debug_backtrace()[1]['function'].':'.debug_backtrace()[0]['line'].' called by '.debug_backtrace()[2]['function'].' @ '.debug_backtrace()[1]['line'];
+            $Color = 'color:blue;';
         } else {
             $Message = '>'.debug_backtrace()[1]['class'].':'.debug_backtrace()[1]['function'].':'.debug_backtrace()[0]['line'].' '.$Message;
         }
         if ($Inform == true) {
             Gdn::controller()->informMessage($Message);
-        } else {
-            echo '<pre style="text-align: left; padding: 0 4px;">'.$Message;
-            var_dump($Data);
-            echo '</pre>';
         }
+        //else {
+            echo '<pre style="text-align: left; padding: 0 4px;'.$Color.'">'.$Message;
+        if ($Data != '') {
+            var_dump($Data);
+        }
+        echo '</pre>';
+        //}
     }
     /////////////////////////////////////////////////////////
 }
