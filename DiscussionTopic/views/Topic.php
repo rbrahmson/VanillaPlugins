@@ -31,7 +31,8 @@ echo $this->Form->TextBox(
     'class' => 'TopicBox',
     'rows' => 1)
 );
-echo '<br>'.t('Note: To match other discussions with deterministic topics (see the plugin readme file) you must enclose the topic in double quotes.').'<br>';
+echo '<br>'.t('Note: To match other discussions with deterministic topics (see the plugin readme file)'.
+            'you must enclose the topic in double quotes.').'<br>';
 echo '<br>';
 echo $FormMsg;
 //
