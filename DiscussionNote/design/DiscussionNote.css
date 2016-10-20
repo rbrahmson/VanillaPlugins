@@ -1,0 +1,100 @@
+.Noteinmeta:before {
+    background-color: darkgray; 
+	color: lightyellow;
+    /*content: "Note:";	*/
+	
+} 
+.Noteinmetabackground {
+    background-color: darkgray;
+    float: right;
+	font-weight: normal;
+    font-size: smaller;
+}
+.Noteinmeta {
+	background-color: lightyellow;
+    border-width: 1px;
+    border-color: darkgray;
+    border-style: solid;
+    padding: 0px 3px 0px 4px;
+    border-radius: 1px 1px 8px 1px;
+    line-height: 150%;
+	display:none;
+}
+.Noteinmeta.on{
+    background-color: lightyellow;
+    border-width: 1px;
+    border-color: darkgray;
+    border-style: solid;
+    padding: 0px 3px 0px 4px;
+    border-radius: 1px 1px 8px 1px;
+    line-height: 150%;
+    display: block;
+}
+.Notehead {
+    background-Color: rgba(123, 119, 107, 0.07);
+    color: #23355C;
+    text-align: center;
+	max-width: 250px;
+}
+.Notetitle{
+    background-Color: rgba(123, 119, 107, 0.07);
+    color: #23355C;
+    text-align: left;
+    padding: 5px;
+}
+.NoteBox {
+	background-color: lightyellow;
+    border-color: lightgray;
+    border-style: outset;
+    border-width: 1px 2px 2px 1px;
+    padding: 0px 3px 0px 3px;
+	max-width: 250px;
+}
+.NoteNew {
+	font-weight: normal;
+}
+.Notecss {
+    background: url('NoteOff16x16.png');
+    background-repeat: no-repeat !Important;
+    width: 16px;
+    height: 16px;
+    background-color: darkgray;
+    font-size: 0.1px;
+    text-indent: 999px;
+    float: right;
+    margin: 2px 0px 0px 14px;
+    padding: 0px 0px 0px 0px;
+}
+.Notecss.on {
+	background: url('NoteOn16x16.png');  
+    background-repeat: no-repeat !Important;
+    width: 16px;
+    height: 16px;
+    background-color: darkgray;
+    font-size: 0.1px;
+    text-indent: 999px;
+    float: right;
+    margin: 2px 0px 0px 14px;
+    padding: 0px 0px 0px 0px;
+}
+.NoteVcssoff {	/*Placeholder for note icon*/
+    width: 16px;
+    height: 16px;
+    font-size: 0.1px;
+    text-indent: 999px;
+    float: right;
+    margin: 2px 0px 0px 14px;
+    padding: 0px 0px 0px 0px;
+}
+.NoteVcsson {
+	background: url('NoteOn16x16.png');  
+    background-repeat: no-repeat !Important;
+    width: 16px;
+    height: 16px;
+    background-color: darkgray;
+    font-size: 0.1px;
+    text-indent: 999px;
+    float: right;
+    margin: 2px 0px 0px 14px;
+    padding: 0px 0px 0px 0px;
+}
