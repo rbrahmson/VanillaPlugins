@@ -1,0 +1,594 @@
+/*--- You may need to update the .RSSlogobox definitions for your theme ---*/
+#FDP .RSSlogobox {
+    /*
+	height: 44px !Important;
+    align-items: center;
+    position: absolute;
+    top: -1px;
+    left: -65px;
+	*/
+	align-items: center;
+}
+#FDP .RSSimagelist0,  .RSSimageitem0 {
+    width: 40px !Important;
+    height: 40px !Important;
+    -webkit-max-logical-width: 44px;
+    -webkit-max-logical-height: 44px;
+    border: 1px solid #dddddd;
+    border-radius: 6px;
+    margin-left: 0px;
+    margin-right: 0px;
+	float:left !important;
+}
+#HELP li {
+    list-style-type: decimal;
+    list-style-position: outside;
+    margin-left: 26px;
+    padding-left: 10px;
+}
+.RSSimageitem0 {
+    margin: 0px 3px 3px 3px;
+    padding: 0;
+}
+#FDP  .IndexPhoto img {
+    width: 0px !Important;
+}
+#FDP .ProfilePhoto  {
+    width: 0px !Important;
+}
+div.Border {
+	max-height: 100% !important;
+}
+#FDP FFHEAD {
+    font-size: larger;
+    text-shadow: 1px 1px #00b7ff;
+    padding: 6px;
+    background: whitesmoke;
+    display: table;
+    width: 100%;
+    text-align: Left;
+}
+span.selflogo {
+    content: " ";
+    white-space: pre;
+    background: url(../icon.png) no-repeat center;
+    background-size: contain;
+    width: 26px;
+    display: inline-block;
+    padding: 0px 0px 0px 0px;
+}
+/*
+div#Popup div.Body, div#Popup1 div.Body  {
+	max-height: 871.2px !Important;
+	Max-width: 950px !Important;
+}
+div#Popup h3 {
+	text-shadow: 0 1px 0 #fff;
+    color: #222;
+    background: #dbf3fc;
+    border-top: 1px solid #8bc1de;
+    border-bottom: 1px solid #8bc1de;
+    padding: 10px 20px;
+    font-size: 14px;
+    margin: 0;
+}
+div#Popup .Content form {
+    max-height: 900px !important;
+    overflow: auto;
+    padding: 0 10px 10px;
+}
+*/
+#FDP ffdisable {
+    border: 1px dashed #222;
+    border-radius: .5ex;
+    background: #eeeeee !important;
+    color: gray!Important;
+    text-shadow: none;
+    padding: 3px 6px 1px 6px;
+    margin: 1px 3px 0px 1px;
+    box-shadow: 0 0 2px #999;
+    font-weight: bold;
+    font-size: 12px;
+	cursor: none;
+}
+#FDP .ffdisablelb {
+    border: 1px dashed #222;
+    border-radius: .5ex;
+    padding: 5px 7px;
+    background: #eeeeee !important;
+    color: gray!Important;
+    font-size: 12px;
+	cursor: none;
+	box-shadow: 0 0 2px #999;
+    font-weight: bold;
+    margin: 0 0 0 20px;
+	min-width: 88px;
+}
+#FDP .ffhiddenlb {
+    border: 1px dashed rgb(245, 245, 245) !important;
+    border-radius: .5ex;
+    padding: 5px 7px;
+    background: rgba(238, 238, 238, 0) !important;
+    color: rgb(30, 121, 167)!Important;
+    font-size: 12px;
+    box-shadow: 0 0 2px #f5f5f5;
+    font-weight: bold;
+    margin: 0 0 0 20px;
+}
+@keyframes blink { 
+   50% { border-color: rgba(15, 127, 230, 0.73); } 
+
+}
+#FDP .ffhighlightbutton {
+    animation: blink .5s step-end infinite alternate;
+    border-radius: 5px;
+}
+#FDP .ffembedhelp {
+    border: 4px ridge #d3f0ff;
+    border-radius: 5px;
+    display: block;
+    margin-right: 10px;
+    margin-left: 10px;
+    padding: 7px;
+}
+#FDP .RSSimageboxoption {
+    border: 3px solid rgba(53, 122, 232, 0);
+    /*width: 46px;
+    height: 46px;*/
+    display: block;
+    margin-right: 10px;
+    position: relative;
+    /*float: right;*/
+}
+#FDP .RSSimageoption {
+    border: 1px solid #4787ed;
+    border-radius: 5px;
+    height: 24px;
+    width: 24px;
+    display: table-cell !important;
+}
+#FDP .RSSimageboxtitle {
+    border: 3px solid rgba(53, 122, 232, 0);
+    width: 46px;
+    height: 46px;
+    float: right;
+}
+#FDP .RSSimagebe {
+	border: 1px solid #357ae8;
+    border-radius: 6px;
+    width: 48px;
+    height: 48px;
+    background: white;
+    display: inline-block;
+    color: white;
+}
+#FDP fftitle {
+	margin-left: 40px;
+    font-size: larger;
+    display: inline-block;
+}
+
+#FDP .ffqmsg {	
+	text-align: center;
+    text-shadow: 0.5px 0.5px darkblue;
+    overflow-wrap: normal;
+    background: #0279b3;
+    color: white;
+    display: inline-block;
+}
+#FDP .ffspread {
+    text-align: center;
+    text-align: center;
+    display: flex;
+    white-space: nowrap;
+    justify-content: space-between;
+    padding: 0px 12px 0px 0px;
+    margin: 0px;
+}
+#FDP .ffcolumn {
+    text-align: center;
+    display: table-cell;;
+}
+#FDP FFmsg {
+    color: darkblue;
+    background: white;
+    border-width: 1px 2px 2px 1px !Important;
+    border-radius: 4px;
+    border-style: solid;
+    border-color: royalblue;
+    padding: 1px 4px 1px 4px;
+    display: table;
+    margin: auto;
+}
+#FDP FFBLUE {
+    color: royalblue;
+	text-shadow: 0px 1px darkblue;
+}
+#FDP FFBIG {
+    font-size: 24px;
+    margin: 0px 4px 0px 0px;
+    padding: 0px 0px 0px 0px;
+    position: relative;
+    top: 3px;
+    color: royalblue;
+}
+#FDP FFUfeedhead {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    margin-bottom: 2px;
+    background: whitesmoke;
+    max-height: 50px;
+}
+#FDP FFline {
+    align-items: center;
+    margin-bottom: 2px ;
+	background:whitesmoke;
+    display: table;
+    width: 100%;
+	text-align:Left;
+}
+#FDP FFlabel, #FDP  FFlabellong {
+    font-size: 14px;
+    float: left;
+    margin: 0px 6px 0px 0px;
+    padding: 0px 2px 0px 0px;
+    display: table-cell;
+    width: 180px;
+}
+#FDP  FFFIELD {
+    display: table-cell;
+	margin-right: 10px;
+	font-weight: bolder;
+    font-size: +1.1em;
+}
+#FDP FFchecktext {
+    line-height: 16px;
+    vertical-align: middle;
+    display: table-cell;
+    text-align: Left;
+}
+#FDP FFdroptext {
+	padding: 4px;
+}
+#FDP h4 {
+	border-width: 0px 0px 2px 0px !Important;
+    border-style: solid;
+    border-color: #8bc1de!important;
+    margin: 0px 0px 4px 0px;
+    padding: 1px 0px 0px 0px;
+    font-size: 16px;
+}
+#FDP input.NoInput {
+	border-width: 0;
+    background: initial;
+    pointer-events: none;
+    font-size: 0px;
+    width: 0px;
+}
+#FDP label.FFCHECKBOX {
+    display: table-cell !important;
+    vertical-align: middle;
+    width: 190px;
+}
+#FDP ffinputs {
+    line-height: 17px;
+    font-size: 14px;
+    color: black;
+    margin-top: 3px;
+    margin-bottom: 3px;
+}
+#FDP FFtext {
+    display: table-cell !important;
+    float: right;
+    color: darkslategray;
+    font-size: 14px;
+    margin: 0px 0px 0px 6px;
+    width: 446px;
+}
+#FDP blockquote.Quote {
+    background: rgba(0, 0, 0, 0.05);
+    border: 2px solid lightgray;
+    display: inline-block;
+    margin: 1em;
+    padding: 1px 6px;
+    overflow-y: auto;
+    color: #031b63;
+    text-shadow: 0px 0.4px darkblue;
+    font-family: monospace;
+    font-size: 1.3em;
+}
+/***********************************/
+
+.FDPbatch {
+	max-height:90% !important;
+	max-width:96% !important;
+	
+    top: initial !important;
+    left: initial !important;
+}
+
+.RSSfeedid {
+    font-size: 10px;
+    font-stretch: extra-expanded;
+    background: #e8f5f9;
+    font-weight: bold;
+    margin: 0px 0px 0px 0px;
+    padding: 0px 2px 0px 2px;
+    position: relative;
+    top: 1px;
+    left: 23px;
+    border: 1px solid gray;
+    border-radius: 0px 6px 0px 6px;
+    display: none;
+}
+.RSSimagebackground {
+    /*float: right;
+    line-height: 0px;
+    padding-left: 5px;
+    padding-right: 5px;
+    margin-left: 5px;
+    margin-right: 5px;*/
+}
+.RSSsourcebox {
+	align-items: center;
+    margin: 0px 0px 0px 4px;
+}
+.RSSsource {
+    white-space: nowrap;
+}
+.RSSdetailbe {
+	display: block;
+    min-height: 96px;
+	max-height: 120px;
+}
+.RSSleftblock {
+    border: 3px solid rgba(255, 0, 0, 0);
+    border-radius: 3px;
+    margin-right: 5px;
+    display: inline-grid;
+    float: left;
+}
+.RSSrightblock {
+    margin: 7px 3px 0px 0px;
+    float: right;
+    display: inline-block;
+}
+.RSSmiddleblock {
+    border: 2px solid green;
+    border-radius: 3px;
+    display: inline-block;
+}
+.RSSbuttonboxbe {
+    display: inline-block;
+}
+.Activebe {
+	font-weight: bold;
+}
+.Activebe {
+	color:green;
+}
+.Inactivebe {
+	color:red;
+}
+.Encldingbe {
+    border: 1px solid #4787ed;
+    width: 74px;
+    height: 19px;
+}
+.Attrbe  {
+	white-space: nowrap;
+	overflow: hidden;
+}
+.RSSimageitem {
+    border: 1px solid gray;
+    border-radius: 3px;
+    background: whitesmoke;
+    margin: -48px 0px 0px -57px;
+    position: relative;
+    z-index: 1;
+    white-space: pre;
+}
+.RSSimagelist {
+    position: sticky;
+	width:50px
+}
+
+/*----------------------------------------------*/
+div.CopyAuthor {
+	position: relative;
+    line-height: 1;
+	float: left;
+	padding: 2px;
+    line-height: 1.428571429;
+    background-color: #ffffff;
+    border: 1px solid #dddddd;
+    -webkit-border-radius: 4px;
+    -moz-border-radius: 4px;
+    border-radius: 4px;
+    -webkit-transition: all 0.2s ease-in-out;
+    -moz-transition: all 0.2s ease-in-out;
+    -o-transition: all 0.2s ease-in-out;
+    transition: all 0.2s ease-in-out;	
+}
+div.AddFeed .Buttons {
+   padding-bottom: 20px;
+}
+#Content UL {
+    padding: 2px 8px 2px 11px !important;
+}
+#Content div.AddFeed ul li div.Info{
+   margin-top: 0px;
+}
+#Content FFcenter {
+	margin-left: 20%;
+}
+#Content FFBOX {
+    border: 1px solid #0F7FE6;
+    border-radius: 5px;
+    padding: 3px 5px 2px 4px;
+    background: #aee7fe !important;
+}
+WideInput.NoInput {
+	border-width: 0;
+    background: initial;
+    pointer-events: none;
+    font-size: 0px;
+    width: 0px;
+}
+#Content FFREFBUTTON {
+    border: 1px solid #357ae8;
+    border-radius: 5px;
+    padding: 0px 4px 0px 3px;
+    font-weight: lighter;
+    text-shadow: initial;
+    font-size: 12px !Important;
+    margin: 2px 2px 2px 2px;
+    background: #dbf3fc !important;
+    color: #003673!Important;
+}
+#Content FFActive {
+    color: green!Important;
+    margin: 0px 6px 0px 4px;
+}
+#Content FFInactive {
+    color: red!Important;
+    margin: 0px 6px 0px 4px;
+}
+#Content FFGREEN {
+    color: green;
+	text-shadow: 0px 1px darkblue;
+}
+#Content FFGRAY {
+    color: gray;
+	text-shadow: 0px 1px darkblue;
+}
+#Content FFRED {
+    color: RED;
+}
+#Content h1 a {
+	margin-left: 2px;
+}
+#Content note {
+    display: block;
+    font-size: 14px;
+    float: none;
+    margin: 1px 3px 0px 0px;
+}
+#Content xFFlabel:after {
+	content: " . . . . . . . . . . . . . . . . . . ";
+    text-overflow: clip;
+    display: inline-flex;
+    white-space: nowrap;
+    width: 1%;
+    max-width: 35px;
+	color: red;
+	
+    z-index: -1;
+}
+#Content FFnote {
+    line-height: 16px;
+    padding-left: 6px;
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+}
+#Content FFcontinue {
+    display: initial;
+    color: darkslategray;
+    font-size: 14px;
+    margin: 0px 0px 0px 6px;
+	float:right;
+}
+#Content ffinputs {
+    line-height: 17px;
+    font-size: 14px;
+    color: black;
+    margin-top: 3px;
+    margin-bottom: 3px;
+}
+#XContent input {
+    display: block;
+	color:black;
+    font-size: 14px;
+    float: none;
+    margin: 1px 3px 0px 0px;
+}
+Xform ul li label {
+    color: black;
+    display: block;
+    font-size: 14px;
+    font-weight: bold;
+    float: left;
+    margin: 1px 3px 0px 0px;
+}
+.Button {
+	background: #aee7fe !important;
+}
+.Buttons {
+    padding-bottom: 0px !important;
+}
+.UpdateFeedButton {
+	float:right;
+	color:red;
+	min-width = 100px;
+}
+.UpdateFeed {
+	padding: 2px 4px 0px 4px !important;
+    margin: 0px 2px 0px 0px !important;
+}
+.FeedItemTitle {
+	font-weight: bold;
+	margin-right: 6px;
+}
+div.ActiveFeeds {
+   padding: 4px;
+}
+.DeleteFeed {
+   top: 5px !Important;
+   padding: 2px 4px 0px 4px !important;
+   margin: 0px 2px 0px 0px !important;
+}
+.FeedItem {
+    border-width: 1px 1px 1px 1px !Important;
+    border-style: solid;
+    border-color: #8bc1de!important;
+    border-radius: 8px;
+    margin: 0px 0px 4px 0px !Important;
+    padding: 0px 0px 0px 4px !important;
+}
+div.ActiveFeeds div.FeedItem {
+   border-bottom: 1px solid #e0e0e0;
+   margin: 10px 20px 0px 20px;
+   padding-bottom: 10px;
+   position: relative;
+}
+
+div.ActiveFeeds div.FeedItem div.FeedItemURL {
+   font-weight: bold;
+}
+
+div.ActiveFeeds div.FeedItem div.FeedItemInfo {
+   color: #555555;
+   font-size: 90%;
+}
+
+div.ActiveFeeds div.FeedItem div.FeedItemInfo span {
+   margin-right: 10px;
+}
+
+div.ActiveFeeds div.FeedItem div.DeleteFeed {
+   position: absolute;
+   top: 0px;
+   right: 0px;
+}
+
+div.Comment div.AutoFeedDiscussion img {
+   float: left;
+   padding: 0px 15px 15px 0px;
+   border: 0px;
+}
+
+div.Comment div.AutoFeedDiscussion {
+   overflow: hidden;
+}
