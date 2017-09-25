@@ -1,12 +1,8 @@
 <?php if (!defined('APPLICATION')) exit();
-		//if (!$this->Plugin->IsEnabled()) return;
-		//echo '<link rel="stylesheet" type="text/css" href="'. asset("plugins/FeedDiscussionsPlus/design/feeddiscussionsplus.css").'" />';
-		//
 		$Mode = $this->Data('Mode');
 		$Feed = $this->Data('Feed');
 		$FeedKey = $this->Data('FeedKey');
 		$FeedURL = $this->Data('FeedURL');
-		//echo "<br>".__LINE__." Mode:".$Mode." Feedurl:".$FeedURL.' File:'.__FILE__.'<br>';
 		if ($Mode == 'Add') {
 			$Process = Url('plugin/feeddiscussionsplus/addfeed///Add');
 			$Defaultrefresh = '1w';
@@ -37,8 +33,8 @@
 			'" title="'.t('Return to the definitions list').'">Return</a></span>';
 		//
 		if ($RSSimage) {
-			 $Logo = '<span class="RSSimageboxtitle" > <img src="' . $RSSimage . '" id=RSSimage class=RSSimagebe ></span> ';
-			 $Logooption = '<span   > <img src="' . $RSSimage . '" id=RSSimage class=RSSimageoption ></span> ';
+             $Logo = '<span class="RSSimageboxtitle"> <img src="' . $RSSimage . '" id=RSSimage class=RSSimagebe title=" " ></span> ';
+             $Logooption = '<span> <img src="' . $RSSimage . '" id=RSSimage class=RSSimageoption title=" " ></span> ';
 		 } else {
 			 $Logo = '';
 			 $Logooption = '';
@@ -73,7 +69,7 @@
 		echo '<FFUfeedhead>';
 			echo $this->Form->Label('<FFlabel>Feed URL</FFlabel>', 'FeedURL');
 			if ($Mode == 'Update') {
-				echo $this->Form->TextBox('FeedURL', array('class' => 'InputBox WideInput NoInput ', 'maxlength' => 1,)).'<FFFIELD>'.$FeedURL.'</FFFIELD>&nbsp&nbsp&nbsp'.'<FFBLUE>'.$Feedtitle.'</FFBLUE>'.$Logo;
+				echo $this->Form->TextBox('FeedURL', array('class' => 'InputBox WideInput NoInput ', 'maxlength' => 1,)).'<FFFIELD>'.$FeedURL.'<br><FFBLUE>'.$Feedtitle.'</FFBLUE></FFFIELD>&nbsp&nbsp&nbsp'.$Logo.'&nbsp&nbsp&nbsp('.$Encoding.' format)&nbsp&nbsp&nbsp';
 				$Validatorurl='http://www.feedvalidator.org/check?url='. $FeedURL;
 				// If the following validator stops working you can use the previous one.
 				$Validatorurl='https://validator.w3.org/feed/check.cgi?url='. $FeedURL;
@@ -90,7 +86,7 @@
 		echo '<FFline>'.$this->Form->CheckBox('Historical', '<b>Import Historical Posts</b>', array('value' => '1', 'class' => 'FFCHECKBOX')).'<FFchecktext> Requests import of older feed posts.  This is automatically unchecked after the first import.</FFchecktext></FFline>';
 		//
 		if ($LastImport != 'never') {
-			echo '<FFline>'.$this->Form->CheckBox('Reset', '<b>Check feed ASAP</b>', array('value' => '0', 'class' => 'FFCHECKBOX')).'<FFchecktext> Check & update feed when changes are saved (this one-time ignores the frequency check set below). </FFchecktext></FFline>';
+			echo '<FFline>'.$this->Form->CheckBox('Reset', '<b>Check feed ASAP</b>', array('value' => '0', 'class' => 'FFCHECKBOX')).'<FFchecktext> Check & update feed when changes are saved (this option is disabled after the first import. It ignores the frequency check set below). </FFchecktext></FFline>';
 		}
 		//
         echo '<FFline>'.$this->Form->Label('<FFlabel>Target Category</FFlabel>', 'Category');
@@ -114,7 +110,7 @@
 		//
 		echo '<FFline>';
 		echo $this->Form->Label('<FFlabel>Maximum items:</FFlabel>', 'Maxitems');
-        echo $this->Form->TextBox('Maxitems', array('class' => 'InputBox')).'<FFtext> The maximum number of items to import from this feed each time it is checked (leave blank for no limit)</FFtext>';
+        echo $this->Form->TextBox('Maxitems', array('class' => 'InputBox')).'<FFtext> The maximum number of items to import from this feed each time it is checked (leave blank or zero for no limit)</FFtext>';
 		echo '</FFline>';
 		//
 		echo '<FFline>';
@@ -154,7 +150,7 @@
 		//
 		echo '<FFline>';
 		echo $this->Form->Label('<FFlabel>Minumum words:</FFlabel>', 'Minwords');
-		echo $this->Form->TextBox('Minwords', array('class' => 'InputBox')).'<FFtext> Minimum number of words a feed item <b>body</b> must contain a to be imported. Use this to ignore mostly empty items</FFtext>';
+		echo $this->Form->TextBox('Minwords', array('class' => 'InputBox')).'<FFtext> Minimum number of words a feed item <b>body</b> must contain a to be imported. Use this to ignore mostly empty items (leave blank or zero for no minimum)</FFtext>';
 		echo '</FFline>';
 		echo '</ffinputs>';
 		//

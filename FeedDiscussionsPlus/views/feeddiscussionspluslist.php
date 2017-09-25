@@ -14,16 +14,18 @@
 		$Feedsarray = $this->Data('Feeds');
 		$NumFeeds = count($Feedsarray);
 		$NumFeedsActive = count(array_keys(array_column($Feedsarray, 'Active'), true));
-		if (!function_exists('comp')) {
-			function comp($a, $b) {
-			if ($a['Active'] == $b['Active']) {
-				return $a['Feedtitle'] > $b['Feedtitle'];
-			}
-			return ($a['Active'] < $b['Active']);
-			}
-		}
-		usort($Feedsarray, 'comp');
-		$Feedsarray = array_combine(array_column($Feedsarray, 'URL'), $Feedsarray);
+        if (!c('Plugins.FeedDiscussionsPlus.Nosort')) {
+            if (!function_exists('comp')) {
+                function comp($a, $b) {
+                if ($a['Active'] == $b['Active']) {
+                    return $a['Feedtitle'] > $b['Feedtitle'];
+                }
+                return ($a['Active'] < $b['Active']);
+                }
+            }
+            usort($Feedsarray, 'comp');
+        }
+        $Feedsarray = array_combine(array_column($Feedsarray, 'URL'), $Feedsarray);
 		//	
 		if ($NumFeedsActive) {
 		   $Headmsg = "<span>".$NumFeeds." ".Plural($NumFeeds,"Defined Feed ","Defined Feeds ").',  '.$NumFeedsActive." ".Plural($NumFeedsActive,"Active Feed ","Active Feeds ")."</span>";
@@ -37,6 +39,7 @@
 		$Qmsg = $this->Data('Qmsg');
 		if ($Qmsg != '') {
 			$Titlemsg = '<br><div class=ffqmsg>'.strip_tags($Qmsg).'</div>';
+			$Titlemsg = '<br><div class=ffqmsg>'.$Qmsg.'</div>';
 		} else {
 			$Titlemsg = '';
 		}
@@ -70,8 +73,8 @@
 			 Gdn::session()->stash("FDPbackend", 'Backend');
 	   } else {
 		   Gdn::session()->stash("FDPbackend", 'Inactive');
-		   $Checkfeedsbutton = '<a class="Button ffcolumn ffdisablelb" href="' . Url('/plugin/feeddiscussionsplus/CheckFeeds/backend'). 
-	   '" target=_blank title="' . t('Disabled until you have active feeds').'">Check Active Feeds Now <FFBLUE>➤↗</FFBLUE></a>';
+		   $Checkfeedsbutton = '<a class="Button ffcolumn ffdisablelb" href="' . Url('/plugin/feeddiscussionsplus/ListFeeds'). 
+	   '"  title="' . t('Disabled until you have active feeds').'">Check Active Feeds Now <FFBLUE>➤↗</FFBLUE></a>';
 			 Gdn::session()->stash("FDPbackend", 'Backend');
 	   }
 	   
@@ -103,6 +106,9 @@
      echo $Addbutton;
 	 echo '<div id=HELP><div class=ffembedhelp>';
 	 include_once "AddfirstGuide.htm";
+     echo 'For detailed information see the full' .
+            '<a href="'.Url('/plugin/feeddiscussionsplus/Readme').
+            '" > Customization Guide.';
 	 echo '</div></div>';
    } else {
       foreach ($Feedsarray as $FeedURL => $FeedItem) {
@@ -129,13 +135,13 @@
 		 }
 		 
 		 
-		 $Editbutton = '<a class="Button UpdateFeed  " id=displayonform href="'.Url('/plugin/feeddiscussionsplus/updatefeed/'.FeedDiscussionsPlusPlugin::EncodeFeedKey($FeedURL)).'" title="'.t('Edit feed definitions'). '"><FFBLUE>📄⤴</FFBLUE> Edit</a>';
+		 $Editbutton = '<a class="Button UpdateFeed  " id=displayonform href="'.Url('/plugin/feeddiscussionsplus/updatefeed/'.FeedDiscussionsPlusPlugin::EncodeFeedKey($FeedURL)).'" title="'.t('Edit feed definitions'). '"><FFBLUE>📄</FFBLUE> Edit</a>';
 		 
 		 $Modelbutton = '<a class="Button UpdateFeed" id=displayonform href="'.Url('/plugin/feeddiscussionsplus/loadfeedform/'.FeedDiscussionsPlusPlugin::EncodeFeedKey($FeedURL)).'/model" title="'.t('Load definition on the form above to allow additions').'"><FFBLUE>📄⤴</FFBLUE> Use as model</a>';
 		 $Modelbutton = '';
 		 $Displaybutton = '<a class="Button UpdateFeed" id=displayonform href="'.Url('/plugin/feeddiscussionsplus/loadfeedform/'.FeedDiscussionsPlusPlugin::EncodeFeedKey($FeedURL)).'" title="'.t('Load definition on the form above to allow updates'). '"><FFBLUE>📄⤴</FFBLUE> Display</a>';
 		 
-		 $Deletebutton = '<a class="Button DeleteFeed" href="'.Url('/plugin/feeddiscussionsplus/deletefeed/'.FeedDiscussionsPlusPlugin::EncodeFeedKey($FeedURL)).'" title="'.t('Careful-delete cannot be undone'). '"><FFRED>✘</FFRED> Delete</a>';
+		 $Deletebutton = '<a class="Button DeleteFeed" href="'.Url('/plugin/feeddiscussionsplus/deletefeed/'.FeedDiscussionsPlusPlugin::EncodeFeedKey($FeedURL)).'" title="'.t('Careful...'). '"><FFRED>✘</FFRED> Delete</a>';
 		 
 		 
 		 if ($FeedItem['RSSimage']) {
@@ -144,7 +150,8 @@
 			 $Logo = '';
 		 }
 		 
-		 
+		 $FeedKey = $FeedItem['FeedKey'];
+         //echo "Internal Key:<FFRED>".$FeedKey.'</FFRED>';
 		 $OrFilter = $FeedItem['OrFilter'];
 		 $AndFilter = $FeedItem['AndFilter'];
 		 $Minwords = $FeedItem['Minwords'];

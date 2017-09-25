@@ -103,6 +103,7 @@ div#Popup .Content form {
     font-weight: bold;
     margin: 0 0 0 20px;
 	min-width: 88px;
+    /*pointer-events: none;*/
 }
 #FDP .ffhiddenlb {
     border: 1px dashed rgb(245, 245, 245) !important;
@@ -146,6 +147,10 @@ div#Popup .Content form {
     height: 24px;
     width: 24px;
     display: table-cell !important;
+    color: black;
+    word-break: break-word;
+    font-size: xx-small;
+    cursor: none;
 }
 #FDP .RSSimageboxtitle {
     border: 3px solid rgba(53, 122, 232, 0);
@@ -160,7 +165,10 @@ div#Popup .Content form {
     height: 48px;
     background: white;
     display: inline-block;
-    color: white;
+    color: black;
+    word-break: break-word;
+    font-size: xx-small;
+    cursor: none;
 }
 #FDP fftitle {
 	margin-left: 40px;
