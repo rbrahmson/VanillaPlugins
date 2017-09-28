@@ -32,7 +32,7 @@
 $PluginInfo['FeedDiscussionsPlus'] = array(
     'Name' => 'Feed Discussions Plus',
     'Description' => "Automatically create Vanilla discussions based on RSS/Atom feed imported content.",
-    'Version' => '2.1.b4',
+    'Version' => '2.1.b5',
     'RequiredApplications' => array('Vanilla' => '2.3'),
     'MobileFriendly' => true,
     'HasLocale' => true,
@@ -101,10 +101,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 */
     public function discussioncontroller_beforediscussionrender_handler($Sender) {
         //$this->DebugData(__LINE__, '', 1);
-        if (c('Plugins.FeedDiscussionsPlus.Userinitiated', 'true')) {
-            if ($this->checkfeeds($Sender, false)) {
-                  $Sender->AddJsFile('feeddiscussionsplus.js', 'plugins/FeedDiscussionsPlus');
-            }
+        if ($this->checkfeeds($Sender, false)) {
+              $Sender->AddJsFile('feeddiscussionsplus.js', 'plugins/FeedDiscussionsPlus');
         }
     }
 /**
@@ -120,7 +118,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $i = count($Args);
         $Cron - false;
         $Backend = false;
-        $croncode = c('Plugins.FeedDiscussionsPlus.croncode', 'secret');
+        $croncode = c('Plugins.FeedDiscussionsPlus.croncode', 'code');
         $Backendstate = Gdn::session()->stash("FDPbackend");
         Gdn::session()->stash("FDPbackend", $Backendstate); //Preserve whatever state was set by caller
         //
@@ -787,7 +785,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $FeedKey = val(1, $Sender->RequestArgs, null);
         if (!is_null($FeedKey) && $this->HaveFeed($FeedKey)) {
             $Feed = $this->GetFeed($FeedKey, true);
-            decho($Feed);
+            //decho($Feed);
             $FeedURL = $Feed["FeedURL"];
             //$this->DebugData($FeedURL, '---FeedURL---', 1);
             $Feedtitle = $Feed['Feedtitle'];
@@ -933,6 +931,11 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Datekey = 'pubDate';
             $Contentkey = 'description';
             $Linkkey = '0';
+        } elseif ($Encoding == 'Youtube') {
+            $Itemkey = 'entry';
+            $Datekey = 'published';
+            $Contentkey = 'mediagroup.mediadescription';
+            $Linkkey = 'link';
         } elseif ($Encoding == 'New') {          //Change to a different encoding and set the tags as necessary
             $Itemkey = 'channel.item';
             $Datekey = 'pubDate';
@@ -983,9 +986,11 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         foreach ($Items as $Item) {
             $Item = (array)$Item;
             //$Item["content"] = __LINE__.' T E S T';
-            //$this->DebugData($Item, '---Item---', 1);
             //$this->DebugData(array_keys($Item), '---array_keys($Item)---', 1);
             $NumCheckedItems +=1;
+            if ($NumCheckedItems == 1) {
+                //$this->DebugData($Item, '---Item---', 1);
+            }
             $Skipitem = false;
             //$this->DebugData((array)$Item["author"], '---(array)Item["author"]---', 1);
             //$this->DebugData((array)$Item["guid"], '---(array)Item["guid"]---', 1);
@@ -1080,13 +1085,30 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                     $StoryBody = $this->Imagereformat($StoryBody, '!');
                 }
                 //
+                if ($Encoding == 'Youtube') {
+                    //$this->DebugData($Itemurl, '---Itemurl---', 1);
+                    $Query   = @parse_url($Itemurl, PHP_URL_QUERY);
+                    //$this->DebugData($Query, '---Query---', 1);  //Expecting "v=knjht2aXBIk"
+                    $Youtubeid = substr($Query, 2);
+                    //$this->DebugData($Youtubeid, '---Youtubeid---', 1);  //Expecting "v=12345678901"
+                    if (!$Youtubeid) {
+                      $Youtubeid = '12345678901';
+                    }
+                    $Youtubesnap = 'https://img.youtube.com/vi/' . $Youtubeid . '/default.jpg';
+                    //  <a rel="nofollow" target="_blank" href="https://www.youtube.com/watch?v=12345678901"><img width="240" alt="aaa" src="https://img.youtube.com/vi/12345678901/default.jpg" height="135"></a>
+                    $StoryBody = t('Click to view YouTube video:') . 
+                               '<div><a id=FDPyoutube rel="nofollow" target="_blank" href="' .
+                               $Itemurl . '" ><img width="240" height="135" alt="" src="' .
+                               $Youtubesnap . '" ></a></div><br>' . $StoryBody;
+                }
+                //
                 $StoryPublished = date("Y-m-d H:i:s", $ItemPubTime);
                 $Domain = @parse_url($Itemurl, PHP_URL_HOST);
                 //$this->DebugData($Itemurl, '---Itemurl---', 1);
             }
             if (!$Skipitem  && $AutoImport) {
                 echo '<br>&nbsp&nbsp&nbsp Processing item #'.$NumCheckedItems.':"'.SliceString($StoryTitle, 40).'".  ';
-            }
+            } 
             if (!$Skipitem && $OrFilter != '') {
                 //$this->DebugData($OrFilter, '---OrFilter---', 1);
                 $Tokens = explode(",", $OrFilter);
@@ -1110,7 +1132,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                     $NumFilterFailedItems +=1;
                 }
             }
-            //
+            // 
             if (!$Skipitem && $AndFilter != '') {
                 //$this->DebugData($AndFilter, '---AndFilter---', 1);
                 $Tokens = explode(",", $AndFilter);
@@ -1130,7 +1152,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                        echo " Matched AND filter:".$AndFilter." ";
                 }
             }
-            //
+            // 
             if (!$Skipitem && $Minwords != '') {
                 //$this->DebugData($Minwords, '---Minwords---', 1);
                 if (str_word_count(strip_tags($StoryBody))<$Minwords) {
@@ -1201,7 +1223,6 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                 if (!$Skipitem) {
                     $DiscussionData[$DiscussionModel->Type] = 'Feed';
                     setValue('Type', $DiscussionModel, 'Feed');
-
                     $InsertID = $DiscussionModel->Save($DiscussionData);
                     if ($InsertID) {
                         //var_dump ($InsertID);
@@ -1211,12 +1232,10 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                     }
                     $LastSavedItemPubTime = date('c', $ItemPubTime);
                     $NumSavedItems += 1;
-                    //$this->DebugDatl($DiscussionData["Name"], '---Saved...---', 1);
-                    //die(0);
+                    //$this->DebugData($DiscussionData["Name"], '---Saved...---', 1);
                     $this->EventArguments['DiscussionID'] = $InsertID;
                     $this->EventArguments['Vaidation'] = $DiscussionModel->Validation;
                     $this->FireEvent('Published');
-
                     // Reset discussion validation
                     $DiscussionModel->Validation->Results(true);
                 }
@@ -1714,12 +1733,17 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 */
     private function rebuildurl($Url, $Setscheme = '') {
         //$this->DebugData($Url, '---Url---', 1);
+        //$this->DebugData(@parse_url($Url), '---@parse_url(Url)---', 1);
         $Domain = @parse_url($Url, PHP_URL_HOST);
         $Path   = @parse_url($Url, PHP_URL_PATH);
+        $Query   = @parse_url($Url, PHP_URL_QUERY);
         if ($Setscheme) {
             $Url = $Setscheme . '://' . $Domain . $Path;
         } else {
             $Url = $Domain . $Path;
+        }
+        if ($Query) {
+            $Url = $Url . '?' . $Query;
         }
         //$this->DebugData($Url, '---Url---', 1);
         return $Url;
@@ -1728,28 +1752,44 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 * Try to discover feed for a url
 *
 * @param object $Sender    Standard
+* @param string $Url       Url for which to check for referral to a feed url
 * @param string $Websource Web source for which to check for referral to a feed url
 *
 * @return string url of feed referred to by the passed web source
 */
-    private function discoverfeed($Sender, $Websource) {
+    private function discoverfeed($Sender, $Url, $Websource) {
         //Check for feed url within the web page itself:
         //<link rel="alternate" type="application/rss+xml" title="whateve.r." href="url of feed" />
         //<link rel="alternate" type="application/rss+xml" title="blah" href="http://feeds.feedburner.com/something">
+        //<link rel="search" type="application/opensearchdescription+xml" href="https://www.youtube.com/opensearch?locale=en_US" title="YouTube Video Search">
         $Headtag = $this->getbetweentags($Websource, 'head');
         //echo '<br>'.__LINE__.': '.substr(htmlspecialchars($Headtag),0,1500);
         $Results = $this->getwithintag($Headtag, 'link');
         //$this->DebugData($Results, '---Results---', 1);
         $Foundlinktag = false;
+        $Foundsearchtag = false;
         foreach ($Results as $Link) {
             preg_match_all('/(\w+)\s*=\s*(?|"([^"]*)"|\'([^\']*)\')/', $Link, $Sets, PREG_SET_ORDER);
             //$this->DebugData($Sets, '---Sets---', 1);
             foreach ($Sets as $Keywords) {
-                if (strtolower($Keywords[1])== 'rel' && strtolower($Keywords[2]) == 'alternate') {
-                    //$this->DebugData($Keywords, '---Keywords---', 1);
-                    $Foundlinktag = true;
+                //$this->DebugData($Keywords, '---Keywords---', 1);
+                //$this->DebugData($Foundsearchtag, '---Foundsearchtag---', 1);
+                //$this->DebugData(strtolower($Keywords[1]), '---strtolower(Keywords[1])---', 1);
+                if (strtolower($Keywords[1])== 'rel') { 
+                    if (strtolower($Keywords[2]) == 'alternate') {
+                        //$this->DebugData($Keywords, '---Keywords---', 1);
+                        $Foundlinktag = true; 
+                        $Foundsearchtag = false;
+                    } elseif (strtolower($Keywords[2]) == 'search') {
+                        //$this->DebugData($Keywords, '---Keywords---', 1);
+                        $Foundsearchtag = true;
+                    }
                 } elseif ($Foundlinktag && strtolower($Keywords[1])== 'href') {
                     //$this->DebugData($Keywords, '---Keywords---', 1);
+                    if (substr($Keywords[2],0,1) == '/') {              //relative url?
+                        $Keywords[2] = $Url . $Keywords[2];
+                        //$this->DebugData($Keywords[2], '---Keywords[2]---', 1);
+                    }
                     if (stripos($Keywords[2], 'feedburner.com')) {
                         //$this->DebugData($Keywords, '---Keywords---', 1);
                         return trim($Keywords[2]).'?format=xml';
@@ -1757,8 +1797,27 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                         //$this->DebugData($Keywords, '---Keywords---', 1);
                         return trim($Keywords[2]);
                     }
+                } elseif ($Foundsearchtag && (strtolower($Keywords[1])== 'href')) {
+                    //$this->DebugData($Keywords, '---Keywords---', 1);
+                    if (stripos($Keywords[2], "youtube.com")) {
+                        //$this->DebugData($Keywords, '---Keywords---', 1);
+                        $i = stripos($Websource, '"rssUrl":"https://www.youtube.com/feeds/videos.xml?channel_id=');
+                        //$this->DebugData($i, '---i---', 1);
+                        if ($i) {
+                            $j = stripos(substr($Websource, $i+18), ','); 
+                            if ($j>20) {
+                                $Channelurl = substr($Websource, $i+18, ($j-1));
+                                //$this->DebugData($Channelurl, '---Channelurl---', 1);
+                                //expected format: https://www.youtube.com/feeds/videos.xml?channel_id=12345678901234567890123456
+                                return $Channelurl;
+                            }
+                        }
+                    } else {
+                        //$this->DebugData($Keywords, '---Keywords---', 1);
+                        //ignoring
+                    }
                 }
-            }
+             }
         }
         return '';
     }
@@ -1803,6 +1862,10 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 * @return none
 */
     private function postmsg($Sender, $Msg) {
+        $Qmsg = $Sender->Data('Qmsg');
+        if ($Qmsg) {
+            $Msg = $Msg . '<br>' . $Qmsg;
+        }
         $Sender->InformMessage($Msg);
         $Sender->SetData('Qmsg', $Msg);
         $this->SetStash($Msg, 'Qmsg');
@@ -1938,7 +2001,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                 $Response['Error'] = __LINE__." URL  looks like this is a web page, not a feed.";
                 //Check for feed url within the web age itself:
                 //<link rel="alternate" type="application/rss+xml" title="whateve.r." href="url of feed" />
-                $SuggestedURL = trim($this->discoverfeed($Sender, $FeedRSS));
+                $SuggestedURL = trim($this->discoverfeed($Sender, $Url, $FeedRSS));
                 if ($SuggestedURL) {        //Discovered implied feed?
                     $Response['Error'] = "Consider the suggested feed instead:".$SuggestedURL;
                     //$this->DebugData($Feedurl, '---Feedurl---', 1);
@@ -1950,6 +2013,10 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             //$this->DebugData($Encoding, '---Encoding---', 1);
             if ($Encoding == 'Atom' | $Encoding == 'RSS' | $Encoding == 'New') {
                 $Response['Encoding'] = $Encoding;
+            } elseif ($Encoding == 'Youtube') {
+                $Response['Encoding'] = $Encoding;
+                // Replace all "<media:" tags with "<media" to bypass simplexml parsing error 
+                $FeedRSS = strtr($FeedRSS, array('media:description' => 'mediadescription', 'media:group' => 'mediagroup'));
             } else {
                 //$this->DebugData($Encoding, '---Encoding---', 1);
                 $Response['Error'] = ' ,'.__LINE__." URL content is not a recognized feed (code ".$Encoding.")";
@@ -1984,14 +2051,19 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             //
             if ($Encoding == 'Atom') {
                 $Updated = (string)$this->getentity($RSSdata, 'updated', 'channel.lastBuildDate', $FeedRSS, '');
+                $Title = (string)$this->getentity($RSSdata, 'title', 'channel.title', $FeedRSS, '');
+            } elseif ($Encoding == 'Youtube') {        //Enter appropriate keys to read this encoding
+                $Updated = (string)val('published', $RSSdata, '');
+                $Title = (string)valr('title', $RSSdata, '');
             } elseif ($Encoding == 'New') {        //Enter appropriate keys to read this encoding
                 $Updated = (string)val('updated', $RSSdata, '');
+                $Title = (string)$this->getentity($RSSdata, 'title', 'channel.title', $FeedRSS, '');
             } else {
                 $Encoding = 'RSS';
                 $Updated = (string)valr('channel.lastBuildDate', $RSSdata, $this->getbetweentags($FeedRSS, 'lastBuildDate'));
+                $Title = (string)$this->getentity($RSSdata, 'title', 'channel.title', $FeedRSS, '');
             }
-            $Response['Encoding'] = $Encoding;
-            $Title = (string)$this->getentity($RSSdata, 'title', 'channel.title', $FeedRSS, '');
+            //
             if (c('Plugins.FeedDiscussionsPlus.GetLogo', false)) {
                 $Link = (string)valr('link', $RSSdata, $this->getbetweentags($FeedRSS, 'link'));
                 //$this->DebugData($Link, '---Link---', 1);
@@ -2012,7 +2084,9 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             //$this->DebugData($Channel, '---Channel---', 1);
             //$this->DebugData($Title, '---Title---', 1);
         }
-        //$Response['RSSdata'] = 'testing';
+        //$Response['RSSdata'] = __LINE__.' TESTING '.htmlspecialchars($Response['RSSdata']);
+        //$this->DebugData($Response, '---Response---', 1);
+        //die(0);
         //$this->DebugData(htmlspecialchars($Response['RSSdata']), '---Response[RSSSdata]---', 1);
         //$this->DebugData($Response['Channel'], '---Response[Channel]---', 1);
         //
@@ -2027,7 +2101,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 */
     private function getencoding($FeedRSS) {
         //$this->DebugData('','',true,true);
-        $Tags = array(    'Atom' => '<Feed',
+        $Tags = array(  'Youtube' => "<feed xmlns:yt",
+                        'Atom' => '<Feed',
                         'RSS' => '<rss',
                         'HTML' => "<!DOCTYPE html"
                         );
@@ -2051,6 +2126,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                         //echo '<p>'.__LINE__.' '.htmlspecialchars($FeedRSS).'</p>';
                     }
                 }
+                //$this->DebugData($Encoding, '---Encoding---', 1);
                 return $Encoding;
             }
         }
@@ -2187,8 +2263,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $this->Structure();
         touchConfig('Plugins.FeedDiscussionsPlus.Nosort', false);
         touchConfig('Plugins.FeedDiscussionsPlus.GetLogo', true);
-        touchConfig('Plugins.FeedDiscussionsPlus.Userinitiated', 'true');
-        touchConfig('Plugins.FeedDiscussionsPlus.croncode', 'secret');
+        touchConfig('Plugins.FeedDiscussionsPlus.croncode', 'code');
     }
 /**
 * Set plugin data structure
