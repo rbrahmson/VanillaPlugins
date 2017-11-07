@@ -1,13 +1,54 @@
 /*--- You may need to update the .RSSlogobox definitions for your theme ---*/
 #FDP .RSSlogobox {
-    /*
-	height: 44px !Important;
-    align-items: center;
-    position: absolute;
-    top: -1px;
-    left: -65px;
-	*/
 	align-items: center;
+}
+#FDP .RSSlogoboxtwitter {
+	align-items: center;
+}
+
+#FDP .RSSlogoboxtwitter:after {
+    content: "@";
+    font-size: 12px;
+    color: white;
+    border: 2px solid black;
+    border-top: 0px solid black;
+    border-left: 2px solid black;
+    border-right: 3px solid black;
+    border-bottom: 3px solid black;
+    border-radius: 13px 15px 13px 13px;
+    background-color: black;
+    font-family: "Arial", Arial, sanserif;
+    font-weight: bold;
+    position: relative;
+    width: 11px;
+    height: 13px;
+    left: -86px;
+    bottom: 6px;
+}
+#FDP .RSSlistlogobox {
+	align-items: center;
+}
+#FDP .RSSlistlogoboxtwitter {
+	align-items: center;
+}
+#FDP .RSSlistlogoboxtwitter:after {
+    content: "@";
+    font-size: 12px;
+    color: white;
+    border: 2px solid black;
+    border-top: 0px solid black;
+    border-left: 2px solid black;
+    border-right: 3px solid black;
+    border-bottom: 3px solid black;
+    border-radius: 13px 15px 13px 13px;
+    background-color: black;
+    font-family: "Arial", Arial, sanserif;
+    font-weight: bold;
+    position: relative;
+    width: 11px;
+    height: 13px;
+    left: -43px;
+    bottom: 6px;
 }
 #FDP .RSSimagelist0,  .RSSimageitem0 {
     width: 40px !Important;
@@ -155,9 +196,38 @@ div#Popup .Content form {
     width: 24px;
     display: table-cell !important;
     color: black;
-    word-break: break-word;
+    word-break: keep-all;
     font-size: xx-small;
     cursor: none;
+}
+#FDP .RSSimageboxtwitter:before {
+    content: "@";
+    line-height: 14px;
+    font-size: 12px;
+    color: white;
+    border: 2px solid black;
+    border-top: 0px solid black;
+    border-left: 2px solid black;
+    border-right: 3px solid black;
+    border-bottom: 3px solid black;
+    border-radius: 13px 15px 13px 13px;
+    background-color: black;
+    font-family: "Arial", Arial, sanserif;
+    font-weight: bold;
+    position: relative;
+    width: 11px;
+    height: 13px;
+    display: flex;
+    z-index: 1;
+    margin-bottom: -15px;
+}
+#FDP .RSSimageboxtwitter {
+    width: 46px;
+    height: 46px;
+}
+#FDP .RSSimageboxbe {
+    width: 46px;
+    height: 46px;
 }
 #FDP .RSSimageboxtitle {
     border: 3px solid rgba(53, 122, 232, 0);
@@ -173,9 +243,48 @@ div#Popup .Content form {
     background: white;
     display: inline-block;
     color: black;
-    word-break: break-word;
+    word-break: keep-all ;
     font-size: xx-small;
     cursor: none;
+}
+#FDP .RSSatover:before {
+content: "@";
+    line-height: 1px;
+    font-size: 16px;
+    color: white;
+    border: 2px solid black;
+    border-top: 0px solid black;
+    border-left: 3px solid black;
+    border-right: 3px solid black;
+    border-bottom: 3px solid black;
+    border-radius: 13px 15px 13px 13px;
+    background-color: black;
+    font-family: "Arial", Arial, sanserif;
+    font-weight: bold;
+    position: relative;
+    bottom: 37px;
+    right: 51px;
+}
+#FDP .RSSatover {
+    line-height: 1px;
+    color: white;
+}
+#FDP .RSSatsign {
+    border: 1px solid #357ae8;
+    display: inline-block;
+    cursor: none;
+    z-index: +1;
+    position: relative;
+    bottom: 32.4px;
+    left: 27px;
+    background: yellow;
+    border-top: 2px solid #FF5024;
+    border-left: 2px solid #ff5023;
+    border-right: 1px solid #ff5023;
+    border-bottom: 1px solid #ff5023;
+    border-radius: 5px 0px 0px 0px;
+    width: 20px;
+    height: 20px;
 }
 #FDP fftitle {
 	margin-left: 40px;
@@ -184,7 +293,7 @@ div#Popup .Content form {
 }
 
 #FDP .ffqmsg {	
-	text-align: center;
+	/*text-align: center;*/
     text-shadow: 0.5px 0.5px darkblue;
     overflow-wrap: normal;
     background: #0279b3;
@@ -226,6 +335,9 @@ div#Popup .Content form {
     position: relative;
     top: 3px;
     color: royalblue;
+}
+#FDP .FeedContent {
+    min-width:300px;
 }
 #FDP FFUfeedhead {
     display: flex;
@@ -355,7 +467,6 @@ div#Popup .Content form {
 .RSSdetailbe {
 	display: block;
     min-height: 96px;
-	max-height: 120px;
 }
 .RSSleftblock {
     border: 3px solid rgba(255, 0, 0, 0);
@@ -375,16 +486,78 @@ div#Popup .Content form {
     display: inline-block;
 }
 .RSSbuttonboxbe {
-    display: inline-block;
+    display: inline-grid;
+    width: 99px;
 }
-.Activebe {
-	font-weight: bold;
+/*---------Define the FDP table for the list of feeds -----------*/
+.FDPtable{
+  display: table;
+  border-collapse: collapse;
+}
+  .FDPtable-row{
+    display: table-row;
+  }
+  .FDPtable-row-inactive{
+    display: table-row;
+    background: #e0e0e0;
+    border-color: gray;
+    border-width: 2px;
+    border-style: groove;
+  }
+    .FDPtable-cell-left {
+        display: table-cell;
+        padding: 2px;
+        border: #0081b9 1px solid;
+        vertical-align: text-top;
+        text-align: center;
+        width: 60px;
+        line-height: 14px;
+    }
+    .FDPtable-cell, .FDPtable-head{
+        display: table-cell;
+        padding: 1px;
+        border: #0081b9 1px solid;
+        text-align: left;
+        vertical-align: top;
+        width: 100%;
+    }
+    .FDPtable-cell-right {
+        display: table-cell;
+        padding: 4px 1px 2px 3px;
+        vertical-align: top;
+        border: #0081b9 1px solid;
+        width: 98px;
+    }
+    .FDPtable-head{
+        font-weight:bold;
+    }
+    /*-----------------------------------*/
+
+#FDP .RSSrightblock {
+    margin: 7px 3px 0px 0px;
+    width: 104px;
+    display: table-cell;
+    float:right;
+}
+.RSSmidblock {
+    display: table-cell;
+    color:red !important;
+}
+#FDP.RSSleftblock {
+    border: 3px solid rgba(255, 0, 0, 0);
+    border-radius: 3px;
+    display: inline-grid;
+    display: table-cell;
+    float:left;
+}  margin-top: -28px;
 }
 .Activebe {
 	color:green;
+    margin-top: -28px;
 }
 .Inactivebe {
 	color:red;
+    margin-top: -28px;
 }
 .Encldingbe {
     border: 1px solid #4787ed;
@@ -392,8 +565,13 @@ div#Popup .Content form {
     height: 19px;
 }
 .Attrbe  {
-	white-space: nowrap;
+	/*white-space: nowrap;*/
+    margin-left: 4px;
 	overflow: hidden;
+}
+.Attrbe:after  {
+    content: " ";
+    white-space: unset;
 }
 .RSSimageitem {
     border: 1px solid gray;
@@ -546,7 +724,7 @@ Xform ul li label {
 .UpdateFeedButton {
 	float:right;
 	color:red;
-	min-width = 100px;
+	min-width:100px;
 }
 .UpdateFeed {
 	padding: 2px 4px 0px 4px !important;

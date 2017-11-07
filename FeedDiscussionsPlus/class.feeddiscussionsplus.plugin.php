@@ -22,7 +22,9 @@
  *  Support for cron initiated feed imports
  *  List of defined feeds are sorted alphabetically with the active feeds on top
  *  Attempt to auto-discover feed url of an entered url (relies on website using feed referral tags).
- *  Revised user interface
+ *  Support for Twitter feeds
+ *  Support for Youtube channel feeds (with embedding of video clip with link to the video)
+ *
  *
  *   Note:  This initial version (which was converted from our intranet) does not fully adhere to Vanilla
  *          coding standard and still contain debugging code (these will be corrected in due course).
@@ -32,7 +34,7 @@
 $PluginInfo['FeedDiscussionsPlus'] = array(
     'Name' => 'Feed Discussions Plus',
     'Description' => "Automatically create Vanilla discussions based on RSS/Atom feed imported content.",
-    'Version' => '2.1.b5',
+    'Version' => '2.2',
     'RequiredApplications' => array('Vanilla' => '2.3'),
     'MobileFriendly' => true,
     'HasLocale' => true,
@@ -93,7 +95,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $Sender->addCssFile('feeddiscussionspluspopup.css', 'plugins/FeedDiscussionsPlus');
     }
 /**
-* Include Javascript in the discussion view
+* Autoimport (if permissible)
 *
 * @param Standard $Sender Standard
 *
@@ -101,9 +103,15 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 */
     public function discussioncontroller_beforediscussionrender_handler($Sender) {
         //$this->DebugData(__LINE__, '', 1);
-        if ($this->checkfeeds($Sender, false)) {
-              $Sender->AddJsFile('feeddiscussionsplus.js', 'plugins/FeedDiscussionsPlus');
+        if (IsMobile()) {                  //Don't do that on mobile users (don't further increase response time)
+            //$this->DebugData(__LINE__, '', 1);
+            return;
         }
+        if (!c('Plugins.FeedDiscussionsPlus.Userinitiated', true)) {    //User initiated not allowed?
+            //$this->DebugData(__LINE__, '', 1);
+            return;
+        }
+        $this->checkfeeds($Sender, false); //Check the fee in autoimport mode
     }
 /**
 * Endpoint to trigger feed check & update.
@@ -170,6 +178,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $MasterView = $Sender->MasterView;
         $NumCheckedFeeds = 0;
         $NumInactiveFeeds = 0;
+        $NumManualFeeds = 0;
         $NumOutsideWindowFeeds = 0;
         $NumNotduedFeeds = 0;
         $Checkfeed = false;
@@ -179,85 +188,83 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Forceupdate = false;
             Gdn::Controller()->SetData("{$FeedURL}", $FeedData);
             $Active = val('Active', $FeedData, 0);
-            $Feedtitle = val('Feedtitle', $FeedData);
+            $Feedtitle = val('Feedtitle', $FeedData, "Url: ".$FeedURL);
             $Encoding = val('Encoding', $FeedData);
-            if (!$Feedtitle) {
-                  $Feedtitle = "Url: ".$FeedURL;
-            }
             $Activehours = val('Activehours', $FeedData);
-            //$this->DebugData($Feedtitle, '---Feedtitle---', 1);
+            $Refresh = val('Refresh', $FeedData);
+            $Validtocheck = true;
             //$this->DebugData($Active, '---Active---', 1);
             //$this->DebugData($Encoding, '---Encoding---', 1);
             if (!$Active) {
+                $Validtocheck = false;
                 if ($AutoImport) {
                     $NumInactiveFeeds +=1;
                     echo '<br><b>'.$NumCheckedFeeds.'. Skipping ' . $Encoding . ' feed "'.$Feedtitle.'" </b>'. '(Inactive feed)';
                 }
             } elseif (!$this->iswithinwindow($Activehours)) {
+                $Validtocheck = false;
                 if ($AutoImport) {
                     $NumOutsideWindowFeeds +=1;
                     echo '<br><b>'.$NumCheckedFeeds.'. Skipping ' . $Encoding . ' feed "'.
                     $Feedtitle.'"  </b>(outside active hours of '.$Activehours.') </b>';
                 }
-            } else {
+            } else {        //Feed is active and within the active window
+                if (!$AutoImport & $Refresh == 'Manually') {    //Manual mode but not initiated by the admin?
+                    echo __LINE__." Skipping manually scheduled feed ".$Feedtitle;
+                    $Validtocheck = false;
+                    $NumManualFeeds +=1;
+                }
+            }
+            if ($Validtocheck) {
+                //$this->DebugData($FeedData, '---FeedData---', 1);
                 $Added = val('Added', $FeedData, 0);
                 $LastImport = val('LastImport', $FeedData);
-                $Active = val('Active', $FeedData);
+                $NextImport = val('NextImport', $FeedData);
                 $OrFilter = val('OrFilter', $FeedData);
                 $AndFilter = val('AndFilter', $FeedData);
                 $Minwords = val('Minwords', $FeedData);
                 $Maxitems = val('Maxitems', $FeedData);
                 $Getlogo = val('Getlogo', $FeedData);
                 $Noimage = val('Noimage', $FeedData);
-                //$this->DebugData($FeedData, '---FeedData---', 1);
-                //$this->DebugData($Added, '---Added---', 1);
-                //$this->DebugData($LastImport, '---LastImport---', 1);
-                //$this->DebugData($OrFilter, '---OrFilter---', 1);
-                //$this->DebugData($AndFilter, '---AndFilter---', 1);
-                //$this->DebugData($Minwords, '---Minwords---', 1);
-                // Check feed here
-                $LastImport = $LastImport == 'never' ? null : strtotime($LastImport);
-                //$this->DebugData($LastImport, '---LastImport---', 1);
-                //$this->DebugData(date('c', $LastImport), '---LastImport---', 1);
-                if (is_null($LastImport)) {
-                      $Forceupdate = true;
-                      //$this->DebugData($LastImport, '---LastImport---', 1);;
-                }
-                //$this->DebugData(date('c', $LastImport), '---LastImport---', 1);
                 $Historical = (bool)val('Historical', $FeedData, false);
-                $Delay = val('Refresh', $FeedData);
-                $DelayStr = '+'.str_replace(array(
-                      'm',
-                      'h',
-                      'd',
-                      'w'
-                ), array(
-                      'minutes',
-                      'hours',
-                      'days',
-                      'weeks'
-                ), $Delay);
-                $DelayMinTime = strtotime($DelayStr, $LastImport);
                 //
-                //$LastImportdate = date('Y-m-d H:i:s', $LastImport);    //Last import date/time
-                $Delaydate = date('Y-m-d H:i:s', $DelayMinTime);      //Date/time from which to check feed
+                //$this->DebugData($LastImport, '---LastImport---', 1);
+                //$this->DebugData($NextImport, '---NextImport---', 1);
+                if (!$LastImport | $LastImport == 'never') {                //First time feed processed?
+                    $LastImport = date('c');
+                    $Forceupdate = true;
+                    //$this->DebugData($LastImport, '---LastImport---', 1);
+                    $NextImport = date('Y-m-d H:i:s', 0); //Force update
+                    //$this->DebugData($NextImport, '---NextImport---', 1);
+                }
+                //
                 $Timedate = date('Y-m-d H:i:s', time());                //Current date/time
                 if ($Historical) {
                     $Forceupdate = true;
-                } elseif ($Timedate > $Delaydate) {        //Current date/time > prescribed delay
-                    $Forceupdate = true;
+                    //$this->DebugData($Historical, '---Historical---', 1);
+                } elseif ($Timedate > $NextImport) {        //Current date/time > prescribed delay
+                    $Forceupdate = true;       //Current date/time
+                    //$this->DebugData($Timedate.' > '.$NextImport, '---\$Timedate > \$NextImport---', 1);
+                } else {
+                    //$this->DebugData($Timedate.' < '.$NextImport, '---\$Timedate > \$NextImport--- | not historical', 1);
                 }
                 //
                 if ($Forceupdate) {
-                //$this->DebugData($AutoImport, '---AutoImport---', 1);
+                    //$this->DebugData($AutoImport, '---AutoImport---', 1);
                     if ($AutoImport) {
-                          echo '<br><b>'.$NumCheckedFeeds.'. Checking ' . $Encoding . ' feed "'.$Feedtitle.'</b>';
+                        echo '<br><b>'.$NumCheckedFeeds.'. Checking ' . $Encoding . ' feed "'.$Feedtitle.'</b>';
                     }
-                    $this->PollFeed($FeedURL, $AutoImport, $LastImport, $OrFilter, $AndFilter, $Minwords, $Maxitems, $Getlogo, $Noimage);
+                    $DueDate = $this->getimportdate($Sender, "Current", $Refresh, $LastImport); //Import due date/time
+                    $NextDueDate = $this->getimportdate($Sender, "Next", $Refresh, $LastImport);//Next Import due date/time
+                    //$this->DebugData($DueDate, '---DueDate---', 1);
+                    //$this->DebugData($NextDueDate, '---NextDueDate---', 1);
+                    $FeedData["LastImport"] = $LastImport;
+                    $FeedData["NextImport"] = $NextDueDate;
+                    $this->PollFeed($Sender, $FeedData, $AutoImport);
                 } else {
                     if ($AutoImport) {
                         echo '<br><b>'.$NumCheckedFeeds.'. Skipping ' . $Encoding .
-                        ' feed "'.$Feedtitle.'"  </b> (Feed not due for processing until '.$Delaydate.')';
+                        ' feed "'.$Feedtitle.'"  </b> (Feed not due for processing until '.$NextImport.')';
                           $NumNotduedFeeds += 1;
                     }
                 }
@@ -265,11 +272,14 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         }
         if ($AutoImport) {
             echo "<h2><b>&nbsp&nbsp&nbsp" . $NumCheckedFeeds . ' Feeds processed. </b>';
-            $Skipped = $NumInactiveFeeds + $NumOutsideWindowFeeds + $NumNotduedFeeds;
+            $Skipped = $NumInactiveFeeds + $NumManualFeeds + $NumOutsideWindowFeeds + $NumNotduedFeeds;
             if ($Skipped) {
                 echo '' . $Skipped . ' skipped:';
                 if ($NumInactiveFeeds) {
                     echo ' ' .  $NumInactiveFeeds . ' Inactive.';
+                }
+                if ($NumManualFeeds) {
+                    echo ' ' .  $NumManualFeeds . ' manually controlled.';
                 }
                 if ($NumOutsideWindowFeeds) {
                     echo ' ' .  $NumOutsideWindowFeeds . ' Outside of their active hours.';
@@ -305,23 +315,28 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 * @return bool|int
 */
     public function controller_updatefeed($Sender, $Args) {
+        $Sender->Permission('Garden.Settings.Manage');
         $Sender->AddCssFile('feeddiscussionspluspopup', 'plugins/FeedDiscussionsPlus');
         $Postback = $Sender->Form->AuthenticatedPostback();
         //var_dump($Args);
         if (!$Postback) {            //Initial form setup
-            //echo '<span>'.__FUNCTION__.' L#'.__LINE__.'</span>';
-            $Arg0 = val(0, $Args, null);
-            //decho ($Arg0);
-            $FeedKey = $Arg0;
-            $Feed = $this->GetFeed($FeedKey);
+            $Msg = $this->GetStash('Msg');
+            //echo '<span>'.__FUNCTION__.' L#'.__LINE__.' Not Postback</span>';
+            $FeedKey = val(0, $Args, null);
+            if (empty($FeedKey)) {
+                  $Msg = $this->setmsg(' Missing required parameter.');
+                  $this->redirecttourl($Sender, '/plugin/feeddiscussionsplus/ListFeeds', $Msg);
+            } else {
+                $Feed = $this->GetFeed($FeedKey);
+            }
             if (empty($Feed)) {
-                  $Msg = __LINE__.' The feed was deleted before it could be displayed.';
+                  $Msg = $this->setmsg(' The feed was deleted before it could be displayed.');
                   $this->redirecttourl($Sender, '/plugin/feeddiscussionsplus/ListFeeds', $Msg);
             }
             //$this->DebugData($Feed, '---Feed---', 1);
+            //$this->DebugData($Feed["Refresh"], '---Feed["Refresh"]---', 1);
             //Initial form setting
-            $Sender->Title($this->GetPluginKey('Name'));
-            $Sender->SetData('Description', $this->GetPluginKey('Description'));
+            //
             $Sender->SetData('Categories', CategoryModel::Categories());
             $Sender->SetData('Mode', 'Update');
             $Sender->SetData('Feed', $Feed);
@@ -329,7 +344,6 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Sender->SetData('FeedURL', $Feed['URL']);
             $Sender->Form->setValue('FeedURL', $Feed['URL']);
             $Sender->Form->setValue('Active', $Feed['Active']);
-            $Sender->Form->setValue('Reset', $Feed['Reset']);
             $Sender->Form->setValue('Refresh', $Feed['Refresh']);
             $Sender->SetData('Refresh', $Feed['Refresh']);
             $Sender->Form->setValue('Feedtitle', $Feed['Feedtitle']);
@@ -343,49 +357,89 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Sender->Form->setValue('Activehours', $Feed['Activehours']);
             $Sender->Form->setValue('Maxitems', $Feed['Maxitems']);
             //
-            $Msg = (string)$this->GetStash();
-            if ($Msg!='') {
-                $Sender->InformMessage($Msg);
-                $Sender->SetData('Qmsg', $Msg);
-            }
-        } else {  //Form Postback
-            //echo '<span>'.__FUNCTION__.' L#'.__LINE__.'</span>';
-            $Sender->SetData('FeedURL', $Feedarray['FeedURL']);
-            $Sender->SetData('Categories', CategoryModel::Categories());
+            $this->renderview($Sender, 'feeddiscussionsplusedit.php', $Msg);
+            return;
+        }
+        //Form Postback
+        //echo '<span>'.__FUNCTION__.' L#'.__LINE__.' <b> Postback</b></span>';
+        //
+        $Sender->SetData('FeedURL', $Feedarray['FeedURL']);
+        $Sender->SetData('Categories', CategoryModel::Categories());
+        $Sender->SetData('Mode', 'Update');
+        $FormPostValues = $Sender->Form->FormValues();
+        //
+        $Feedarray = $this->getfeedfromform($FormPostValues);
+        //  Handle CUT & Paste requests
+        if (isset($FormPostValues["Paste"])) {
+            $Feed = $this->GetFeed($Feedarray['FeedURL'], false);
+            $this->pasteparms($Sender);
+            $Sender->SetData('Feed', $Feed);
             $Sender->SetData('Mode', 'Update');
-            $FormPostValues = $Sender->Form->FormValues();
-            //decho ($FormPostValues);
-            //$this->DebugData($FormPostValues["FeedURL"], '---FormPostValues["FeedURL"]---', 1);
-            $Feedarray = $this->getfeedfromform($FormPostValues);
-            $Defaults = $this->feeddefaults();
-            $Feedarray = array_merge($Defaults, $Feedarray);
-            $FeedRSS = $this->validatefeed($Feedarray, 'Update');  //Validate form inputs in "Update" mode
-            if ($FeedRSS['Error']) {
-                $Msg = $FeedRSS['Error'];
-                $Sender->setData('FeedURL', $FeedRSS['URL']);
-                //$this->DebugData($FeedRSS, '---FeedRSS---', 1);
-                $Sender->Form->AddError($FeedRSS['Error']);
-                $Sender->InformMessage($Msg);
-                //$Sender->SetData('Qmsg',$Msg);
-                //$this->SetStash($Msg,'Qmsg');
+            //$this->DebugData($Copystate, '---Copystate---', 1);
+            $this->renderview($Sender, 'feeddiscussionsplusedit.php');
+            return;
+        } elseif (isset($FormPostValues["Copy"])) {
+            $Copyfeed = $this->copyparms($Sender, $FormPostValues);
+            $Feed = $this->GetFeed($Feedarray['FeedURL'], false);
+            $Sender->SetData('Feed', $Feed);
+            $Sender->SetData('Mode', 'Update');
+            $this->renderview($Sender, 'feeddiscussionsplusedit.php');
+            return;
+        }
+        //
+        $Defaults = $this->feeddefaults();
+        $Feedarray = array_merge($Defaults, $Feedarray);
+        //$this->DebugData($Feedarray, '---Feedarray---', 1);
+        $FeedRSS = $this->validatefeed($Sender, $Feedarray, 'Update');  //Validate form inputs in "Update" mode
+        $Feed = $this->GetFeed($FeedRSS["FeedURL"], false);
+        $Sender->SetData('Feed', $Feed);
+        if ($FeedRSS['Error']) {
+            $Msg = $this->setmsg($FeedRSS['Error']);
+            if ($FeedRSS["SuggestedURL"]) {
+                $FeedRSS["FeedURL"] = $FeedRSS["SuggestedURL"];
+                $Sender->Form->setFormValue('FeedURL', $FeedRSS["SuggestedURL"]);
+            }
+            $Sender->Form->AddError($Msg);
+            $this->renderview($Sender, 'feeddiscussionsplusedit.php');
+            return;
+        }
+        //No errors, perform the update
+        $Feedarray["RSSimage"] = $FeedRSS['RSSimage'];
+        $Feedarray["Encoding"] = $FeedRSS['Encoding'];
+        $Feedarray["FeedURL"] = $FeedRSS['FeedURL'];
+        $Feedarray["Feedtitle"] = $FeedRSS['Feedtitle'];
+        $Feedarray["InternalURL"] = $FeedRSS['InternalURL'];
+        //Calculate and set next import due date/time
+        $LastImport = val('LastImport', $Feed);
+        $Refresh = val('Refresh', $Feedarray);
+        if ($Refresh == 'Manually') {
+            $Feedarray["NextImport"] = '';
+        } else {
+            $Feedarray["NextImport"] = $this->getimportdate($Sender, "Next", $Refresh, $LastImport);
+        }
+        //$this->DebugData($Feedarray, '---Feedarray---', 1);
+        $this->AddFeed($Feedarray['FeedURL'], $Feedarray);
+        $Msg = $this->setmsg('"'.SliceString($FeedRSS['Feedtitle'], 40).
+                                '" Feed import definition updated.');
+        if (!$Feedarray['Active']) {
+            $Msg = $Msg . '&nbsp ⛔ Note: Feed is inactive. ';
+        } elseif ($Refresh == 'Manually') {
+            $Msg = $Msg . "&nbsp This feed won't be imported unless you import it manually. ";
+        } else {
+            $Timedate = date('Y-m-d H:i:s', time());
+            if ($Timedate > $Feedarray["NextImport"]) {
+                $Msg = $Msg . '&nbsp 🔵 Next import is due now ';
             } else {
-                $Feedarray["RSSimage"] = $FeedRSS['RSSimage'];
-                $Feedarray["Encoding"] = $FeedRSS['Encoding'];
-                $Feedarray["Feedtitle"] = $FeedRSS['Title'];
-                //
-                //$this->DebugData($Feedarray, '---Feedarray---', 1);
-                $this->AddFeed($Feedarray['FeedURL'], $Feedarray);
-                $Msg = 'The "'.$FeedRSS['Title'].'" feed was updated.';
-                if (!$Feedarray['Active']) {
-                    $Msg = $Msg . '<FFRED> Remember to activate the added feed (it is now inactive).</FFRED> ';
-                }
-                $Msg = $FeedRSS['FeedKey'] . ' -- ' . $Msg;
-                $this->redirecttourl($Sender, '/plugin/feeddiscussionsplus/ListFeeds', $Msg);
+                $Msg = $Msg . '&nbsp 🔴 Next import is due on '. $Feedarray["NextImport"];
             }
         }
-        //echo '<span>'.__FUNCTION__.' L#'.__LINE__.'</span>';
-        $Sender->SetData('Mode', 'Update');
-        $this->renderview($Sender, 'feeddiscussionsplusedit.php');
+        //$this->DebugData($Copystate, '---Copystate---', 1);
+        if (c('Plugins.FeedDiscussionsPlus.returntolist', false)) { //Prefer to return to the feeds list screen?
+            $this->redirecttourl($Sender, '/plugin/feeddiscussionsplus/ListFeeds', $Msg);
+        }
+        $this->renderview($Sender, 'feeddiscussionsplusedit.php', $Msg);
+        return;
+        //
     }
 /**
 * Add feed import settings.
@@ -397,25 +451,20 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 */
     public function controller_addfeed($Sender, $Args) {
         //$this->DebugData('','',true,true);
+        $Sender->Permission('Garden.Settings.Manage');
         $Postback = $Sender->Form->AuthenticatedPostback();
         $Mode = 'Add';
         $Savedmode = $Sender->Data('Mode');
         if (!$Postback) {            //Initial form setup
             //echo '<span>L#'.__LINE__.'</span>';
             $this->SetStash($Mode, 'Mode');
-            $Sender->Title($this->GetPluginKey('Name'));
-            $Sender->SetData('Description', $this->GetPluginKey('Description'));
             $Sender->SetData('Categories', CategoryModel::Categories());
             $Sender->SetData('Mode', $Mode);
-            $Msg = (string)$this->GetStash();
-            if ($Msg!='') {
-                $Sender->InformMessage($Msg);
-                $Sender->SetData('Qmsg', $Msg);
-            }
+            $Msg = $this->GetStash('Msg');
         } else {  //Form Postback
             //$this->DebugData($Mode, '---Mode---', 1);
             $Sender->SetData('Categories', CategoryModel::Categories());
-            $Sender->SetData('Mode', $Mode);
+            $Sender->SetData('Mode', 'Add');
             $FormPostValues = $Sender->Form->FormValues();
             //decho ($FormPostValues);
             //$this->DebugData($FormPostValues["FeedURL"], '---FormPostValues["FeedURL"]---', 1);
@@ -424,37 +473,75 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Defaults = $this->feeddefaults();
             $Feedarray = array_merge($Defaults, $Feedarray);
             //decho ($Feedarray);
-            $FeedRSS = $this->validatefeed($Feedarray, 'Add');  //Validate form inputs in "Add" mode
+            //  Handle CUT & Paste requests
+            if (isset($FormPostValues["Paste"])) {
+                $this->pasteparms($Sender);
+                $Sender->SetData('Mode', 'Add');
+                $Sender->SetData('FeedURL', $FormPostValues['FeedURL']);
+                $Sender->SetData('Feed', $Feedarray);
+                //
+                $this->renderview($Sender, 'feeddiscussionsplusedit.php');
+                return;
+            } elseif (isset($FormPostValues["Copy"])) {
+                $Copyfeed = $this->copyparms($Sender, $FormPostValues);
+                $Sender->SetData('Mode', 'Add');
+                $Sender->SetData('FeedURL', $FormPostValues['FeedURL']);
+                $Sender->SetData('Feed', $Feedarray);
+                $this->renderview($Sender, 'feeddiscussionsplusedit.php');
+                return;
+            }
+            //
+            //decho ($Feedarray);
+            $FeedRSS = $this->validatefeed($Sender, $Feedarray, 'Add');  //Validate form inputs in "Add" mode
             if ($FeedRSS['Error']) {
                 //$this->DebugData($FeedRSS['Error'], "---FeedRSS['Error']---", 1);
-                $Msg = $FeedRSS['Error'];
-                if ($FeedRSS["SuggestedURL"]) {
-                    $FeedRSS["SuggestedURL"] = '';
-                    //$this->DebugData($SuggestedURL, '---SuggestedURL---', 1);
-                    //$this->DebugData($FeedRSS, '---FeedRSS---', 1);
-                    $Sender->Form->setFormValue('FeedURL', $FeedRSS["URL"]);
-                    $Sender->Form->AddError($Msg, "FeedURL");
-                    $Msg = "The url you specified is a regular web page,not a feed: ".
-                            $FormPostValues["FeedURL"];
-                }
+                $Msg = $this->setmsg($FeedRSS['Error']);
                 $FeedRSS['Error']='';
-                $this->renderview($Sender, 'feeddiscussionsplusedit.php', $Msg);
-                return;
-            } else {
-                $Feedarray["RSSimage"] = $FeedRSS['RSSimage'];
-                $Feedarray["Encoding"] = $FeedRSS['Encoding'];
-                $Feedarray["Feedtitle"] = $FeedRSS['Title'];
-                //$this->DebugData($Feedarray, '---Feedarray---', 1);
-                $this->AddFeed($this->rebuildurl($Feedarray['FeedURL'], ''), $Feedarray);
-                $Sender->SetData('Mode', 'Update');
-                $Sender->SetData('FeedURL', $Feedarray['FeedURL']);
-                //$this->DebugData($Mode, '---Mode---', 1);
-                $Msg = 'The "'.$FeedRSS['Title'].'" feed was added.';
-                if (!$Feedarray['Active']) {
-                    $Msg = $Msg . '<FFRED> Remember to activate the added feed (it is now inactive).</FFRED> ';
+                if ($FeedRSS["SuggestedURL"]) {
+                    $FeedRSS["FeedURL"] = $FeedRSS["SuggestedURL"];
+                    $Sender->Form->setFormValue('FeedURL', $FeedRSS["SuggestedURL"]);
+                } else {
+                    $Sender->Form->setFormValue('FeedURL', $FeedRSS["FeedURL"]);
+                    $Sender->SetData('FeedURL', $FormPostValues['FeedURL']);
                 }
+                $Sender->Form->AddError($Msg);
+                $Sender->SetData('Mode', 'Add');
+                $Sender->SetData('Feed', $FeedRSS);
+                $this->renderview($Sender, 'feeddiscussionsplusedit.php');
+                return;
+            }
+            //No errors, add the feed
+            $Feedarray["RSSimage"] = $FeedRSS['RSSimage'];
+            $Feedarray["Encoding"] = $FeedRSS['Encoding'];
+            $Feedarray["Feedtitle"] = $FeedRSS['Feedtitle'];
+            $Feedarray["InternalURL"] = $FeedRSS['InternalURL'];
+            //$this->DebugData($Feedarray["FeedURL"], '---Feedarray["FeedURL"]---', 1);
+            //Calculate and set next import due date/time
+            $Refresh = val('Refresh', $Feedarray);
+            if ($Refresh == 'Manually') {
+                $Feedarray["NextImport"] = '';
+            } else {
+                $Feedarray["NextImport"] = $this->getimportdate($Sender, "Next", $Refresh, 'never');
+            }
+            $Url = $this->rebuildurl($Feedarray["FeedURL"], '');
+            //$this->DebugData($Url, '---Url---', 1);
+            $this->AddFeed($Url, $Feedarray);
+            $Sender->SetData('Mode', 'Update');
+            $Sender->SetData('FeedURL', $Feedarray['FeedURL']);
+            $Msg = $this->setmsg('"'.SliceString($FeedRSS['Feedtitle'], 40).
+                                '" Feed import definition added.');
+            if (!$Feedarray['Active']) {
+                $Msg = $Msg . '&nbsp ⛔ Note: Feed is inactive. ';
+            } elseif ($Refresh != 'Manually') {
+                $Msg = $Msg . '&nbsp Next import is due on '. $Feedarray["NextImport"];
+            } else {
+                $Msg = $Msg . "&nbsp This feed won't be imported unless you import it manually. ";
+            }
+            //
+            if (c('Plugins.FeedDiscussionsPlus.returntolist', false)) { //Prefer to return to the feeds list screen?
                 $this->redirecttourl($Sender, '/plugin/feeddiscussionsplus/ListFeeds', $Msg);
             }
+            $this->redirecttourl($Sender, '/plugin/feeddiscussionsplus/updatefeed/'.self::EncodeFeedKey($Url), $Msg);
         }
         //echo '<span>L#'.__LINE__.'</span>';
         $this->renderview($Sender, 'feeddiscussionsplusedit.php', $Msg);
@@ -470,6 +557,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
     public function controller_restorefeed($Sender, $Args) {
         //var_dump($Feedkey, $FeedURL, $Mode);
         //$this->DebugData($Args, '---Args---', 1);
+        $Sender->Permission('Garden.Settings.Manage');
         $FeedURL = implode('/', $Args);
         //$this->DebugData($FeedURL, '---FeedURL---', 1);
         $RestoreFeedURL = $Sender->Data('RestoreFeedURL');
@@ -478,7 +566,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         if ($Feed) {
             //$this->DebugData($Feed, '---Feed---', 1);
             $this->AddFeed($this->rebuildurl($Feed['FeedURL'], ''), $Feed);
-            $Msg = ' Feed "'.$Feed["Feedtitle"].'" Restored';
+            $Msg = $this->setmsg(' Feed "'.$Feed["Feedtitle"].'" Restored');
         } else {
             $this->AddFeed($this->rebuildurl($Feed['FeedURL'], ''), $Feed);
             $Msg = __LINE__.' could not restore';
@@ -494,11 +582,18 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 * @return bool|int
 */
     public function controller_listfeeds($Sender, $Args) {
+        $Sender->Permission('Garden.Settings.Manage');
         $Categories = CategoryModel::Categories();
         //
         if ($Sender->Form->AuthenticatedPostback()) {    //Postback
             $FormPostValues = $Sender->Form->FormValues();
             //$this->DebugData($FormPostValues, '---FormPostValues---', 1);
+            //  Handle Add request
+            if (isset($FormPostValues["Add"])) {
+                $this->pasteparms($Sender);
+                $Sender->SetData('Mode', 'Add');
+                $this->controller_addfeed($Sender, $Args);
+            }
         } else {  //Initial Form setup
             $FormPostValues = $Sender->Form->FormValues();
             //$this->DebugData($FormPostValues, '---FormPostValues---', 1);
@@ -507,19 +602,13 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Sender->SetData('RestoreFeedURL', $RestoreFeedURL);
             //$this->DebugData($RestoreFeedURL, '---RestoreFeedURL---', 1);
             //$this->DebugData($Sender->Data, '---Sender->Data---', 1);
-            $Sender->Title($this->GetPluginKey('Name'));
-            $Sender->SetData('Description', $this->GetPluginKey('Description'));
             $Sender->SetData('Categories', $Categories);
             $Sender->SetData('Feeds', $this->GetFeeds());
-            $Msg = (string)$this->GetStash('Qmsg');
-            $this->SetStash($Msg, '');
-            if ($Msg!='') {
-                $Sender->InformMessage($Msg);
-                $Sender->SetData('Qmsg', $Msg);
-            }
+            $Msg = $this->GetStash('Msg');
         }
+        //$this->DebugData($Copystate, '---Copystate---', 1);
         $Sender->SetData('Feeds', $this->GetFeeds());
-        $this->renderview($Sender, 'feeddiscussionspluslist.php');
+        $this->renderview($Sender, 'feeddiscussionspluslist.php', $Msg);
     }
 /**
 * Toggle active state of a feed.
@@ -537,23 +626,23 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Active = $Feed['Active'];
             $Feedtitle = $Feed['Feedtitle'];
             if ($Active) {
-                   $Msg = 'The "'.$Feedtitle.'" feed has been deactivated.';
+                   $Msg = $this->setmsg('The "'.$Feedtitle.'" feed has been deactivated.');
                    $Active = false;
             } else {
-                   $Msg = 'The "'.$Feedtitle.'" feed has been activated.';
+                   $Msg = $this->setmsg('The "'.$Feedtitle.'" feed has been activated.');
                    $Active = true;
             }
             $this->UpdateFeed($FeedKey, array(
                 'Active'     => $Active
             ));
         } else {
-              $Msg = __LINE__.' '.T("Invalid toggle request");
+              $Msg = $this->setmsg(T("Invalid toggle request"));
         }
         $this->redirecttourl($Sender, '/plugin/feeddiscussionsplus/ListFeeds', $Msg);
           //
     }
 /**
-* Clear last update feed date.
+* Schedule next update feed date to now.
 *
 * @param object $Sender Standard Vanilla
 * @param object $Args   Standard Vanilla
@@ -566,12 +655,13 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         if (!is_null($FeedKey) && $this->HaveFeed($FeedKey)) {
             $Feed = $this->GetFeed($FeedKey);
             $Feedtitle = $Feed['Feedtitle'];
-            $Msg = 'The "'.$Feedtitle.'" feed last import date was reset to "never".';
+            $NextImport = date('Y-m-d H:i:s', time());
+            $Msg = $this->setmsg('The "'.$Feedtitle.'" feed next import date is set to '.$NextImport);
             $this->UpdateFeed($FeedKey, array(
-                'LastImport'     => 'never'
+                'NextImport' => $NextImport
             ));
         } else {
-            $Msg = __LINE__.' '.T("Invalid Reset request");
+            $Msg = $this->setmsg(T("Invalid schedule request"));
         }
         $this->redirecttourl($Sender, '/plugin/feeddiscussionsplus/ListFeeds', $Msg);
         //
@@ -694,6 +784,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
               'Minwords'       => '',
               'Activehours'       => '00-24',
               'Maxitems'       => null,
+              'NextImport'     => null,
               'LastImport'   => val('LastImport', $DecodedFeedItem, null)
               ));
               echo '<br>Imported definiton for '.$FeedURL;
@@ -795,60 +886,166 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $this->RemoveFeed($FeedKey);
             $Restorebutton = '<a class="Button " href="' . Url('/plugin/feeddiscussionsplus/restorefeed/'.$RestoreFeedURL).
                 '" title="' . t('Restore recently deleted feed').' '.$RestoreFeedURL.'"><ffred> ↻ </ffred>'.t("Undo Delete").'</a>';
-            $Msg = 'Feed "'.$Feed["Feedtitle"].'" was deleted. Click '.$Restorebutton. ' to restore it.';
+            $Msg = $this->setmsg('Feed "'.$Feed["Feedtitle"].'" was deleted. Click '.$Restorebutton. ' to restore it.');
         } else {
-            $Msg = __LINE__.' Invalid prameters';
+            $Msg = $this->setmsg(' Invalid prameters');
         }
         $this->redirecttourl($Sender, '/plugin/feeddiscussionsplus/ListFeeds', $Msg);
     }
 /**
+* Establish copy/paste data bin.
+*
+* @param object $Sender Standard Vanilla
+*
+* @return flag whether there is anything in the copy/paste bin
+*/
+    private function setcopypaste($Sender) {
+        //$this->DebugData(__LINE__, '', 1);
+        $Copied = $Sender->Data('Copied');
+        //$this->DebugData($Copied, '---Copied---', 1);
+        if (!$Copied) {
+            $Copied = $this->GetStash('Copied');
+        }
+        //$this->DebugData($Copied, '---Copied---', 1);
+        if ($Copied) {
+            $Sender->SetData('Copied', true);
+            $this->SetStash($Copied, 'Copied');     //Reestablish stash
+        }
+        //$this->DebugData($Copied, '---Copied---', 1);
+        return $Copied;
+    }
+/**
+* Copy feed selected definition parameters.
+*
+* @param object $Sender         Standard Vanilla
+* @param object $FormPostValues Standard Vanilla
+*
+* @return array of copied parameters
+*/
+    public function copyparms($Sender, $FormPostValues) {
+        $Copyfields =  array(
+                "Refresh", "Category", "OrFilter" , "AndFilter" , "Active" , "Activehours" , "Minwords" , "Maxitems" ,"Getlogo" , "Noimage"
+                );
+        foreach ($Copyfields as $Key) {
+            $Copyfeed[$Key] = $FormPostValues[$Key];
+            //if ($Key == 'Refresh') $this->DebugData($FormPostValues, '---FormPostValues---', 1);
+        }
+        $this->SetStash($Copyfeed, 'Copyfeed');
+        $Sender->SetData('Copied', true);
+        $this->SetStash($Copied, 'Copied');
+        $this->postmsg($Sender, 'Feed settings were copied.');
+        return $Copyfeed;
+    }
+/**
+* Paste feed selected definition parameters on the form.
+*
+* @param object $Sender Standard Vanilla
+*
+* @return N/A
+*/
+    public function pasteparms($Sender) {
+        $Copyfeed = $this->GetStash('Copyfeed', true);  //Fetch & Retain
+        if (empty($Copyfeed)) {
+            $Sender->SetData('Copied', false);
+            $this->postmsg($Sender, 'Nothing to paste');
+        } else {
+            $Sender->SetData('Copied', true);
+            $this->SetStash($Copied, 'Copied');
+            foreach (array_keys($Copyfeed) as $Key) {
+                $Sender->Form->setFormValue($Key, $Copyfeed[$Key]);
+                //if ($Key == 'Refresh') $this->DebugData($Copyfeed[$Key], '---Copyfeed[Key]---', 1);
+            }
+            $this->postmsg($Sender, 'Feed settings were pasted over <FFYELLOW>but not saved</FFYELLOW>.');
+        }
+    }
+/**
 * Validate a feed.
 *
+* @param object $Sender    Standard
 * @param object $Feedarray Feed definition
 * @param object $Mode      Validation mode (Add/Update)
 *
 * @return bool|int
 */
-    private function validatefeed($Feedarray, $Mode = 'Add') {
+    private function validatefeed($Sender, $Feedarray, $Mode = 'Add') {
         //$this->DebugData(__LINE__, '', 1);
         //$this->DebugData($Feedarray, '---Feedarray---', 1);
-        $FeedRSS = array('FeedURL'   => $Feedarray["FeedURL"],
-                        'Error' => false
-                        );
+        $Feedarray["FeedURL"] =  explode(' ', trim($Feedarray["FeedURL"]))[0];
+        //$this->postmsg($Sender, 'Feedarray["FeedURL"]:'.$Feedarray["FeedURL"]);
+        if (substr($Feedarray["FeedURL"], 0, 1) == '@') {
+            $Feedarray["FeedURL"] = strtolower($Feedarray["FeedURL"]);
+        } elseif (substr($Feedarray["FeedURL"], 0, 1) == '#') {
+            $Feedarray["FeedURL"] = strtolower($Feedarray["FeedURL"]);
+        }
+        //
         try {
             if (empty($Feedarray["FeedURL"])) {
-                throw new Exception(__LINE__." You must supply a valid Feed URL");
+                throw new Exception($this->setmsg(" You must supply a valid Feed URL"));
             }
             if ($Mode == 'Add') {
                 if ($this->HaveFeed($Feedarray["FeedURL"], false)) {
-                    throw new Exception(__LINE__." The Feed URL you supplied is already in the list");
+                    if (substr($Feedarray["FeedURL"], 0, 1) == '@') {
+                        $Msg = $this->setmsg('The Twitter user "<b>' . $Feedarray["FeedURL"] . '</b>" is already in the list');
+                    } elseif (substr($Feedarray["FeedURL"], 0, 1) == '#') {
+                        $Msg = $this->setmsg('The Twitter hashtag "' . $Feedarray["FeedURL"] . '" is already in the list');
+                    } else {
+                        $Msg = $this->setmsg('The Feed URL you supplied is already in the list');
+                    }
+                    $FeedRSS["FeedURL"] = $Feedarray["FeedURL"];
+                    throw new Exception($this->setmsg($Msg));
                 }
             }
             // Get RSS Data
-            $FeedRSS = $this->getfeedrss($Feedarray["FeedURL"], false);     //Request metadata only
+            $FeedRSS = $this->getfeedrss($Sender, $Feedarray["FeedURL"], false);     //Request metadata only
             //$this->DebugData($FeedRSS, '---FeedRSS---', 1);
-            if ($FeedRSS['Error']) {
-                throw new Exception(__LINE__."   ".$FeedRSS['Error']);
+            //$this->postmsg($Sender, 'FeedRSS["FeedURL"]:'.$FeedRSS["FeedURL"]);
+            //$this->postmsg($Sender, 'FeedRSS["InternalURL"]:'.$FeedRSS["InternalURL"]);
+            if ($FeedRSS["Error"] != '') {
+                if (($FeedRSS['Error']) == '?') {
+                    $this->postmsg($Sender, " Valid inputs: ", false, false);
+                    $this->postmsg($Sender, "&nbsp Url of a feed (supported feed formats: RSS, ATOM, RDFprism)", false, false);
+                    $this->postmsg($Sender, "&nbsp URL of a website (if it references a feed, the referenced feed's url will be used)", false, false);
+                    $this->postmsg($Sender, "&nbsp Shortened url (e.g. bitly url). The referenced url will be used.", false, false);
+                    $this->postmsg($Sender, "&nbsp @TwitterID for twitter feed stream (e.g. @vanilla)", false, false);
+                    throw new Exception(" ");
+                }
+                $FeedRSS["Error"] = $this->setmsg($FeedRSS["Error"]);
+                if (!empty($FeedRSS["SuggestedURL"])) {
+                    //$this->DebugData($FeedRSS["Redirect"], '---FeedRSS["Redirect"]---', 1);
+                    //$this->DebugData($FeedRSS["SuggestedURL"], '---FeedRSS["SuggestedURL"]---', 1);
+                    //$Feedarray["FeedURL"] . ' ', false);
+                    if ($FeedRSS["Redirect"]) {
+                        $Msg = $this->setmsg('The url you specified redirects to a regular web page,not a feed: '.$FeedRSS["InternalURL"]);
+                    } else {
+                        $Msg = $this->setmsg('The url you specified is a regular web page,not a feed: '.$FeedRSS["FeedURL"]);
+                    }
+                    //$this->postmsg($Sender, $Msg);
+                    throw new Exception($this->setmsg($Msg));
+                }
+                throw new Exception($this->setmsg($FeedRSS['Error']));
             }
-            //
+            //$this->postmsg($Sender, __FUNCTION__.' '.__LINE__.' InternalURL:'.$FeedRSS['InternalURL']);
             if (!array_key_exists($Feedarray["Category"], CategoryModel::Categories())) {
-                throw new Exception("Specify a valid destination category");
+                throw new Exception($this->setmsg("Specify a valid destination category"));
             }
             // Validate maximum number of items
-            if (trim($Feedarray["Maxitems"]) && !is_numeric($Feedarray["Maxitems"])) {
+            $Feedarray["Maxitems"] = trim($Feedarray["Maxitems"]);
+            if (!empty($Feedarray["Maxitems"]) && !is_numeric($Feedarray["Maxitems"])) {
                 throw new Exception('"'.$Feedarray["Maxitems"].'" is not valid. If you specify a maximum number of items it must be numeric.');
             }
             // Validate minimum number of words
             if (trim($Feedarray["Minwords"]) && !is_numeric($Feedarray["Minwords"])) {
-                throw new Exception('"'.$Feedarray["Minwords"].'" is not valid. If you specify a minimum number of words it must be numeric.');
+                throw new Exception($this->setmsg('"'.$Feedarray["Minwords"].
+                                                  '" is not valid. If you specify a minimum number of words it must be numeric.'));
             }
             // Validate Active hours (format hh-hh)
             $Msg = $this->validatehours($Feedarray["Activehours"]);
             if ($Msg != '') {
-                throw new Exception($Msg);
+                throw new Exception($this->setmsg($Msg));
             }
         } catch (Exception $e) {
             $FeedRSS['Error'] = T($e->getMessage());
+            //$this->DebugData($FeedRSS, '---FeedRSS---', 1);
         }
         //decho ($FeedRSS);
         return $FeedRSS;
@@ -882,19 +1079,13 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 /**
 * Fetch feed items and conditionally save as new discussions.
 *
-* @param string $FeedURL        Request for raw list
-* @param bool   $AutoImport     Indicates automatic import
-* @param string $LastImportDate last import date
-* @param string $OrFilter       keywords filter (any match will satify filter)
-* @param string $AndFilter      keywords filter (all must match to satify filter)
-* @param string $Minwords       minimum number of words required to import item
-* @param string $Maxitems       Maximum number of items to save per import
-* @param bool   $Getlogo        Request to fetch the feed logo
-* @param bool   $Noimage        Indicates that item's image urls are to be removed
+* @param string $Sender     standard
+* @param array  $FeedData   Feed import defintion
+* @param bool   $AutoImport Indicates automatic import
 *
 * @return none
 */
-    protected function pollfeed($FeedURL, $AutoImport, $LastImportDate, $OrFilter, $AndFilter, $Minwords, $Maxitems, $Getlogo, $Noimage) {
+    protected function pollfeed($Sender, $FeedData, $AutoImport) {
           //$this->DebugData($LastImportDate, '---LastImportDate---', 1);
         $NumCheckedItems = 0;
         $NumFilterFailedItems = 0;
@@ -902,20 +1093,32 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $NumAlreadySavedItems = 0;
         $NumSkippedOldItems = 0;
         $NumSkippedItems = 0;
+        $FeedURL = $FeedData["FeedURL"];
+        $InternalURL = $FeedData["InternalURL"];    //Try to reduce redirection
+        $OrFilter = $FeedData["OrFilter"];
+        $AndFilter = $FeedData["AndFilter"];
+        $Minwords = $FeedData["Minwords"];
+        $Maxitems = $FeedData["Maxitems"];
+        $Getlogo = $FeedData["Getlogo"];
+        $Noimage = $FeedData["Noimage"];
+        $Category = $FeedData["Category"];
+        $Historical = $FeedData["Historical"];
+        $LastImport = $FeedData["LastImport"];
+        $NextImport = $FeedData["NextImport"];
+        //$this->DebugData($LastImport, '---LastImport---', 1);
+        //$this->DebugData($NextImport, '---NextImport---', 1);
+        //$this->DebugData($Historical, '---Historical---', 1);
         //
         //$this->DebugData($AutoImport, '---AutoImport---', 1);
-        $FeedRSS = $this->getfeedrss($FeedURL, true, false, $AutoImport);    //Request metadata and data
+        $FeedRSS = $this->getfeedrss($Sender, $FeedURL, true, false, $AutoImport);    //Request metadata and data
         if ($FeedRSS['Error']) {
             if ($AutoImport) {
+                echo '<br>'.__LINE__.' Error fetching url:'.$FeedURL;
                 echo '<br>'.__LINE__.' Feed does not have a valid RSS definition.'.$FeedRSS['Error'].'<br>';
             }
             return false;
         }
         $Encoding = $FeedRSS['Encoding'];
-        if ($Getlogo) {
-            $Logo = $FeedRSS['RSSimage'];
-            //$this->DebugData($Logo, '---Logo---', 1);
-        }
         $Updated = $FeedRSS['Updated'];
         //
         $Itemkey = 'channel.item';
@@ -931,6 +1134,16 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Datekey = 'pubDate';
             $Contentkey = 'description';
             $Linkkey = '0';
+        } elseif ($Encoding == 'Twitter' | $Encoding == '#Twitter') {
+            $Itemkey = 'channel.item';
+            $Datekey = 'pubDate';
+            $Contentkey = 'description';
+            $Linkkey = '0';
+        } elseif ($Encoding == 'RDFprism') {
+            $Itemkey = 'item';
+            $Datekey = 'prismpublicationDate';
+            $Contentkey = 'description';
+            $Linkkey = 'link';
         } elseif ($Encoding == 'Youtube') {
             $Itemkey = 'entry';
             $Datekey = 'published';
@@ -964,12 +1177,14 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             return false;
         }
         $Feed = $this->GetFeed($FeedURL, false);
+        //$this->DebugData($Feed, '---Feed---', 1);
+        //
         $DiscussionModel = new DiscussionModel();
         $DiscussionModel->SpamCheck = false;
-        $Historical = val('Historical', $Feed);
         //$LastPublishDate = val('LastPublishDate', $Feed, date('c'));
         $LastPublishDate = val('LastPublishDate', $Feed, val('published', $Feed, date('c')), date('c'));
         $feedupdated = $LastPublishDate;
+        //$this->DebugData($LastPublishDate, '---LastPublishDate---', 1);
         //$this->DebugData($feedupdated, '---feedupdated---', 1);
         $LastPublishTime = strtotime($LastPublishDate);
         $FeedLastPublishTime = 0;
@@ -984,279 +1199,285 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $Skipall = false;
         //
         foreach ($Items as $Item) {
-            $Item = (array)$Item;
-            //$Item["content"] = __LINE__.' T E S T';
-            //$this->DebugData(array_keys($Item), '---array_keys($Item)---', 1);
-            $NumCheckedItems +=1;
-            if ($NumCheckedItems == 1) {
-                //$this->DebugData($Item, '---Item---', 1);
-            }
-            $Skipitem = false;
-            //$this->DebugData((array)$Item["author"], '---(array)Item["author"]---', 1);
-            //$this->DebugData((array)$Item["guid"], '---(array)Item["guid"]---', 1);
-            //$this->DebugData((array)$Item["link"], '---(array)Item["link"]---', 1);
-            $Link = (array) $Item["link"];
-            $Itemurl = trim((string)valr("@attributes.link", $Link, valr("@attributes.href", $Link, valr($Linkkey, $Link))));
-            //$Itemurl = trim((string)valr('link', $Item, valr('@attributes.href', (array)$Item["link"])));
-            //$this->DebugData(gettype($Item["link"]), '---gettype(/$Item["link"])---', 1);
-            //
-            //$this->DebugData($Link, '---Link---', 1);
-            //$this->DebugData($Itemurl, '---Itemurl---', 1);
-            $Title = (string)valr('title', $Item);
-            //$this->DebugData($Title, '---Title---', 1);
-            //
-            $FeedItemGUID = trim((string)valr('guid', $Item, valr('id', $Item)));
-            if (empty($FeedItemGUID)) {
-                $FeedItemGUID = valr('link', $Item);
-            }
-            //$this->DebugData($FeedItemGUID, '---FeedItemGUID---', 1);
-            $FeedItemID = substr(md5($FeedItemGUID), 0, 30);
-            //$ItemPubDate = (string)val($Datekey, $Item, null);
-            $ItemPubDate = (string)valr($Datekey, $Item, valr('pubDate', $Item, valr('published', $Item, '')));
-            if (is_null($ItemPubDate)) {
-                $date = new DateTime(date());
-                $ItemPubDate = $date->format("Y-m-d H:i:s");
-            } else {
-                $date = new DateTime($ItemPubDate);
-                $ItemPubDate = $date->format("Y-m-d H:i:s");
-            }
-            //$this->DebugData($ItemPubDate, '---ItemPubDate---', 1);
-            if (is_null($ItemPubDate)) {
-                $date = new DateTime();
-            } else {
-                $date = new DateTime($ItemPubDate);
-            }
-            $ItemUpdated = $date->format("Y-m-d H:i:s");
-            //$this->DebugData($ItemUpdated, '---ItemUpdated---', 1);
-            if (is_null($ItemPubDate)) {
-                $ItemPubTime = time();
-            } else {
-                $ItemPubTime = strtotime($ItemPubDate);
-            }
-            if ($ItemPubTime > $FeedLastPublishTime) {
-                $FeedLastPublishTime = $ItemPubTime;
-            }
-            //$this->DebugData($ItemPubTime, '---ItemPubTime---', 1);
-            //$this->DebugData(date('c', $ItemPubTime), '---ItemPubTime(formatted)---', 1);
-            if (($Historical == false) && ($ItemPubDate < $LastPublishDate)) {
-                //echo '<br>'.__LINE__.' Skiping old item.  ItemPubDate:'.$ItemPubDate.' < LastPublishDate:'.$LastPublishDate;
-                $NumSkippedOldItems += 1;
-                  $NumSkippedItems += 1;
-                $Skipitem = true;
-            } else {
-                //echo '<br>'.__LINE__.' Processing new item.  ItemPubDate:'.$ItemPubDate.' < LastPublishDate:'.$LastPublishDate;
-            }
-            //echo '<br>'.__LINE__.' Skipall:'.$Skipall.' NumSavedItems:'.$NumSavedItems.' NumSavedItems:'.$NumSavedItems;
-            if (($Skipall == false)  && (($Maxitems>0) && ($NumSavedItems == $Maxitems))) {
-                if ($AutoImport) {
-                    echo "  Reached maximum items to import:".$Maxitems.'. ';
+            if (!$Skipall) {
+                $Item = (array)$Item;
+                //$Item["content"] = __LINE__.' T E S T';
+                //$this->DebugData(array_keys($Item), '---array_keys($Item)---', 1);
+                $NumCheckedItems +=1;
+                if ($NumCheckedItems == 1) {
+                    //$this->DebugData($Item, '---Item---', 1);
                 }
-                $Skipall = true;
-            }
-            if ($Skipall) {
-                  $Skipitem = true;
-                  $NumSkippedItems += 1;
-            }
-            if (!$Skipitem) {
-                $ExistingDiscussion = $DiscussionModel->GetWhere(array(
-                        'ForeignID' => $FeedItemID
-                ));
-            }
-            if (!$Skipitem && $ExistingDiscussion && $ExistingDiscussion->NumRows()) {
-                  $Skipitem = true;
-                  $NumSkippedItems += 1;
-                  $NumAlreadySavedItems += 1;
-            }
-            if (!$Skipitem) {
-                $this->EventArguments['Publish'] = true;
-                $this->EventArguments['FeedURL'] = $FeedURL;
-                $this->EventArguments['Feed'] = &$Feed;
-                $this->EventArguments['Item'] = &$Item;
-                $this->FireEvent('FeedItem');
-                $RPublish = $this->EventArguments['Publish'];
-                if (!$this->EventArguments['Publish']) {
-                    $Skipitem = true;
-                    $NumSkippedItems += 1;
-                }
-                $StoryTitle = array_shift($Trash = explode("\n", (string)val('title', $Item)));
-                $StoryBody = (string)valr($Contentkey, $Item, valr('description', $Item, valr('content', $Item, valr('summary', $Item, ''))), ' ');
+                $Skipitem = false;
+                //$this->DebugData((array)$Item["author"], '---(array)Item["author"]---', 1);
+                //$this->DebugData((array)$Item["guid"], '---(array)Item["guid"]---', 1);
+                //$this->DebugData((array)$Item["link"], '---(array)Item["link"]---', 1);
+                $Link = (array) $Item["link"];
+                $Itemurl = trim((string)valr("@attributes.link", $Link, valr("@attributes.href", $Link, valr($Linkkey, $Link))));
+                //$Itemurl = trim((string)valr('link', $Item, valr('@attributes.href', (array)$Item["link"])));
+                //$this->DebugData(gettype($Item["link"]), '---gettype(/$Item["link"])---', 1);
                 //
-                if ($FeedRSS['Noimage']) {
-                    $StoryBody = $this->Imagereformat($StoryBody, '!');
-                }
-                //
-                if ($Encoding == 'Youtube') {
-                    //$this->DebugData($Itemurl, '---Itemurl---', 1);
-                    $Query   = @parse_url($Itemurl, PHP_URL_QUERY);
-                    //$this->DebugData($Query, '---Query---', 1);  //Expecting "v=knjht2aXBIk"
-                    $Youtubeid = substr($Query, 2);
-                    //$this->DebugData($Youtubeid, '---Youtubeid---', 1);  //Expecting "v=12345678901"
-                    if (!$Youtubeid) {
-                      $Youtubeid = '12345678901';
-                    }
-                    $Youtubesnap = 'https://img.youtube.com/vi/' . $Youtubeid . '/default.jpg';
-                    //  <a rel="nofollow" target="_blank" href="https://www.youtube.com/watch?v=12345678901"><img width="240" alt="aaa" src="https://img.youtube.com/vi/12345678901/default.jpg" height="135"></a>
-                    $StoryBody = t('Click to view YouTube video:') . 
-                               '<div><a id=FDPyoutube rel="nofollow" target="_blank" href="' .
-                               $Itemurl . '" ><img width="240" height="135" alt="" src="' .
-                               $Youtubesnap . '" ></a></div><br>' . $StoryBody;
-                }
-                //
-                $StoryPublished = date("Y-m-d H:i:s", $ItemPubTime);
-                $Domain = @parse_url($Itemurl, PHP_URL_HOST);
+                //$this->DebugData($Link, '---Link---', 1);
                 //$this->DebugData($Itemurl, '---Itemurl---', 1);
-            }
-            if (!$Skipitem  && $AutoImport) {
-                echo '<br>&nbsp&nbsp&nbsp Processing item #'.$NumCheckedItems.':"'.SliceString($StoryTitle, 40).'".  ';
-            } 
-            if (!$Skipitem && $OrFilter != '') {
-                //$this->DebugData($OrFilter, '---OrFilter---', 1);
-                $Tokens = explode(",", $OrFilter);
-                $Found = false;
-                foreach ($Tokens as $Token) {
-                    //$this->DebugData($StoryTitle, '---OrFilter test--- on: '.$Token.' ', 1);
-                    if (preg_match('/\b'.$Token.'\b/i', $StoryTitle)) {
-                        if ($AutoImport) {
-                            echo " Matched OrFilter:".$Token." ";
-                        }
-                        $Found = true;
-                    }
+                $Title = (string)valr('title', $Item);
+                //$this->DebugData($Title, '---Title---', 1);
+                //
+                $FeedItemGUID = trim((string)valr('guid', $Item, valr('id', $Item)));
+                if (empty($FeedItemGUID)) {
+                    $FeedItemGUID = valr('link', $Item);
                 }
-                if (!$Found) {
-                    //$this->DebugData($StoryTitle, '---Filters NOT Matched---Filters:'.$OrFilter.' ', 1);
-                    if ($AutoImport) {
-                          echo " Did not match filters:".$OrFilter." ";
-                    }
-                    $Skipitem = true;
+                //$this->DebugData($FeedItemGUID, '---FeedItemGUID---', 1);
+                $FeedItemID = substr(md5($FeedItemGUID), 0, 30);
+                //$ItemPubDate = (string)val($Datekey, $Item, null);
+                $ItemPubDate = (string)valr($Datekey, $Item, valr('pubDate', $Item, valr('published', $Item, '')));
+                if (is_null($ItemPubDate)) {
+                    $date = new DateTime(date());
+                    $ItemPubDate = $date->format("Y-m-d H:i:s");
+                } else {
+                    $date = new DateTime($ItemPubDate);
+                    $ItemPubDate = $date->format("Y-m-d H:i:s");
+                }
+                //$this->DebugData($ItemPubDate, '---ItemPubDate---', 1);
+                if (is_null($ItemPubDate)) {
+                    $date = new DateTime();
+                } else {
+                    $date = new DateTime($ItemPubDate);
+                }
+                $ItemUpdated = $date->format("Y-m-d H:i:s");
+                //$this->DebugData($ItemUpdated, '---ItemUpdated---', 1);
+                if (is_null($ItemPubDate)) {
+                    $ItemPubTime = time();
+                } else {
+                    $ItemPubTime = strtotime($ItemPubDate);
+                }
+                if ($ItemPubTime > $FeedLastPublishTime) {
+                    $FeedLastPublishTime = $ItemPubTime;
+                }
+                //$this->DebugData($ItemPubTime, '---ItemPubTime---', 1);
+                //$this->DebugData(date('c', $ItemPubTime), '---ItemPubTime(formatted)---', 1);
+                if ((!$Historical) && ($ItemPubDate < $LastPublishDate)) {
+                    //echo '<br>'.__LINE__.' Skiping old item.  ItemPubDate:'.$ItemPubDate.' < LastPublishDate:'.$LastPublishDate;
+                    $NumSkippedOldItems += 1;
                     $NumSkippedItems += 1;
-                    $NumFilterFailedItems +=1;
+                    $Skipitem = true;
+                } else {
+                   //echo '<br>'.__LINE__.' Processing new item.  ItemPubDate:'.$ItemPubDate.' < LastPublishDate:'.$LastPublishDate;
                 }
-            }
-            // 
-            if (!$Skipitem && $AndFilter != '') {
-                //$this->DebugData($AndFilter, '---AndFilter---', 1);
-                $Tokens = explode(",", $AndFilter);
-                foreach ($Tokens as $Token) {
-                    if (!$Skipitem && !preg_match('/\b'.$Token.'\b/i', $StoryTitle)) {
-                        //$this->DebugData($StoryTitle, '---AndFilter NOT Matched--- on: '.$Token.' ', 1);
+                //echo '<br>'.__LINE__.' Skipall:'.$Skipall.' NumSavedItems:'.$NumSavedItems.' NumSavedItems:'.$NumSavedItems;
+                if (($Skipall == false)  && (($Maxitems>0) && ($NumSavedItems == $Maxitems))) {
+                    if ($AutoImport) {
+                        echo "  Reached maximum items to import:".$Maxitems.'. ';
+                    }
+                    $Skipall = true;
+                }
+                if ($Skipall) {
+                      $Skipitem = true;
+                      $NumSkippedItems += 1;
+                }
+                if (!$Skipitem) {
+                    $ExistingDiscussion = $DiscussionModel->GetWhere(array(
+                            'ForeignID' => $FeedItemID
+                    ));
+                }
+                if (!$Skipitem && $ExistingDiscussion && $ExistingDiscussion->NumRows()) {
+                      $Skipitem = true;
+                      $NumSkippedItems += 1;
+                      $NumAlreadySavedItems += 1;
+                }
+                if (!$Skipitem) {
+                    $this->EventArguments['Publish'] = true;
+                    $this->EventArguments['FeedURL'] = $FeedURL;
+                    $this->EventArguments['Feed'] = &$Feed;
+                    $this->EventArguments['Item'] = &$Item;
+                    $this->FireEvent('FeedItem');
+                    $RPublish = $this->EventArguments['Publish'];
+                    if (!$this->EventArguments['Publish']) {
+                        $Skipitem = true;
+                        $NumSkippedItems += 1;
+                    }
+                    $StoryTitle = strip_tags(SliceString($Title, 100));
+                    $StoryBody = (string)valr($Contentkey, $Item, valr('description', $Item, valr('content', $Item, valr('summary', $Item, ''))), ' ');
+                    //
+                    $StoryPublished = date("Y-m-d H:i:s", $ItemPubTime);
+                    $Domain = @parse_url($Itemurl, PHP_URL_HOST);
+                    //$this->DebugData($Itemurl, '---Itemurl---', 1);
+                }
+                if (!$Skipitem  && $AutoImport) {
+                    echo '<br>&nbsp&nbsp&nbsp Processing item #'.$NumCheckedItems.':"'.SliceString($StoryTitle, 40).'".  ';
+                }
+                if (!$Skipitem && $OrFilter != '') {
+                    //$this->DebugData($OrFilter, '---OrFilter---', 1);
+                    $Tokens = explode(",", $OrFilter);
+                    $Found = false;
+                    foreach ($Tokens as $Token) {
+                        //$this->DebugData($StoryTitle, '---OrFilter test--- on: '.$Token.' ', 1);
+                        if (preg_match('/\b'.$Token.'\b/i', $StoryTitle)) {
+                            if ($AutoImport) {
+                                echo " Matched OrFilter:".$Token." ";
+                            }
+                            $Found = true;
+                        }
+                    }
+                    if (!$Found) {
+                        //$this->DebugData($StoryTitle, '---Filters NOT Matched---Filters:'.$OrFilter.' ', 1);
                         if ($AutoImport) {
-                            echo " Did not match AND filter:".$Token." ";
+                              echo " Did not match filters:".$OrFilter." ";
                         }
                         $Skipitem = true;
                         $NumSkippedItems += 1;
                         $NumFilterFailedItems +=1;
                     }
                 }
-                //$this->DebugData($StoryTitle, '---AndFilterMatch---AndFilters: '.$AndFilter.' ', 1);
-                if (!$Skipitem && $AutoImport) {
-                       echo " Matched AND filter:".$AndFilter." ";
-                }
-            }
-            // 
-            if (!$Skipitem && $Minwords != '') {
-                //$this->DebugData($Minwords, '---Minwords---', 1);
-                if (str_word_count(strip_tags($StoryBody))<$Minwords) {
-                    //$this->DebugData($StoryBody, '---Minwords Not Matched---', 1);
-                    if ($AutoImport) {
-                        echo " Did not match minimum number of words:".$Minwords." ";
-                    }
-                    $Skipitem = true;
-                    $NumSkippedItems += 1;
-                    $NumFilterFailedItems +=1;
-                } else {
-                    //$this->DebugData($StoryBody, '---Minwords Match---', 1);
-                    if ($AutoImport) {
-                        echo " Matched minimum number of words:".$Minwords." ";
-                    }
-                }
-            }
-            if (!$Skipitem) {
-                //$this->DebugData($StoryTitle, '---StoryTitle---', 1);
-                //$ParsedStoryBody = '<div class="AutoFeedDiscussion">'.$StoryBody.
-                //'</div> <br/><div class="AutoFeedSource">Source: '.$FeedItemGUID.'</div>';
-                $ParsedStoryBody = '<div class="AutoFeedDiscussion">'.$StoryBody.'</div>';
-
-                $DiscussionData = array(
-                            'Name'          => $StoryTitle,
-                            'Format'        => 'Html',
-                            'CategoryID'     => $Feed['Category'],
-                            'ForeignID'      => substr($FeedItemID, 0, 30),
-                            'Type'             => 'Feed',
-                            'Body'          => $ParsedStoryBody,
-                            'Attributes' => array(
-                                'FeedURL'            => $FeedURL,
-                                'Itemurl'            => $Itemurl,
-                              ),
-                        );
-                //Post as feed ID if one was defined
-                if ($FeedUserid) {
-                       $InsertUserID = $FeedUserid;
-                } else {
-                    // Post as Minion (if one exists) or the system user
-                    if (Gdn::PluginManager()->CheckPlugin('Minion')) {
-                        $Minion = Gdn::PluginManager()->GetPluginInstance('MinionPlugin');
-                        $InsertUserID = $Minion->GetMinionUserID();
-                    } else {
-                        $InsertUserID = Gdn::UserModel()->GetSystemUserID();
-                    }
-                }
-                $DiscussionData[$DiscussionModel->DateInserted] = $StoryPublished;
-                $DiscussionData[$DiscussionModel->InsertUserID] = $InsertUserID;
-                $DiscussionData[$DiscussionModel->DateUpdated] = $StoryPublished;
-                $DiscussionData[$DiscussionModel->UpdateUserID] = $InsertUserID;
-
-                $this->EventArguments['FeedDiscussion'] = &$DiscussionData;
-                $this->FireEvent('Publish');
-
-                $RFeedDiscussion = $this->EventArguments['FeedDiscussion'];
-                $RPublish = $this->EventArguments['Publish'];
-                //$this->DebugData($DiscussionData, '---$DiscussionData---', 1);
-                //$this->DebugData($DiscussionData["Name"], '---$DiscussionData["Name"]---', 1);
-                //$this->DebugData($RFeedDiscussion, '---RFeedDiscussion---', 1);
-                //$this->DebugData($RPublish, '---RPublish---', 1);
                 //
-
-                if (!$this->EventArguments['Publish']) {
-                      $Skipitem = true;
-                      $NumSkippedItems += 1;
-                }
-                if (!$Skipitem) {
-                    $DiscussionData[$DiscussionModel->Type] = 'Feed';
-                    setValue('Type', $DiscussionModel, 'Feed');
-                    $InsertID = $DiscussionModel->Save($DiscussionData);
-                    if ($InsertID) {
-                        //var_dump ($InsertID);
-                    } else {
-                         echo '<br>'.__LINE__.' Failed save';
-                         $NumSavedItems -= 1;
+                if (!$Skipitem && $AndFilter != '') {
+                    //$this->DebugData($AndFilter, '---AndFilter---', 1);
+                    $Tokens = explode(",", $AndFilter);
+                    foreach ($Tokens as $Token) {
+                        if (!$Skipitem && !preg_match('/\b'.$Token.'\b/i', $StoryTitle)) {
+                            //$this->DebugData($StoryTitle, '---AndFilter NOT Matched--- on: '.$Token.' ', 1);
+                            if ($AutoImport) {
+                                echo " Did not match AND filter:".$Token." ";
+                            }
+                            $Skipitem = true;
+                            $NumSkippedItems += 1;
+                            $NumFilterFailedItems +=1;
+                        }
                     }
-                    $LastSavedItemPubTime = date('c', $ItemPubTime);
-                    $NumSavedItems += 1;
-                    //$this->DebugData($DiscussionData["Name"], '---Saved...---', 1);
-                    $this->EventArguments['DiscussionID'] = $InsertID;
-                    $this->EventArguments['Vaidation'] = $DiscussionModel->Validation;
-                    $this->FireEvent('Published');
-                    // Reset discussion validation
-                    $DiscussionModel->Validation->Results(true);
+                    //$this->DebugData($StoryTitle, '---AndFilterMatch---AndFilters: '.$AndFilter.' ', 1);
+                    if (!$Skipitem && $AutoImport) {
+                           echo " Matched AND filter:".$AndFilter." ";
+                    }
                 }
+                //
+                if (!$Skipitem && $Minwords != '') {
+                    //$this->DebugData($Minwords, '---Minwords---', 1);
+                    if (str_word_count(strip_tags($StoryBody))<$Minwords) {
+                        //$this->DebugData($StoryBody, '---Minwords Not Matched---', 1);
+                        if ($AutoImport) {
+                            echo " Did not match minimum number of words:".$Minwords." ";
+                        }
+                        $Skipitem = true;
+                        $NumSkippedItems += 1;
+                        $NumFilterFailedItems +=1;
+                    } else {
+                        //$this->DebugData($StoryBody, '---Minwords Match---', 1);
+                        if ($AutoImport) {
+                            echo " Matched minimum number of words:".$Minwords." ";
+                        }
+                    }
+                }
+                //
+                if (!$Skipitem) {
+                    if (!$Noimage) {
+                        if ($Encoding == 'Youtube') {
+                            $StoryBody = $this->getyoutubevideo($Sender, $Itemurl) . $StoryBody;
+                        } elseif ($Encoding == 'Twitter') {
+                            //$this->DebugData($Itemurl, "---Itemurl---", 1);
+                            $StoryBody = $this->gettwittercard($Sender, $Itemurl, $StoryBody). $StoryBody;
+                            //$this->DebugData($StoryBody, '---StoryBody ---', 1);
+                        }
+                    } else {
+                        $StoryBody = $this->Imagereformat($StoryBody, '!');
+                    }
+                    //
+                    //$this->DebugData($StoryTitle, '---StoryTitle---', 1);
+                    //$ParsedStoryBody = '<div class="AutoFeedDiscussion">'.$StoryBody.
+                    //'</div> <br/><div class="AutoFeedSource">Source: '.$FeedItemGUID.'</div>';
+                    $ParsedStoryBody = '<div class="AutoFeedDiscussion">'.$StoryBody.'</div>';
+
+                    $DiscussionData = array(
+                                'Name'          => $StoryTitle,
+                                'Format'        => 'Html',
+                                'CategoryID'     => $Category,
+                                'ForeignID'      => substr($FeedItemID, 0, 30),
+                                'Type'             => 'Feed',
+                                'Body'          => $ParsedStoryBody,
+                                'Attributes' => array(
+                                    'FeedURL'            => $FeedURL,
+                                    'Itemurl'            => $Itemurl,
+                                  ),
+                            );
+                    //Post as feed ID if one was defined
+                    if ($FeedUserid) {
+                           $InsertUserID = $FeedUserid;
+                    } else {
+                        // Post as Minion (if one exists) or the system user
+                        if (Gdn::PluginManager()->CheckPlugin('Minion')) {
+                            $Minion = Gdn::PluginManager()->GetPluginInstance('MinionPlugin');
+                            $InsertUserID = $Minion->GetMinionUserID();
+                        } else {
+                            $InsertUserID = Gdn::UserModel()->GetSystemUserID();
+                        }
+                    }
+                    $DiscussionData[$DiscussionModel->DateInserted] = $StoryPublished;
+                    $DiscussionData[$DiscussionModel->InsertUserID] = $InsertUserID;
+                    $DiscussionData[$DiscussionModel->DateUpdated] = $StoryPublished;
+                    $DiscussionData[$DiscussionModel->UpdateUserID] = $InsertUserID;
+
+                    $this->EventArguments['FeedDiscussion'] = &$DiscussionData;
+                    $this->FireEvent('Publish');
+
+                    $RFeedDiscussion = $this->EventArguments['FeedDiscussion'];
+                    $RPublish = $this->EventArguments['Publish'];
+                    //$this->DebugData($DiscussionData, '---$DiscussionData---', 1);
+                    //$this->DebugData($DiscussionData["Name"], '---$DiscussionData["Name"]---', 1);
+                    //$this->DebugData($RFeedDiscussion, '---RFeedDiscussion---', 1);
+                    //$this->DebugData($RPublish, '---RPublish---', 1);
+                    //
+
+                    if (!$this->EventArguments['Publish']) {
+                          $Skipitem = true;
+                          $NumSkippedItems += 1;
+                    }
+                    if (!$Skipitem) {
+                        $DiscussionData[$DiscussionModel->Type] = 'Feed';
+                        setValue('Type', $DiscussionModel, 'Feed');
+                        $InsertID = $DiscussionModel->Save($DiscussionData);
+                        if ($InsertID) {
+                            $NumSavedItems += 1;
+                            //var_dump ($InsertID);
+                        } else {
+                            if ($AutoImport) {
+                                 echo '<br>'.__LINE__.' Failed save';
+                                 decho($DiscussionData);
+                            }
+                        }
+                        $LastSavedItemPubTime = date('c', $ItemPubTime);
+                        //$this->DebugData($DiscussionData["Name"], '---Saved...---', 1);
+                        $this->EventArguments['DiscussionID'] = $InsertID;
+                        $this->EventArguments['Vaidation'] = $DiscussionModel->Validation;
+                        $this->FireEvent('Published');
+                        // Reset discussion validation
+                        $DiscussionModel->Validation->Results(true);
+                        //$LastPublishDate = date('c', $FeedLastPublishTime);
+                        $LastPublishDate = date('Y-m-d H:i:s', $FeedLastPublishTime);
+                    }
+                }
+                $LastImport = date('Y-m-d H:i:s');
+                //$this->DebugData($LastSavedItemPubTime, '---LastSavedItemPubTime---', 1);
+                //$this->DebugData($LastPublishDate, '---LastPublishDate---', 1);
+                //$this->DebugData($LastImport, '---LastImport---', 1);
+                //$this->DebugData($NextImport, '---NextImport---', 1);
+                //$this->DebugData($FeedURL, '---FeedURL---', 1);
+                $FeedKey = self::EncodeFeedKey($FeedURL);
+                $this->UpdateFeed($FeedKey, array(
+                    'Active'     => true,
+                    'LastImport'     => $LastImport,
+                    'NextImport'     => $NextImport,
+                    'FeedURL'     => $FeedURL,
+                    'Historical'     => false,
+                    'Encoding'     => $Encoding,
+                    'Compressed'    => $FeedRSS['Compressed'],
+                    'LastPublishDate' => $LastPublishDate
+                ));
             }
-            //$LastPublishDate = date('c', $FeedLastPublishTime);
-            $LastPublishDate = date('Y-m-d H:i:s', $FeedLastPublishTime);
-            $LastImport = date('Y-m-d H:i:s');
-            //$this->DebugData($LastSavedItemPubTime, '---LastSavedItemPubTime---', 1);
-            //$this->DebugData($LastPublishDate, '---LastPublishDate---', 1);
-            //$this->DebugData($LastImport, '---LastImport---', 1);
-            $FeedKey = self::EncodeFeedKey($FeedURL);
-            $this->UpdateFeed($FeedKey, array(
-                'LastImport'     => $LastImport,
-                'FeedURL'     => $FeedURL,
-                'RSSimage'     => $Logo,
-                'Historical'     => false,
-                'Encoding'     => $Encoding,
-                'Compressed'    => $FeedRSS['Compressed'],
-                'LastPublishDate' => $LastPublishDate
-            ));
         }
+        //$this->DebugData($NextImport, '---NextImport---', 1);
+        //$this->DebugData($LastImport, '---LastImport---', 1);
+        $this->UpdateFeed($FeedKey, array(
+                    'NextImport'     => $NextImport,
+                    'LastImport'     => $LastImport,
+                    'FeedURL'     => $FeedURL,
+                ));
         //
         if ($AutoImport) {
             echo '<span><br>&nbsp&nbsp&nbsp'.$NumCheckedItems. ' items processed, '.
@@ -1264,6 +1485,114 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                  $NumSkippedItems . ' skipped ('.
                  $NumAlreadySavedItems . ' previously saved, '. $NumSkippedOldItems . ' old items. '.
                  $NumFilterFailedItems . " Didn't match filters)</span>";
+        }
+    }
+/**
+* Fetch YouTube video from a specific YouTube feed item.
+*
+* @param object $Sender  standard
+* @param string $Itemurl url of feed
+*
+* @return array
+*/
+    protected function getyoutubevideo($Sender, $Itemurl) {
+        //$this->DebugData(__LINE__, '', 1);
+        //$this->DebugData($Itemurl, '---Itemurl---', 1);
+        $Query   = @parse_url($Itemurl, PHP_URL_QUERY);
+        //$this->DebugData($Query, '---Query---', 1);  //Expecting "v=knjht2aXBIk"
+        $Youtubeid = substr($Query, 2);
+        //$this->DebugData($Youtubeid, '---Youtubeid---', 1);  //Expecting "v=12345678901"
+        if (!$Youtubeid) {
+            $Youtubeid = '12345678901';
+        }
+        $Youtubesnap = 'https://img.youtube.com/vi/' . $Youtubeid . '/default.jpg';
+        return t('Click to view YouTube video:') .
+               '<div><a id=FDPyoutube rel="nofollow" target="_blank" href="' .
+               $Itemurl . '" ><img width="240" height="135" alt="" src="' .
+               'https://img.youtube.com/vi/' . $Youtubeid . '/default.jpg'.
+               '" ></a></div><br>';
+    }
+/**
+* Fetch twittercard from a specific twitter item.
+*
+* @param object $Sender    standard
+* @param string $Url       url of feed
+* @param string $StoryBody twit feed content
+*
+* @return array
+*/
+    protected function gettwittercard($Sender, $Url, $StoryBody) {
+        //$this->DebugData(__LINE__, '', 1);
+        //$this->DebugData($Url, '---Url---', 1);
+        //
+        $Itemid = substr($Url, strrpos($Url, '/') + 1);
+        //
+        $Webpage = $this->fetchurl($Sender, $Url, true);
+        //$this->DebugData(substr($Webpage["data"],0,600), '---Webpage 0:600---', 1);
+        if ($Webpage["Error"] or empty($Webpage["data"])) {
+            return '';
+        }
+        //
+        $Item = $Webpage["data"];
+        //
+        $Segment = $this->getbetweentexts($Item, 'class="card2 js-media-container', '</div>');
+        if ($Segment) {
+            $Segment = $this->getbetweentexts($Segment, 'data-card-url="', '"');
+            if ($Segment) {
+                //$this->DebugData($Segment, '---Segment---', 1);
+                $Webpage = $this->fetchurl($Sender, trim($Segment), true, 3);  //Up to 3 refollows
+                //$this->DebugData($Webpage["Error"], '---Webpage["Error"]---', 1);
+                if (!isset($Webpage["Error"]) & $Webpage["Error"] != '') {
+                    $Segment = $this->getbetweentexts($Webpage["data"], '<meta name="twitter:image" content="', '"');
+                    //$this->DebugData($Segment, '---Segment---', 1);
+                    //Verify original content doesn't include the image/video content
+                    if (($Segment) & (stripos($StoryBody, $Segment) === false)) {
+                        $Embed = __LINE__.'<div class=FDP'.__LINE__.'id=FDP'.__LINE__.
+                                '><img width="240" alt="" src="' .
+                                $Segment . '" ></div><br>';
+                        //$this->DebugData($Embed, '---Embed---', 1);
+                        return $Embed;
+                    }
+                }
+            }
+        }
+        //  Try og cards instead
+        $Cardtypes = array('property="og:video:url"' => 'Video',
+                           'property="og:video:secure_url"' => 'Video',
+                           'property="og:image"' => 'Image',
+                           );
+        foreach ($Cardtypes as $Tag1 => $Type) {
+            $Segment = $this->getbetweentexts($Item, $Tag1, '>');
+            if ($Segment != '') {
+                $Segment = $this->getbetweentexts($Segment, 'content="', '"');
+                if ($Segment != '') {
+                    //Check whether the original content already has the image/video content
+                    if (stripos($StoryBody, $Segment) === false) {      //Image/video already in content?
+                        //$this->DebugData($Segment, '---Segment already in source---', 1);
+                    } elseif ($Type == 'Image') {
+                        $Embed = __LINE__.'<div id=FDP'.__LINE__.'><img width="240" max-height="135" alt="" src="' .
+                               $Segment . '" ></div><br>';
+                    } elseif ($Type == 'Video') {
+                        $Image = $this->getbetweentexts($Item, 'property="og:image"', '>');
+                        if ($Image) {
+                            $Image = $this->getbetweentexts($Image, 'content="', '"');
+                        }
+                        if ($Image) {
+                            $Embed = __LINE__.t('Click to view video:') .
+                               '<div><a class=FDPvideo'.__LINE__.' id=FDPvideo'.__LINE__.' rel="nofollow" target="_blank" href="' .
+                               $Segment . '" ><img width="240" max-height="135" alt="" src="' . $Image . '" ></a></div><br>';
+                        } else {
+                            $Embed = __LINE__.t('Click to view video:').
+                                '<div><a class=FDPvideo'.__LINE__.' id=FDPvideo'.__LINE__.' rel="nofollow" target="_blank" href="' .
+                                $Segment . '" >Click for Video</a></div><br>';
+                        }
+                    } else {
+                        $Embed = __LINE__.'<div id=FDPvideo'.__LINE__.' class=FDPvideo'.__LINE__.'></div>';
+                    }
+                    //$this->DebugData($Embed, '---Embed---', 1);
+                    return $Embed;
+                }
+            }
         }
     }
 /**
@@ -1375,6 +1704,14 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         if (!$FeedURL | !$RSSimage) {       //if there is no url or image ignore this disussion
             return;
         }
+        $Encoding = $Feed['Encoding'];
+        if ($Encoding == 'Twitter') {
+            $Oneitemclass = 'RSSlogoboxtwitter';
+            $Listitemclass = 'RSSlistlogoboxtwitter';
+        } else {
+            $Oneitemclass = 'RSSlogobox';
+            $Listitemclass = 'RSSlistlogobox';
+        }
         $Itemurl = val('Itemurl', $Discussion->Attributes);
         //If there is no link to the imported item (RSS feeds are unreliable...) then revert to the feed's url
         if (!$Itemurl) {
@@ -1388,14 +1725,13 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         //$this->DebugData($Itemurl, '---Itemurl---', 1);
         //
         $Logo = '<img src="' . $RSSimage . '" id=RSSimage class=RSSimage'.$Type.'0 title="'.$Feed["Feedtitle"].'"> ';
-        //echo '<!--debug '.__LINE__.' --> ';
-        //highlight_string(__LINE__.$Logo);
+        //$this->DebugData($Logo, '---Logo---', 1);
         if ($Type == 'list') {            //Discussion list
             if (!$Feed['Getlogo']) {
                //echo '<!--debug '.__LINE__.' --> ';
                 return;
             }
-            echo anchor($Logo, '/discussion/'.$Discussion->DiscussionID);
+            echo '<span class="' . $Listitemclass . '">' . anchor($Logo, '/discussion/' .$Discussion->DiscussionID) . '</span><!-- '.__LINE__.'-->';
             return;
         } else {                         //Showing a specific discussion
             //echo '<!--debug '.__LINE__.' --> ';
@@ -1408,11 +1744,11 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                             array('class' => 'RSSsource')
                         ),
                         'span',
-                        array('class' => 'RSSlogobox')
+                        array('class' => $Oneitemclass)
                     );
                     //echo '<!--debug '.__LINE__.' --> ';
                 } else {                    //Show logo without a link
-                    echo wrap(wrap($Logo, 'span', array('class' => 'RSSsource')), 'span', array('class' => 'RSSlogobox'));
+                    echo wrap(wrap($Logo, 'span', array('class' => 'RSSsource')), 'span', array('class' => $Oneitemclass));
                 }
             }
             if ($Itemurl) {
@@ -1652,7 +1988,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $this->setfdpspan($Sender->EventArguments['Discussion']);
     }
 /**
-* Insert feed image info in a specific discussion.
+*  Close span used to add feed logo.
 *
 * @param object $Sender standard
 * @param string $Args   standard
@@ -1667,13 +2003,24 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 /**
 * Get feed's logo
 *
-* @param string $Url Feed's url
+* @param string $Url      Feed's url
+* @param string $Encoding Feed's encoding
 *
 * @return logo url
 */
-    private function getlogo($Url) {
-        //$this->DebugData($Url, '---Url---', 1);
+    private function getlogo($Url, $Encoding = '') {
+        //$this->DebugData('','',true,true);
+        //$this->DebugData($Encoding, '---Encoding---', 1);
+        if ($Encoding == 'Twitter') {
+            //return 'https://avatars.io/twitter/'  . substr($Url,1);  //Alternate method
+            return 'https://twitter.com/' . substr($Url, 1) . '/profile_image?size=original';
+        } elseif ($Encoding == '#Twitter') {
+            return 'https://pbs.twimg.com/profile_images/588413275659972608/twWBhD7b_400x400.png';
+        }
         $Parsedurl = @parse_url($Url);
+        $Imagepath = url("plugins/FeedDiscussionsPlus/design/", true);
+        //$this->DebugData($Imagepath, '---Imagepath---');
+        //
         //$this->DebugData($Parsedurl, '---Parsedurl---', 1);
         if (!$Parsedurl["scheme"]) {
             $Url = $this->rebuildurl($Url, 'HTTP');   //For the purpose of the logo we don't care it it's https
@@ -1685,11 +2032,13 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         if (preg_match($Ignorepattern, $Url)) {
             //$this->DebugData($Url, '---Url in the ignore logo list---', 1);
             if (preg_match('/(feedproxy.google|blogspot.com)/i', $Url)) {
-                $Logo = 'plugins/FeedDiscussionsPlus/design/feedburner.png';
+                $Logo = $Imagepath . "feedburner.png";
             } elseif (preg_match('/(feedburner.com)/i', $Url)) {
-                $Logo = 'plugins/FeedDiscussionsPlus/design/feedburner.png';
+                $Logo = $Imagepath . "feedburner.png";
+            } elseif (preg_match('/(twitter.com)/i', $Url)) {
+                $Logo = $Imagepath . "twitter.png";
             } else {
-                $Logo = 'plugins/FeedDiscussionsPlus/design/feedblank.png';
+                $Logo = $Imagepath . "noimage.png";
             }
             //$this->DebugData($Logo, '---Returning logo---', 1);
             return $Logo;
@@ -1707,9 +2056,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         } else {
             $Logo = '';
         }
-        //$this->DebugData($Logo, '---Returning logo---', 1);
-        //highlight_string($Logo);
-        //var_dump($Logo)
+        //$this->DebugData($Logo, '---Logo---', 1);
         //die(0);
         return $Logo;
     }
@@ -1724,6 +2071,95 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         return @file_get_contents(trim($Url), 0, null, 0, 1);  //Note that we only fetch a ittle snip
     }
 /**
+* Return url data
+*
+* @param object $Sender standard
+* @param string $Url    Url to fetch
+* @param string $Retry  Request to retry as https
+* @param int    $Follow Number of times to refetch (redirects) content from a set of meta referrers tage (limited support)
+*
+* @return array of data and possibly error message
+*/
+    private function fetchurl($Sender, $Url, $Retry = true, $Follow = 0) {
+        //$this->tracemsg($Sender);
+        //$this->DebugData($Url, '---Url---', 1);
+        $Response['InternalURL'] = $Url;
+        $Proxy = new ProxyRequest();
+        $Pagedata = $Proxy->Request(array(
+            'URL' => $Url, 'Debug' => false, 'SSLNoVerify' => true
+        ));
+        //$this->DebugData((array)$Proxy->ResponseHeaders, '---Proxy->ResponseHeaders---', 1);
+        //$Rhk = array_keys($Proxy->ResponseHeaders);
+        //$this->DebugData($Rhk, '---Rhk---', 1);
+        $Status = $Proxy->ResponseStatus;
+        //$this->DebugData($Proxy, '---Proxy---', 1);
+        //$this->DebugData($Status, '---Status---', 1);
+        $Pagedata = $Proxy->ResponseBody;
+        //$this->postmsg($Sender, ' Url:'.$Url);
+        switch ($Status) {
+            case 200:       //What we expect
+                $Zipped = $Proxy->ResponseHeaders["Content-Encoding"];
+                if ($Zipped == 'gzip') {              //Compressed site?
+                    $Response['Compressed'] = $Zipped;
+                    $Pagedata = gzdecode(Pagedata);    //Uncompress it
+                }
+                //$Response["data"] = $Pagedata;
+                $Response["data"] = $this->removescripts($Pagedata);  // return the data without Java scripts
+                //
+                $InternalURL = (array) $Proxy->ResponseHeaders["Location"];
+                if (empty($InternalURL)) {
+                    $Response['InternalURL'] = $Url;
+                } else {
+                    $Response['InternalURL'] = end($InternalURL);
+                    if (strtolower($this->rebuildurl($Response['InternalURL'])) !=
+                        strtolower($this->rebuildurl($Url))) {
+                            $Response["Redirect"] = true;
+                    }
+                }
+                //$this->postmsg($Sender, 'InternalURL:'.$Response['InternalURL']);
+                //var_dump($Proxy);
+                if ($Follow < 1) {      //No more follows?
+                    return $Response;
+                }
+                //Handle webpage embedded follow requests (if any).
+                /* Examples:
+                    <meta name="referrer" content="always"><noscript><META http-equiv="refresh" content="0;URL=http://for.tn/2leJLTJ"></noscript><title>http://for.tn/2leJLTJ</title></head><script>window.opener = null; location.replace("http:\/\/for.tn\/2leJLTJ")</script>
+                  and
+                    <META http-equiv="refresh" content="0;URL=http://bitly.com/2ykaWkG">
+                */
+                $Redirect = $this->getbetweentexts($Response["data"], '<META http-equiv="refresh" content="0;URL=', '"');
+                if ($Redirect) {
+                    //echo '<br>'.__LINE__.'Redirecting from:'.$Url.' to:'.$Redirect.' Follow:'.$Follow;
+                    $Response = $this->fetchurl($Sender, $Redirect, true, ($Follow-1));   //One less refollow/redirects
+                    //$this->DebugData(substr($Response["data"], 0, 500),           '---$Response["data"]0:500---', 1);
+                    $Response["Redirect"] = true;               //Simulate redirections
+                }
+                return $Response;
+            case 404:
+                $Response['Error'] = $this->setmsg(' Error ' . $Status . ': The specified url was not found on the server '. $Url);
+                return $Response;
+            case 500:
+                $Response['Error'] = $this->setmsg(' Error ' . $Status . ': The server url was not accessible at this time: '. $Url);
+                return $Response;
+            default:
+                $Statustext = $Proxy->ResponseBody;
+                //$this->DebugData($Statustext, '---Statustext---', 1);
+                if ($Retry) {
+                    if (0 === strpos($Url, 'https')) {
+                        $Url = $this->rebuildurl($Url, 'https');
+                        return $this->fetchurl($Sender, $Url, true); //Do retry again
+                    }
+                    if (0 === strpos($Statustext, 'SSL certificate problem:') |
+                       (0 === strpos($Statustext, 'error:14077458:SSL routines:SSL23_GET_SERVER_HELLO:tlsv1 unrecognized name'))) {
+                        $Url = $this->rebuildurl($Url, 'https');
+                        return $this->fetchurl($Sender, $Url, false); //Do not retry again
+                    }
+                }
+        }
+        $Response['Error'] = $this->setmsg('Error ' . $Status . ': '. $Statustext);
+        return $Response;
+    }
+/**
 * Check if url is accessible
 *
 * @param string $Url       Url to reformat
@@ -1734,6 +2170,10 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
     private function rebuildurl($Url, $Setscheme = '') {
         //$this->DebugData($Url, '---Url---', 1);
         //$this->DebugData(@parse_url($Url), '---@parse_url(Url)---', 1);
+        $Url = trim($Url);
+        if (substr($Url, 0, 1) == '@' | substr($Url, 0, 1) == '#') {
+            return $Url;
+        }
         $Domain = @parse_url($Url, PHP_URL_HOST);
         $Path   = @parse_url($Url, PHP_URL_PATH);
         $Query   = @parse_url($Url, PHP_URL_QUERY);
@@ -1775,10 +2215,10 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                 //$this->DebugData($Keywords, '---Keywords---', 1);
                 //$this->DebugData($Foundsearchtag, '---Foundsearchtag---', 1);
                 //$this->DebugData(strtolower($Keywords[1]), '---strtolower(Keywords[1])---', 1);
-                if (strtolower($Keywords[1])== 'rel') { 
+                if (strtolower($Keywords[1])== 'rel') {
                     if (strtolower($Keywords[2]) == 'alternate') {
                         //$this->DebugData($Keywords, '---Keywords---', 1);
-                        $Foundlinktag = true; 
+                        $Foundlinktag = true;
                         $Foundsearchtag = false;
                     } elseif (strtolower($Keywords[2]) == 'search') {
                         //$this->DebugData($Keywords, '---Keywords---', 1);
@@ -1786,7 +2226,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                     }
                 } elseif ($Foundlinktag && strtolower($Keywords[1])== 'href') {
                     //$this->DebugData($Keywords, '---Keywords---', 1);
-                    if (substr($Keywords[2],0,1) == '/') {              //relative url?
+                    if (substr($Keywords[2], 0, 1) == '/') {              //relative url?
                         $Keywords[2] = $Url . $Keywords[2];
                         //$this->DebugData($Keywords[2], '---Keywords[2]---', 1);
                     }
@@ -1804,7 +2244,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                         $i = stripos($Websource, '"rssUrl":"https://www.youtube.com/feeds/videos.xml?channel_id=');
                         //$this->DebugData($i, '---i---', 1);
                         if ($i) {
-                            $j = stripos(substr($Websource, $i+18), ','); 
+                            $j = stripos(substr($Websource, $i+18), ',');
                             if ($j>20) {
                                 $Channelurl = substr($Websource, $i+18, ($j-1));
                                 //$this->DebugData($Channelurl, '---Channelurl---', 1);
@@ -1817,8 +2257,52 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                         //ignoring
                     }
                 }
-             }
+            }
         }
+        // Standardized method failed, try implied method.
+        //
+        //  Handle sites where feed tags are inserted at the end of the url
+        //
+        $Inserts = array('tumblr.com' => '/rss',
+                         'blogspot.com' => '/feeds/posts/default',
+                        'vanillaforums.com' => '/feed.rss'   //Just for demo
+                        );
+        foreach ($Inserts as $Search => $Insert) {
+            //$this->DebugData($Search, '---Search---', 1);
+            $i = stripos($Url, $Search);
+            //$this->DebugData($Url, '---Url---', 1);
+            //$this->DebugData($i, '---i---', 1);
+            if ($i !== false) {
+                    $Url = $Url . $Insert;
+                    //$this->DebugData($Url, '---Url---', 1);
+                    return $Url;
+                return trim(substr_replace($Url, $Search.$Insert, $i, strlen($Search)));
+                //$this->DebugData($Replace, '---Replace---', 1);
+                return trim($Replace);
+            }
+        }
+        //
+        //  Handle sites where feed tags are inserted in the middle of the url
+        $Inserts = array('medium.com' => "/feed",
+                        'tumblr.com' => '/rss',
+                        'vanillaforums.com/discussions/' => 'feed.rss'   //Just for demo
+                        );
+        foreach ($Inserts as $Search => $Insert) {
+            //$this->DebugData($Search, '---Search---', 1);
+            $i = strrpos($Url, $Search);
+            //$this->DebugData($Url, '---Url---', 1);
+            //$this->DebugData($i, '---i---', 1);
+            if ($i !== false) {
+                $j = strlen($Search);
+                //$this->DebugData($j, '---j---', 1);
+                //$this->DebugData(strlen($Url), '---strlen(Url)---', 1);
+                //$this->DebugData($Url, '---Url---', 1);
+                $Replace = substr_replace($Url, $Search.$Insert, $i, $j);
+                //$this->DebugData($Replace, '---Replace---', 1);
+                return trim($Replace);
+            }
+        }
+        //
         return '';
     }
 /**
@@ -1831,9 +2315,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 * @return none
 */
     private function redirecttourl($Sender, $Url, $Msg) {
-        if ($Msg) {
-            $this->postmsg($Sender, $Msg);
-        }
+        $this->postmsg($Sender, $Msg, false, false, false, true);
         Redirect($Url);
     }
 /**
@@ -1847,28 +2329,75 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 */
     private function renderview($Sender, $Viewname, $Msg) {
         //$this->DebugData('','',true,true);
-        if ($Msg) {
-            $this->postmsg($Sender, $Msg);
-        }
+        $Copystate = $this->setcopypaste($Sender);  //Establish access to the copy/paste bin
+        $this->postmsg($Sender, $Msg, false, false);//Post messages (if any)
         $View = $this->getView($Viewname);
         $Sender->render($View);
     }
 /**
+* Reformat a message to be displayed on the next page
+*
+* @param string $Msg     Message to display on the displayed url
+* @param binary $Addline request to add line number of the source message
+*
+* @return reformatted message
+*/
+    private function setmsg($Msg, $Addline = true) {
+        //$this->DebugData($Msg, '---Msg---', 1);
+        $Prefix = strstr(trim($Msg).' ', ' ', true);
+        //$this->DebugData($Prefix, '---Prefix---', 1);
+        //if (is_numeric($Prefix.'0')) {
+        if (preg_match("#^[/.0-9]+$#", $Prefix)) {
+            $Suffix =  strstr($Msg.' ', ' ');
+            //$this->DebugData($Suffix, '---Suffix---', 1);
+            $Msg = $Prefix . ' <b>' . $Suffix . '</b>';
+            if ($Addline) {
+                $Msg = debug_backtrace()[0]['line'] . '.' . $Msg;
+            }
+        } else {
+            $Msg ='<b>' . $Msg . '</b>';
+            if ($Addline) {
+                $Msg = debug_backtrace()[0]['line'] . ' ' . $Msg;
+            }
+        }
+        //$this->DebugData($Msg, '---Msg---', 1);
+        return $Msg;
+    }
+/**
 * Que a message to be displayed on the next page
 *
-* @param object $Sender Standard
-* @param string $Msg    Message to display on the displayed url
+* @param object $Sender   Standard
+* @param string $Msg      Message to display on the displayed url
+* @param binary $Inform   request to issue informmessage service
+* @param binary $Addline  request to add line number of the source message
+* @param binary $Adderror request to post message via form AddError
+* @param binary $Stash    request to stash the message for later viewing
 *
 * @return none
 */
-    private function postmsg($Sender, $Msg) {
+    private function postmsg($Sender, $Msg, $Inform = false, $Addline = true, $Adderror = false, $Stash = false) {
+        //$this->DebugData('','',true,true);
+        if (empty($Msg)) {
+            return;
+        }
+        if ($Addline) {
+            $Msg = debug_backtrace()[0]['line'] . '.' . $Msg;
+        }
         $Qmsg = $Sender->Data('Qmsg');
         if ($Qmsg) {
-            $Msg = $Msg . '<br>' . $Qmsg;
+            $Msg = $Qmsg . '<br>' . $Msg;
         }
-        $Sender->InformMessage($Msg);
-        $Sender->SetData('Qmsg', $Msg);
-        $this->SetStash($Msg, 'Qmsg');
+        if ($Inform) {
+            $Sender->InformMessage($Msg);
+        }
+        if ($Adderror) {
+            $Sender->Form->AddError($Msg);
+        } else {
+            $Sender->SetData('Qmsg', $Msg);
+            if ($Stash) {
+                $this->SetStash($Msg, 'Msg');
+            }
+        }
     }
 /**
 * Fetch form values into feed array
@@ -1887,8 +2416,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             'Active'       => $FormPostValues["Active"],
             'OrFilter'       => strip_tags($FormPostValues["OrFilter"]),
             'AndFilter'       => strip_tags($FormPostValues["AndFilter"]),
-            'Minwords'       => (integer)$FormPostValues["Minwords"],
-            'Maxitems'       => (integer)$FormPostValues["Maxitems"],
+            'Minwords'       => $FormPostValues["Minwords"],
+            'Maxitems'       => $FormPostValues["Maxitems"],
             'Getlogo'       => $FormPostValues["Getlogo"],
             'Noimage'       => $FormPostValues["Noimage"],
             'Activehours'       => $FormPostValues["Activehours"]
@@ -1905,7 +2434,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         // Change default below
         return array(
                     'Historical'  => 1,
-                    'Refresh'     => '1d',
+                    'Refresh'     => '3d',
                     'Category'    => -1,
                     'OrFilter'    => '',
                     'AndFilter'   => '',
@@ -1914,14 +2443,70 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                     'Minwords'    => '10',
                     'Maxitems'    => '20',
                     'LastImport'  => "never",
+                    'NextImport'  => null,
                     'Getlogo'     => true,
                     'Noimage'     => false,
                     'Added'       => date('Y-m-d H:i:s'),
               );
     }
+    /**
+* Calculate next import due date for a feed
+*
+* @param object $Sender     Standard
+* @param string $Mode       Either "Current" to get current import date or "Next" to get next import date
+* @param string $Refresh    Feed refresh frequency
+* @param string $LastImport Date of last import
+*
+* @return string -  Next Import due date
+*/
+    private function getimportdate($Sender, $Mode = "Current", $Refresh = '1w', $LastImport = null) {
+        //$this->DebugData('','',true,true);
+        //$this->DebugData($Refresh, '---Refresh---', 1);
+        //$this->DebugData($LastImport, '---LastImport---', 1);
+        $DelayStr = strtr(
+            $Refresh,
+            array
+                (
+                   "1m"  => "+1 minutes",
+                   "5m"  => "+5 minutes",
+                   "30m" => "+30 minutes",
+                   "1h"  => "+1 hour",
+                   "1d"  => "+1 days",
+                   "3d"  => "+3 days",
+                   "1w"  => "+1 weeks",
+                   "2w"  => "+2 weeks",
+                   "3w"  => "+3 weeks",
+                   "4w"  => "+4 weeks",
+                   "Monday"  => "Monday",
+                   "Tuesday"  => "Tuesday",
+                   "Wednesday"  => "Wednesday",
+                   "Thursday"  => "Thursday",
+                   "Friday"  => "Friday",
+                   "Saturday"  => "Saturday",
+                   "Sunday"  => "Sunday",
+                   "Manually"  => '',
+                )
+        );
+        //$this->postmsg($Sender, __LINE__.' LastImport:'.$LastImport);
+        if ($DelayStr == '') {
+            return '';
+        }
+        if ($LastImport == '' | $LastImport == 'never') {
+            $Base = time();
+        } else {
+            $Base = strtotime($LastImport);
+            if ($Mode == 'Next' && substr($DelayStr, 0, 1) != '+') {
+                $DelayStr = 'next '.$DelayStr;
+            }
+        }
+        $NextDueDate = date('Y-m-d H:i:s', strtotime($DelayStr, $Base));
+        //$this->postmsg($Sender, __LINE__.' DelayStr:'.$DelayStr.' NextDueDate:'.$NextDueDate);
+        return $NextDueDate;
+    }
 /**
 * Fetch RSS/Atom feed from the supplied Url
 *
+* @param object $Sender      Standard
 * @param string $Url         The feed Url
 * @param bool   $Data        Request to fetch feed data into its array
 * @param bool   $SSLNoVerify Request to bypass SSL verification
@@ -1929,183 +2514,276 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 *
 * @return Array - Feed information array
 */
-    private function getfeedrss($Url, $Data = false, $SSLNoVerify = false, $AutoImport = false) {
+    private function getfeedrss($Sender, $Url, $Data = false, $SSLNoVerify = false, $AutoImport = false) {
         //$this->DebugData('','',true,true);
         //$this->DebugData($Url, '---Url---', 1);
         //$this->DebugData($SSLNoVerify, '---SSLNoVerify---', 1);
         //$this->DebugData($AutoImport, '---AutoImport---', 1);
         //    Set response defaults
+        $Url = trim($Url);
         $Response = array(
             'URL' => $Url,
+            'FeedURL' => $Url,
+            'InternalURL' => $Url,
             'SuggestedURL' => '',
             'Action' => '',
             'Error' => '',
             'Encoding' => 'N/A',
             'Updated' => '',
-            'Title' => '',
+            'Feedtitle' => '',
             'RSSimage' => '',
             'RSSdata' => ''
         );
-        //
-        $Proxy = new ProxyRequest();
-        $FeedRSS = $Proxy->Request(array(
-         'URL' => $Url, 'Debug' => false, 'SSLNoVerify' => $SSLNoVerify
-        ));
-        //
-        $Status = $Proxy->ResponseStatus;
-        $Statustext = $Proxy->ResponseBody;
-        //decho ($Proxy->ResponseHeaders);
-        $Zipped = $Proxy->ResponseHeaders["Content-Encoding"];
-        $Response['Compressed'] = $Zipped;
-        if ($Zipped == 'gzip') {              //Compressed site?
-            $FeedRSS = gzdecode($FeedRSS);    //Uncompress it
-        }
-        //$this->DebugData($Statustext, '---Statustext---', 1);
-        //$this->DebugData(htmlspecialchars(substr($FeedRSS,0,500)), '---FeedRSS(0:500)---', 1);
-        //decho ($Proxy->ContentType);//e.g. "application/atom+xml;charset=utf-8" or "application/rss+xml; charset=utf-8" or "text/xml; charset=utf-8"
-        //decho ($Proxy->responseClass);
-        //decho ($Proxy->ResponseStatus);    //e.g. 200 (OK), etc.
-        //decho ($FeedRSS['error']);                    // "<"
-        //decho ($FeedRSS['error_description']);        // "<"
-        if ($Status == 200 | substr($Statustext, 0, 1) == '<') {  //It's what we expect
-            $Statustext = '';
-        }
-        //$this->DebugData($Statustext, '---Statustext---', 1);
-        if ($Statustext) {
-            //decho ($Pr);
-            //if (!$SSLNoVerify &&
-            //    (0 === strpos($Statustext, 'SSL certificate problem: unable to get local issuer certificate'))) {
-            //
-            if (!$SSLNoVerify &&
-                (0 === strpos($Statustext, 'SSL certificate problem:'))) {
-                $Url = $this->rebuildurl($Url, 'https');
-                return $this->getfeedrss($Url, $Data, true, $AutoImport);
-            }
-            if ($Status) {
-                $Response['Error'] = 'Error ' . $Status . ': '. $Statustext;
+        //  Convert TwitterID to https://twitrss.me/twitter_user_to_rss/?user=TwitterID
+        if (Substr($Url, 0, 1) =="@") {
+            $TwitterID = substr($Url, 1);
+            //$this->DebugData($TwitterID, '---TwitterID---', 1);
+            if (preg_match('/^[A-Za-z0-9_]{1,15}$/', $TwitterID)) {
+                $Response["URL"] = strtolower($Url);
+                $Url = 'twitrss.me/twitter_user_to_rss/?user=@' . $TwitterID;
+                $Response['InternalURL'] = $Url;
+                $Encoding = 'Twitter';
+                $Response['RSSimage'] = $this->Getlogo($Response['URL'], $Encoding);
             } else {
-                $Response['Error'] = $Statustext;
-            }
-            if (0 === strpos($Statustext, 'error:14077458:SSL routines:SSL23_GET_SERVER_HELLO:tlsv1 unrecognized name')) {
-                $Url = $this->rebuildurl($Url, 'https');
-                return $this->getfeedrss($Url, $Data, true, $AutoImport);
-            }
-        } else {
-            //echo '<br>'.__LINE__;
-            $Encoding = $this->getencoding($FeedRSS);
-            if ($Encoding == 'BadURL') {
-                $Response['Error'] = __LINE__." Url not found or is not a feed.";
+                $Response['Error'] = $this->setmsg(" invalid Twitter ID: ".$Url);
                 return $Response;
             }
-            if ($Encoding == 'HTML') {
-                $Response['Error'] = __LINE__." URL  looks like this is a web page, not a feed.";
+        //  Convert Twitter hashtag to https://queryfeed.net/tw?q=Hashtag
+        } elseif (Substr($Url, 0, 1) == "#") {
+            $Hashtag = substr($Url, 1);
+            //$this->DebugData($Hashtag, '---Hashtag---', 1);
+            if (preg_match('/^[A-Za-z0-9_]{1,15}$/', $Hashtag)) {
+                $Response['URL'] = strtolower($Url);
+                $Url = trim('queryfeed.net/tw?q=' . $Hashtag);
+                $Response['InternalURL'] = $Url;
+                $Encoding = '#Twitter';
+                $Response['RSSimage'] = $this->Getlogo($Response['URL'], $Encoding);
+            } else {
+                $Response['Error'] = $this->setmsg(" invalid Twitter hashtag: ".$Url);
+                return $Response;
+            }
+        } elseif (trim($Url) == "?") {
+            $Response['Error'] = "?";
+            return $Response;
+        }
+        //  Fetch the web page
+        $Webpage = $this->fetchurl($Sender, $Url, true);  //With retry option
+        //$this->DebugData(htmlspecialchars(substr($Webpage["data"],0,600)), '---Webpage 0:600---', 1);
+        if ($Webpage["Error"]) {
+            $Response['Error'] = $Webpage["Error"];
+            return $Response;
+        }
+        $FeedRSS = $Webpage["data"];
+        $Response['Compressed'] = $Webpage["Compressed"];
+        $Response['InternalURL'] = $Webpage["InternalURL"];
+        $Response["Redirect"] = $Webpage["Redirect"];
+        //$URL = $Webpage["InternalURL"];
+        //
+        if (!$Encoding) {
+            $Encoding = $this->getencoding($Sender, $FeedRSS);
+        }
+        //$this->DebugData($Encoding, '---Encoding---', 1);
+        $Response['Encoding'] = $Encoding;
+        switch ($Encoding) {
+            case 'Atom':
+            case 'RSS':
+            case 'Twitter':
+            case '#Twitter':
+                break;
+            case 'BadURL':
+                $Response['Error'] = $this->setmsg(" Url not found or is not a feed.");
+                return $Response;
+            case 'HTML':
+                $Response['Error'] = $this->setmsg("URL points to a regular web page, not a feed.");
                 //Check for feed url within the web age itself:
                 //<link rel="alternate" type="application/rss+xml" title="whateve.r." href="url of feed" />
                 $SuggestedURL = trim($this->discoverfeed($Sender, $Url, $FeedRSS));
+                //$this->DebugData($Response["Redirect"], '---Response["Redirect"]---', 1);
+                //$this->DebugData($SuggestedURL, "---SuggestedURL---", 1);
+                if (strtolower($SuggestedURL) == strtolower($Response["InternalURL"]) |
+                    strtolower($SuggestedURL) == strtolower($Response["URL"])) {
+                    //$this->DebugData($SuggestedURL, "---SuggestedURL---", 1);
+                    $SuggestedURL = '';
+                    if ($Response["InternalURL"] != $Response["URL"]) {
+                        //$this->DebugData($Response, '---Response---', 1);
+                    }
+                }
                 if ($SuggestedURL) {        //Discovered implied feed?
                     $Response['Error'] = "Consider the suggested feed instead:".$SuggestedURL;
                     //$this->DebugData($Feedurl, '---Feedurl---', 1);
-                    $Response['URL'] = $SuggestedURL;
                     $Response['SuggestedURL'] = $SuggestedURL;
                 }
                 return $Response;
-            }
-            //$this->DebugData($Encoding, '---Encoding---', 1);
-            if ($Encoding == 'Atom' | $Encoding == 'RSS' | $Encoding == 'New') {
-                $Response['Encoding'] = $Encoding;
-            } elseif ($Encoding == 'Youtube') {
-                $Response['Encoding'] = $Encoding;
-                // Replace all "<media:" tags with "<media" to bypass simplexml parsing error 
+                break;
+            case 'Youtube':
+                // Replace all "<media:" tags with "<media" to bypass simplexml parsing error
                 $FeedRSS = strtr($FeedRSS, array('media:description' => 'mediadescription', 'media:group' => 'mediagroup'));
-            } else {
-                //$this->DebugData($Encoding, '---Encoding---', 1);
-                $Response['Error'] = ' ,'.__LINE__." URL content is not a recognized feed (code ".$Encoding.")";
+                break;
+            case 'RDFprism':
+                //$this->DebugData(htmlspecialchars(substr($FeedRSS,0,600)), '---RSS 0:600---', 1);
+                // Replace all "<prism:" "<dc:" tags with "<prism:" "<dc" to bypass simplexml parsing error
+                $FeedRSS = strtr($FeedRSS, array('<prism:' => '<prism', "<dc:" => "<dc", '</prism:' => '</prism', "</dc:" => "</dc"));
+                break;
+            case 'RDF':
+                // Replace all "<prism:" tags with "<prism:" to bypass simplexml parsing error
+                $FeedRSS = strtr($FeedRSS, array('prism:' => 'prism'));
+                break;
+            case 'New':
+                // Place code for new encoding format;
+                break;
+            default:
+                $Response['Error'] = $this->setmsg(" URL content is not a recognized feed (code ".$Encoding.")");
                 if ($AutoImport) {
                     echo '<br>'.$Response['Error'];
-                    echo '<br>'.__LINE__.' URL first 1500 characters:<b>'.htmlspecialchars(substr($FeedRSS, 0, 1500)).'</b><br>';
+                    echo '<br> URL first 1500 characters:<b>'.htmlspecialchars(substr($FeedRSS, 0, 1500)).'</b><br>';
+                }
+                return $Response;
+        }
+        //
+        //
+        libxml_use_internal_errors(true);
+        $RSSdata = simplexml_load_string($FeedRSS);
+        //$this->DebugData(gettype($RSSdata), '---gettype(/$RSSdata)---', 1);
+        if ($RSSdata === false) {
+            //$RSSdata = (array)$FeedRSS;        //Aggressive mode...
+            //$this->DebugData($RSSdata, '---RSSdata---', 1);
+            if ($AutoImport) {
+                echo "<br>".__LINE__."Failed loading XML ";
+                $Response['Error'] = $this->setmsg(" URL content is not in a valid format feed");
+                foreach (libxml_get_errors() as $error) {
+                    echo "<br>", $error->message;
                 }
                 return $Response;
             }
-            //$this->DebugData($Encoding, '---Encoding---', 1);
-            libxml_use_internal_errors(true);
-            $RSSdata = simplexml_load_string($FeedRSS);//."<broken><xml></broken>");
-            //$this->DebugData(gettype($RSSdata), '---gettype(/$RSSdata)---', 1);
-            if ($RSSdata === false) {
-                $RSSdata = $FeedRSS;        //Aggressive mode...
-                //$this->DebugData($RSSdata, '---RSSdata---', 1);
-                if (true == false) {    //Turn to true to display xml failure info
-                    echo "<br>".__LINE__."Failed loading XML ";
-                    $Response['Error'] = __LINE__." URL content is not a valid formatter feed";
-                    foreach (libxml_get_errors() as $error) {
-                        echo "<br>", $error->message;
-                    }
-                    return;
-                }
-            }
-            //$this->DebugData(htmlspecialchars(substr($FeedRSS,0,500)), '---FeedRSS(0:500)---', 1);
-            if ($Data) {
-                $Response['RSSdata']  = $RSSdata;
-            }
-            //$this->DebugData($RSSdata, '---RSSdata---', 1);
-            //$this->DebugData(htmlspecialchars(substr($RSSdata,0,1500)), '---RSSdata(0:1500)---', 1);
-            //
-            if ($Encoding == 'Atom') {
-                $Updated = (string)$this->getentity($RSSdata, 'updated', 'channel.lastBuildDate', $FeedRSS, '');
-                $Title = (string)$this->getentity($RSSdata, 'title', 'channel.title', $FeedRSS, '');
-            } elseif ($Encoding == 'Youtube') {        //Enter appropriate keys to read this encoding
-                $Updated = (string)val('published', $RSSdata, '');
-                $Title = (string)valr('title', $RSSdata, '');
-            } elseif ($Encoding == 'New') {        //Enter appropriate keys to read this encoding
-                $Updated = (string)val('updated', $RSSdata, '');
-                $Title = (string)$this->getentity($RSSdata, 'title', 'channel.title', $FeedRSS, '');
-            } else {
-                $Encoding = 'RSS';
-                $Updated = (string)valr('channel.lastBuildDate', $RSSdata, $this->getbetweentags($FeedRSS, 'lastBuildDate'));
-                $Title = (string)$this->getentity($RSSdata, 'title', 'channel.title', $FeedRSS, '');
-            }
-            //
-            if (c('Plugins.FeedDiscussionsPlus.GetLogo', false)) {
-                $Link = (string)valr('link', $RSSdata, $this->getbetweentags($FeedRSS, 'link'));
-                //$this->DebugData($Link, '---Link---', 1);
-                if ($Link == '') {
-                    $Link = $Url;
-                }
-                //$this->DebugData($Link, '---Link---', 1);
-                $Response['RSSimage'] = $this->Getlogo($Link);
-                //$this->DebugData($Response['RSSimage'], "---\$Response['RSSimage']---", 1);
-            }
-            //
-            //$this->DebugData($Updated, '---Updated---', 1);
-            $date = new DateTime($Updated);
-            $Updated = $date->format("Y-m-d H:i:s");
-            //$this->DebugData($Updated, '---Updated---', 1);
-            $Response['Updated'] =  $Updated;
-            $Response['Title'] = $Title;
-            //$this->DebugData($Channel, '---Channel---', 1);
-            //$this->DebugData($Title, '---Title---', 1);
         }
-        //$Response['RSSdata'] = __LINE__.' TESTING '.htmlspecialchars($Response['RSSdata']);
-        //$this->DebugData($Response, '---Response---', 1);
-        //die(0);
-        //$this->DebugData(htmlspecialchars($Response['RSSdata']), '---Response[RSSSdata]---', 1);
-        //$this->DebugData($Response['Channel'], '---Response[Channel]---', 1);
         //
+        if ($Data | $TwitterID | $Hashtag) {
+            //$this->DebugData(htmlspecialchars(substr($FeedRSS,0,500)), '---FeedRSS(0:500)---', 1);
+            $Response['RSSdata']  = $RSSdata;           //Return data, not just the metadata
+        }
+        //$this->DebugData($Encoding, '---Encoding---', 1);
+        //$this->DebugData($RSSdata, '---RSSdata---', 1);
+        //$this->DebugData(htmlspecialchars(substr($RSSdata,0,1500)), '---RSSdata(0:1500)---', 1);
+        //
+        switch ($Encoding) {
+            case 'Atom':
+                $Updated = (string)$this->getentity($RSSdata, 'updated', 'channel.lastBuildDate', $FeedRSS, '');
+                $Feedtitle = (string)$this->getentity($RSSdata, 'title', 'channel.title', $FeedRSS, '');
+                break;
+            case 'RSS':
+                $Updated = (string)valr('channel.lastBuildDate', $RSSdata, $this->getbetweentags($FeedRSS, 'lastBuildDate'));
+                $Feedtitle = (string)$this->getentity($RSSdata, 'title', 'channel.title', $FeedRSS, '');
+                break;
+            case 'RDFprism':
+                $Updated = (string)valr('channel.prismcoverDisplayDate', $RSSdata, valr('item.dcdate', $RSSdata, ''));
+                $Feedtitle = (string)valr('channel.title', $RSSdata, '');
+                break;
+            case 'RDF':
+                $Updated = (string)val('updated', $RSSdata, '');
+                $Feedtitle = (string)valr('channel.title', $RSSdata, '');
+                break;
+            case 'Youtube':
+                $Updated = (string)val('published', $RSSdata, '');
+                $Feedtitle = (string)valr('title', $RSSdata, '');
+                break;
+            case 'Twitter':
+                $Item = $this->getbetweentags($FeedRSS, 'item');  // Validate twitter input
+                if (empty($Item)) {
+                    $Response['Error'] = $this->setmsg(' @'.$TwitterID . ' does not exist or has no feed stream');
+                    return $Response;
+                }
+                $Feedtitle = "@" . $TwitterID . " Twitter feed";
+                break;
+            case '#Twitter':
+                $Item = $this->getbetweentags($FeedRSS, 'item');  // Validate twitter input
+                if (empty($Item)) {
+                    $Response['Error'] = $this->setmsg(' #'.$Hashtag . ' does not exist or has no feed stream');
+                    return $Response;
+                }
+                $Feedtitle = "#" . $Hashtag . " Twitter search";
+                break;
+            case 'New':     //Enter appropriate keys to read this encoding
+                $Updated = (string)val('updated', $RSSdata, '');
+                $Feedtitle = (string)$this->getentity($RSSdata, 'title', 'channel.title', $FeedRSS, '');
+                break;
+            default:
+                $Response['Error'] = $this->setmsg(' Unexpected feed encoding format:'.$Encoding);
+                return $Response;
+        }
+        //
+        //$this->DebugData($Updated, '---Updated---', 1);
+        //$this->DebugData($Feedtitle, '---Feedtitle---', 1);
+        //$this->DebugData($Channel, '---Channel---', 1);
+        //$date = new DateTime($Updated);
+        //$Updated = $date->format("Y-m-d H:i:s");
+        //$this->DebugData($Updated, '---Updated---', 1);
+        $Response['Updated'] =  $Updated;
+        $Response['Feedtitle'] =  $Feedtitle;
+        //
+        //
+        if ((!$Response['RSSimage']) & (c('Plugins.FeedDiscussionsPlus.GetLogo', false))) {
+            //$this->postmsg($Sender, __LINE__.'Image:'.$Response['RSSimage']);
+            if ($Encoding == 'Twitter' | $Encoding == '#Twitter') {
+                $Response['RSSimage'] = $this->Getlogo($Response['URL'], $Encoding);
+                return $Response;
+            }
+            if (!$Response['RSSimage']) {
+                if (preg_match('/(feedproxy.google|blogspot.com)/i', $Response['InternalURL'])) {
+                    $GDImage = $this->getwithintag($FeedRSS, 'gd:image');
+                    //$this->DebugData($GDImage, '---GDImage---', 1);
+                    if (empty($GDImage)) {
+                        $Response['RSSimage'] = $this->Getlogo($Response['InternalURL'], $Encoding);
+                    } else {
+                        $Response['RSSimage'] = trim($this->getfromatribute($GDImage[0], 'src'), "'");
+                    }
+                    //$this->DebugData($Response['RSSimage'], "---\$Response['RSSimage']---", 1);
+                } else {
+                    $Link = (string)valr('link', $RSSdata, $this->getbetweentags($FeedRSS, 'link'));
+                    //$this->DebugData($Link, '---Link---', 1);
+                    if (substr($Link, 0, 20) == "https://twitter.com/") {
+                        $Link = substr($Link, 20);
+                        //$this->DebugData($Link, '---Link---', 1);
+                        $Response['RSSimage'] = $this->Getlogo("@".$Link, "Twitter");
+                        return $Response;
+                    }
+                    if ($Link == '') {
+                        $Link = $Response['InternalURL'];
+                    }
+                    //$this->DebugData($Link, '---Link---', 1);
+                    $Response['RSSimage'] = $this->Getlogo($Link, $Encoding);
+                    //$this->DebugData($Response['RSSimage'], "---\$Response['RSSimage']---", 1);
+                }
+            }
+            //$this->postmsg($Sender, __LINE__.'Image:'.$Response['RSSimage']);
+            if (!$Response['RSSimage']) {
+                $Response['RSSimage'] = $this->Getlogo($Response['InternalURL'], $Encoding);
+                //$this->postmsg($Sender, __LINE__.'Image:'.$Response['RSSimage']);
+            }
+        }
+        //
+        //$this->postmsg($Sender, __LINE__.'Image:'.$Response['RSSimage']);
         return $Response;
     }
 /**
 * Get the encoding format for a web page
 *
+* @param object $Sender  standard
 * @param object $FeedRSS page source
 *
 * @return string - feed enclding
 */
-    private function getencoding($FeedRSS) {
-        //$this->DebugData('','',true,true);
+    private function getencoding($Sender, $FeedRSS) {
+        //$this->tracemsg($Sender);
         $Tags = array(  'Youtube' => "<feed xmlns:yt",
                         'Atom' => '<Feed',
                         'RSS' => '<rss',
+                        'RDFprism' => 'prism:coverDisplayDate',  //!Important: must precede the RDF format tag
+                        'RDFprism' => 'prism:publicationName',   //!Important: must precede the RDF format tag
+                        'RDFprism' => 'prism:publicationDate',   //!Important: must precede the RDF format tag
+                        'RDF' => '<rdf:RDF',
                         'HTML' => "<!DOCTYPE html"
                         );
+        //$this->DebugData(htmlspecialchars(substr($FeedRSS, 0, 500)), '---$FeedRSS 0:500---', 1);
         //  Search assists are urls displayed by service providers when a url is invalid (or blocked)/
         //  They mask real "not found" errors because they appear to be valid urls.
         //  The following code segment handles search assists.
@@ -2115,7 +2793,6 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         //echo '<p>'.__LINE__.' '.htmlspecialchars(substr($FeedRSS,0,1000)).'</p>';
         foreach ($Tags as $Encoding => $Identifier) {
             //$this->DebugData($Encoding, '---Encoding---', 1);
-            //$this->DebugData(htmlspecialchars($Identifier), '---Identifier---', 1);
             $i = stripos($FeedRSS, $Identifier);
             if ($i !== false) {
                 if ($Encoding == 'HTML') {
@@ -2131,7 +2808,36 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             }
         }
         //echo '<p>'.__LINE__.' '.htmlspecialchars(substr($FeedRSS,0,100)).'</p>';
-        return 'Unknown Format';
+        return 'BadURL';
+    }
+/**
+* Get text between two strings in a source string
+*
+* @param string $Source page source
+* @param string $Tag1   beginning tag identifier
+* @param string $Tag2   ending tag identifier
+*
+* @return string - found text
+*/
+    private function getbetweentexts($Source, $Tag1, $Tag2) {
+        //$this->DebugData('','',true,true);
+        //$this->DebugData($Tag1, '---Tag1---', 1);
+        $i = stripos($Source, $Tag1);
+        if ($i === false) {
+            //$this->DebugData(substr($Source,0,200), '---Source 0:200---', 1);
+            return '';
+        }
+        //$this->DebugData($Tag2, '---Tag2---', 1);
+        $Source = substr($Source, $i+strlen($Tag1));
+        //$this->DebugData($Source, '---Source---', 1);
+        $i = stripos($Source, $Tag2);
+        if ($i === false) {
+            //$this->DebugData($Source, '---Source---', 1);
+            return '';
+        }
+        $Source = substr($Source, 0, $i+strlen($Tag2)-1);
+        //$this->DebugData($Source, '---Source---', 1);
+        return $Source;
     }
 /**
 * Get text within an html tag
@@ -2161,35 +2867,71 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         return $Matches[1];
     }
 /**
+* Get text from attribute string/array
+*
+* @param string $Source    page source
+* @param string $Attribute Attribute identifier in the form of Attribute=value
+*
+* @return string - found value
+*/
+    private function getfromatribute($Source, $Attribute) {
+        $Pattern = '/(\w+)\s*=\s*("[^"]*"|\'[^\']*\')/';
+        //$this->DebugData($Source, '---Source---', 1);
+        if (is_string($Source)) {
+            $Source = (array)$Source;
+        }
+        foreach ($Source as $Entry) {
+            //$this->DebugData($Entry, '---Entry---', 1);
+            preg_match_all($Pattern, $Entry, $Sets, PREG_SET_ORDER);
+            //$this->DebugData($Sets, '---Sets---', 1);
+            foreach ($Sets as $Keywords) {
+                //$this->DebugData($Keywords, '---Keywords---', 1);
+                if ($Keywords[1] == $Attribute) {
+                    return $Keywords[2];
+                }
+            }
+        }
+        return null;
+    }
+/**
 * Stash a value
 *
-* @param string $Search Value to stash
-* @param string $Type   Keyword type (Key identifier)
+* @param string $Value Value to stash
+* @param string $Type  Keyword type (Key identifier)
 *
 * @return none
 */
-    private function setstash($Search, $Type = 'Msg') {
-        Gdn::session()->stash("IBPDfeed".$Type, $Search);
+    private function setstash($Value, $Type = 'Msg') {
+        //$this->DebugData('','',true,true);
+        Gdn::session()->stash("IBPDfeed".$Type, $Value);
         return;
         //Use the cookie method
-        setcookie("IBPDfeed".$Type, $Search, time() + (30), "/");
+        setcookie("IBPDfeed".$Type, $Value, time() + (30), "/");
     }
 /**
 * Fetch a stashed value
 *
-* @param string $Type Keyword type (Key identifier)
+* @param string $Type   Keyword type (Key identifier)
+* @param bool   $Retain Reestablish the stashed value (usually destroyed by the fetch)
 *
 * @return string
 */
-    private function getstash($Type = 'Msg') {
-        return Gdn::session()->stash("IBPDfeed".$Type);
+    private function getstash($Type = 'Msg', $Retain = false) {
+        //$this->DebugData('','',true,true);
+        $Value = Gdn::session()->stash("IBPDfeed".$Type);
+        if ($Retain & !empty($Value)) {
+            $this->setstash($Value, $Type);
+        }
+        return $Value;
         //Use the cookie method
         if (!isset($_COOKIE["IBPDfeed".$Type])) {
             return '';
         } else {
-            $Search = $_COOKIE["IBPDfeed".$Type];
-            $this->SetStash('');
-            return $Search;
+            $Value = $_COOKIE["IBPDfeed".$Type];
+            if (!$Retain) {
+                $this->SetStash('');
+            }
+            return $Value;
         }
     }
 /**
@@ -2199,8 +2941,10 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 *
 * @return string
 */
-    private function clearJavascript($Source) {
-        return preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', "", $Source);
+    private function removescripts($Source) {
+        $Result = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', "", $Source, -1, $Count);
+        //$this->DebugData($Count, '---Count---', 1);
+        return $Result;
     }
 /**
 * Remove extra blanks from source url
@@ -2215,7 +2959,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $Source = preg_replace('#\R+#', '', trim($Source));
         $Source = preg_replace("/[\r\n]+/", "\n", $Source);
         //$Source = wordwrap($Source,120, '<br/>', true);
-        echo ('<br>'.__LINE__.' '.substr(strip_tags($Source), 0, 120).'<br>');
+        //echo ('<br>'.__LINE__.' '.substr(strip_tags($Source), 0, 120).'<br>');
         //die(0);
         return $Source;
     }
@@ -2244,7 +2988,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
               $Msg = "PHP's simplexml_load_string function is not available.";
         }
         if ($Msg) {
-              $Msg .= " It is required for the Feed Discussions Plus plugin.";
+              $Msg = $this->setmsg($Msg." It is required for the Feed Discussions Plus plugin.");
               echo "<H1><B>".$Msg."<N></H1>";
               echo "Here are your current PHPinfo settings:";
               echo phpinfo();
@@ -2264,6 +3008,10 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         touchConfig('Plugins.FeedDiscussionsPlus.Nosort', false);
         touchConfig('Plugins.FeedDiscussionsPlus.GetLogo', true);
         touchConfig('Plugins.FeedDiscussionsPlus.croncode', 'code');
+        touchConfig('Plugins.FeedDiscussionsPlus.returntolist', false);
+        touchConfig('Plugins.FeedDiscussionsPlus.allowupdate', false);
+        touchConfig('Plugins.FeedDiscussionsPlus.showurl', false);
+        touchConfig('Plugins.FeedDiscussionsPlus.Userinitiated', true);
     }
 /**
 * Set plugin data structure
@@ -2323,7 +3071,24 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         return $CloseScript;
     }
 /**
-* Debuggin function
+* Debugging function
+*
+* @param object $Sender standard
+* @param string $Msg    text to display
+*
+* @return none
+*/
+    private function tracemsg($Sender, $Msg) {
+        if ($Msg == '') {
+            $Msg = '>'.debug_backtrace()[1]['class'].':'.
+              debug_backtrace()[1]['function'].':'.debug_backtrace()[0]['line'].
+              ' called by '.debug_backtrace()[2]['function'].' @ '.debug_backtrace()[1]['line'];
+            $this->DebugData($Msg, '&nbsp', true, true);
+        }
+        $this->postmsg($Sender, $Msg, false, false);
+    }
+/**
+* Debugging function
 *
 * @param string $Data    data to debug
 * @param string $Message text to display
@@ -2351,7 +3116,11 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         echo '<pre style="font-size: 1.3em;text-align: left; padding: 0 4px;'.$Color.'">'.$Message;
                     Trace(__LINE__.' '.$Message.' '.$Data);
         if ($Data != '') {
-            var_dump($Data);
+            if (is_string($Data)) {
+                echo $this->compactblanks(highlight_string($Data, 1));
+            } else {
+                var_dump($Data);
+            }
         }
         echo '</pre>';
         //

@@ -1,15 +1,31 @@
 <?php if (!defined('APPLICATION')) exit();
 		//if (!$this->Plugin->IsEnabled()) return;
 		$this->Form->Open;	
+        //
+        $Plugininfo = Gdn::pluginManager()->getPluginInfo('FeedDiscussionsPlus');
+        $Title = $Plugininfo["Name"];
+        $Version = $Plugininfo["Version"];
+        $IconUrl = $Plugininfo["IconUrl"];
+        //
 		$Refreshments = array(
-               "1m"  => T("Every Minute"),
-               "5m"  => T("Every 5 Minutes"),
-               "30m" => T("Twice Hourly"),
+               "1m"  => T("Every&nbspMinute"),
+               "5m"  => T("Every&nbsp5&nbspMinutes"),
+               "30m" => T("Twice&nbspHourly"),
                "1h"  => T("Hourly"),
                "1d"  => T("Daily"),
-               "3d"  => T("Every 3 Days"),
+               "3d"  => T("Every&nbsp3&nbspDays"),
                "1w"  => T("Weekly"),
-               "2w"  => T("Every 2 Weeks")
+               "2w"  => T("Every&nbsp2&nbspWeeks"),
+               "3w"  => T("Every&nbsp3&nbspWeeks"),
+               "4w"  => T("Every&nbsp4&nbspWeeks"),
+               "Monday"  => T("Every&nbspMonday"),
+               "Tuesday"  => T("Every&nbspTuesday"),
+               "Wednesday"  => T("Every&nbspWednesday"),
+               "Thursday"  => T("Every&nbspThursday"),
+               "Friday"  => T("Every&nbspFriday"),
+               "Saturday"  => T("Every&nbspSaturday"),
+               "Sunday"  => T("Every&nbspSunday"),
+               "Manually"  => 'Manually&nbspvia&nbspthe&nbspCheck&nbspActive&nbspFeed&nbspNow&nbspbutton',
             );
 		$Feedsarray = $this->Data('Feeds');
 		$NumFeeds = count($Feedsarray);
@@ -46,7 +62,7 @@
 		$Sourcetitle = 'Source:'.pathinfo(__FILE__)["basename"];
 		echo '<div id=FDP><div Class=xUnPopup>';
 		echo '<h1 title="'.$Sourcetitle.'"><!–– '.$Sourcetitle.' L#'.__LINE__.' ––>';
-		echo '<span class=selflogo> </span> '.$this->Data['Title']. '&nbsp&nbsp&nbsp&nbsp&nbsp   <FFtitle>'.t($Request).' '.$Headmsg.'</FFtitle>'.$Titlemsg.'</h1>';
+		echo '<span class=selflogo> </span> '.$Title . ' (Version ' . $Version.')   '. '&nbsp&nbsp&nbsp&nbsp&nbsp   <FFtitle>'.t($Request).' '.$Headmsg.'</FFtitle>'.$Titlemsg.'</h1>';
 		echo $this->Form->Errors();
 		//
 	   $RestoreFeedURL = trim($this->Data('RestoreFeedURL'));
@@ -61,11 +77,11 @@
 			$Addbutton = '&nbsp';
 	   } else {
 			$Readmebutton =   '<a class="Button ffcolumn  " href="' . Url('/plugin/feeddiscussionsplus/Readme'). 
-		   '" title="' . t('You should read this before starting').'"><FFBLUE><b>❓</b></FFBLUE> Help</a>';
+		   '" title="' . t('You should read this before starting').'"><FFBLUE><b>❓</b></FFBLUE> Readme</a>';
 			$Addbutton = '<a class="Button ffcolumn" href="' . Url('/plugin/feeddiscussionsplus/Addfeed'). 
 		   '" title="' . t('Create import definition for a new feed').'"> ➕ '.t("Add Feed").'</a>';
 			$Refreshbutton = '<a class="Button ffcolumn  " href="' . Url('/plugin/feeddiscussionsplus/ListFeeds'). 
-		   '" title="' . t('Refresh this screen').'"> ♺ '.t("Refresh").'</a>';
+		   '" title="' . t('Refresh this screen following changes in other browsers/tabs').'"> ♺ '.t("Refresh").'</a>';
 	   }
 	   if ($NumFeedsActive) {
 		  $Checkfeedsbutton = '<a class="Button ffcolumn Popup" href="' . Url('/plugin/feeddiscussionsplus/CheckFeeds/backend'). 
@@ -96,9 +112,8 @@
 	}
    echo ' </FFHEAD>';
    //
-?>
-<div class="ActiveFeeds">
-<?php
+    echo '<div class="ActiveFeeds">';
+    //
 	if (!$NumFeeds) {
 	 echo '<ffcenter>'.'Read the customization guide and then add your first feed'.'</ffcenter>';
 	 $Addbutton = '<a class="Button ffhighlightbutton" href="' . Url('/plugin/feeddiscussionsplus/Addfeed/Add'). 
@@ -111,41 +126,50 @@
             '" > Customization Guide.';
 	 echo '</div></div>';
    } else {
+      echo '<div class="FDPtable"><!--'.__LINE__.'  -->';
       foreach ($Feedsarray as $FeedURL => $FeedItem) {
          $LastPublishDate = $FeedItem['LastPublishDate'];
-         $LastUpdate = $FeedItem['LastImport'];
+         $LastImport = $FeedItem['LastImport'];
+         $NextImport = $FeedItem['NextImport'];
          $CategoryID = $FeedItem['Category'];
 		 $Active = $FeedItem['Active'];
+         $AnchorUrl = $FeedItem['FeedURL'];
 		 
 		 $EncodingMsg = '<span class="Encodingbe">'.$FeedItem['Compressed'].' '.$FeedItem['Encoding'].' feed</span>';
+         if ($FeedItem['Encoding'] == 'Twitter') {
+             $AnchorUrl = 'twitter.com/'.$FeedURL;
+         } elseif ($FeedItem['Encoding'] == '#Twitter') {
+             $AnchorUrl = 'twitter.com/hashtag/'.substr($FeedURL,1);
+         }
 		 $FeedItemStyle = '';
+		 $FeedItemClass = 'FDPtable-row';
+         $Resetbutton = '<FFDISABLE title="Disabled button">↺ Schedule</FFDISABLE>';
 		 if ($Active) {
 			 $Activemsg = '<span class="Activebe"><FFActive>Active</FFActive></span>';
 			 $Togglebutton = '<a class="Button UpdateFeed" href="'.Url('/plugin/feeddiscussionsplus/togglefeed/'.FeedDiscussionsPlusPlugin::EncodeFeedKey($FeedURL)).'" title="'.t("Deactivate feed but keep it's definition").'"><FFRED>⛔</FFRED> Deactivate</a>';
+             if ($NextImport != '' && $NextImport != 'never' && ($NextImport >  date('Y-m-d H:i:s', time()))) {
+                 $Resetbutton = '<a class="Button UpdateFeed" href="'.Url('/plugin/feeddiscussionsplus/resetfeed/'.FeedDiscussionsPlusPlugin::EncodeFeedKey($FeedURL)).'" title="'.t('Schedule feed import time ASAP').'"><FFGREEN>↺</FFGREEN> Schedule</a>';
+             }
 		 } else {
 			 $FeedItemStyle = ' Style="background: whitesmoke;"';
+             $FeedItemClass = 'FDPtable-row-inactive';
 			 $Activemsg = '<span class="Inactivebe">Inactive</FFInactive></span>';
 			 $Togglebutton = '<a class="Button UpdateFeed" href="'.Url('/plugin/feeddiscussionsplus/togglefeed/'.FeedDiscussionsPlusPlugin::EncodeFeedKey($FeedURL)).'" title="'.t('Activate feed').'"><FFGREEN>✔</FFGREEN>&nbsp&nbsp&nbspActivate&nbsp&nbsp&nbsp&nbsp</a>';
 		 }
-		 if ($LastUpdate == 'never') {
-			 $LastUpdate = '<span><FFInactive>Ø never</FFInactive></span>';
-			 $Resetbutton = '<FFDISABLE title="Disabled button">↺ Reset</FFDISABLE>';
-		 } else {
-			 $Resetbutton = '<a class="Button UpdateFeed" href="'.Url('/plugin/feeddiscussionsplus/resetfeed/'.FeedDiscussionsPlusPlugin::EncodeFeedKey($FeedURL)).'" title="'.t('Reset last update so feed would be loaded next time').'"><FFGREEN>↺</FFGREEN> Reset</a>';
-		 }
-		 
-		 
 		 $Editbutton = '<a class="Button UpdateFeed  " id=displayonform href="'.Url('/plugin/feeddiscussionsplus/updatefeed/'.FeedDiscussionsPlusPlugin::EncodeFeedKey($FeedURL)).'" title="'.t('Edit feed definitions'). '"><FFBLUE>📄</FFBLUE> Edit</a>';
 		 
 		 $Modelbutton = '<a class="Button UpdateFeed" id=displayonform href="'.Url('/plugin/feeddiscussionsplus/loadfeedform/'.FeedDiscussionsPlusPlugin::EncodeFeedKey($FeedURL)).'/model" title="'.t('Load definition on the form above to allow additions').'"><FFBLUE>📄⤴</FFBLUE> Use as model</a>';
 		 $Modelbutton = '';
-		 $Displaybutton = '<a class="Button UpdateFeed" id=displayonform href="'.Url('/plugin/feeddiscussionsplus/loadfeedform/'.FeedDiscussionsPlusPlugin::EncodeFeedKey($FeedURL)).'" title="'.t('Load definition on the form above to allow updates'). '"><FFBLUE>📄⤴</FFBLUE> Display</a>';
 		 
 		 $Deletebutton = '<a class="Button DeleteFeed" href="'.Url('/plugin/feeddiscussionsplus/deletefeed/'.FeedDiscussionsPlusPlugin::EncodeFeedKey($FeedURL)).'" title="'.t('Careful...'). '"><FFRED>✘</FFRED> Delete</a>';
 		 
 		 
 		 if ($FeedItem['RSSimage']) {
-			 $Logo = '<span class="RSSimageboxbe"> <img src="' . $FeedItem['RSSimage'] . '" id=RSSimage class=RSSimagebe title="' . $FeedItem['Feedtitle'] . '" ></span> ';
+             if ($FeedItem['Encoding'] == "Twitter") {
+                $Logo = '<span class="RSSimageboxtwitter"> <img src="' . $FeedItem['RSSimage'] . '" id=RSSimage class=RSSimagebe title="' . $FeedItem['Feedtitle'] . '" ></span> ';            
+             } else {              
+                $Logo = '<span class="RSSimageboxbe"> <img src="' . $FeedItem['RSSimage'] . '" id=RSSimage class=RSSimagebe title="' . $FeedItem['Feedtitle'] . '" ></span> ';
+             }
 		 } else {
 			 $Logo = '';
 		 }
@@ -164,60 +188,100 @@
 		 $Ftitle = (string)$FeedItem['Feedtitle'];
          $Frequency = GetValue($Refresh, $Refreshments, T('Unknown'));
          $Category = $this->Data("Categories.{$CategoryID}.Name", 'Root');
+         if (c('Plugins.FeedDiscussionsPlus.showurl',false)) {
+             $Internalurl = ' Url:'.$FeedItem['InternalURL'];
+         }
 		 $Buttons = '<span class="RSSbuttonboxbe" >'.
+				$Editbutton.
 				$Resetbutton.
 				$Togglebutton.
-				$Editbutton.
 				$Modelbutton.
 				$Deletebutton.
 				'</span>'; 
 				
 		 $Leftblock = '<span class="RSSleftblock">'.$Logo.$Activemsg.'</span> ';
 		 $Rigtblock = '<span class="RSSrightblock">'.$Buttons. '</span> ';
-		 //$Rigtblock = '<span class="RSSrightblock">'.$Displaybutton. '</span> ';
+		 $Leftblock = '<span class="FDPtable-cell-left">'.$Logo.$Activemsg.$EncodingMsg.'</span> ';
+		 $Rigtblock = '<span class="FDPtable-cell-right">'.$Buttons. '</span> ';
 		 
-         echo '<div class="FeedItem" '.$FeedItemStyle.'>';
+         //echo '<div class="FeedItem" '.$FeedItemStyle.'>';
+         //echo '<div class="FDPtable-row" '.$FeedItemStyle.'>';
+         echo '<div class="'.$FeedItemClass.'" >';
 		 //echo '<span class="RSSimageboxbe"> <img src="' . $FeedItem['RSSimage'] . '" id=RSSimage class=RSSimagebe title="' . $FeedItem['Feedtitle'] . '" ></span> ';
 		 //  
 		 echo $Leftblock;
-		 echo $Rigtblock;
-		 ?> 
-		  <span class="RSSdetailbe">
-			<div class="FeedItemTitle"><FFBLUE><?php echo $FeedItem["Feedtitle"].'</FFBLUE>   </div>';?>
-            <div class="FeedContent">
-               <div class="FeedItemURL"><?php echo Anchor($FeedURL,'http://'.$FeedURL,["target" => "_blank"]); ?></div>
-               <div class="FeedItemInfo">
-			      <?php  echo $EncodingMsg;
-				  if ($LastPublishDate) echo '<span class="Attrbe">Last Published: <b>'.$LastPublishDate.'</b></span>';
-				  ?>
-                  <span class="Attrbe">Updated: <?php echo trim($LastUpdate);?></span>
-                  <span class="Attrbe">Refresh: <?php echo trim($Frequency); ?></span>
-                  <span class="Attrbe">Category: <?php echo $Category; ?></span>
-				  <?php
-				     if ($OrFilter) echo '<span class="Attrbe">OR Filter: '.$OrFilter.'</span>';
-				     if ($AndFilter) echo '<span class="Attrbe">AND Filter: '.$AndFilter.'</span>';
-				     if ($Minwords) echo '<span class="Attrbe" >Min. Words: '.$Minwords.'</span>';
-					 if ($Maxitems) echo '<span class="Attrbe">Max Items: '.$Maxitems.'</span>';
-					 if ($Activehours) echo '<span class="Attrbe">Active between: '.$Activehours.'</span>';
-					 echo '<div>';
-					 if ($Historical) echo '<span class="Attrbe">Note: Historical posts requested on next feed check.</span>';
-					 if ($Getlogo)
-						 echo '<span class="Attrbe">Showing the feed\'s logo.</span>';
-					 if ($Noimage)
-						 echo '<span class="Attrbe">Removing images on import.</span>';
-					 echo '</div>';
-				  ?>
-               </div>
-            </div>
-		</span>
-		<?php //echo $Rigtblock;?>
-      </div>
-<?php
+        //--------- Middle Block----
+		//echo '<span class="RSSmidblock"><!--'.__LINE__.'  -->';
+		echo '<span class="FDPtable-cell"><!--'.__LINE__.'  -->';
+            echo    '<span class="RSSdetailbe"><!--'.__LINE__.'  -->'.
+                '<div class="FeedItemTitle"><FFBLUE>'.
+                $FeedItem["Feedtitle"].'</FFBLUE>   </div>'.
+             '<div class="FeedContent"><!--'.__LINE__.'  -->'.
+                '<div class="FeedItemURL">';
+            echo Anchor($FeedURL,'http://'.$AnchorUrl,["target" => "_blank"]).
+                $Internalurl.'</div>';;
+            echo '<div class="FeedItemInfo"><!--'.__LINE__.'  -->';
+              if ($LastImport != 'never' & $LastImport != '') {
+                  echo '<span class="Attrbe"><b>Last&nbspImport:</b>'.$LastImport.'</span>';
+              } else {
+                  echo '<span class="Attrbe" ><b>Last&nbspImport:</b><span><FFInactive>Ø&nbspnot&nbspyet</FFInactive></span></span>';
+              }
+              if ($Active) {
+                  $Timedate = date('Y-m-d H:i:s', time());
+                  if ($Refresh == "Manually") {
+                  } elseif ($NextImport == '' | $NextImport == 'never') {
+                    echo '<span class="Attrbe" ><b> ⚪&nbspImport&nbspdue&nbspnow</b></span>';
+                  } elseif ($Timedate < $NextImport) {
+                    echo '<span class="Attrbe" ><b> 🔴&nbspNext&nbspimport&nbspdue&nbspon:</b>'.$NextImport.'</span>';
+                  } else {
+                    echo '<span class="Attrbe" ><b> 🔵&nbspNext&nbspimport&nbspis&nbspdue:</b>'.$NextImport.'</span>';
+                  }
+              }
+              if ($Refresh == "Manually") {
+                  echo '<span class="Attrbe" title="Click the \'Check Active Feeds Now\' button initiate import"><b>Manual&nbspimport</b></span>';
+              } else {
+                  echo '<span class="Attrbe" ><b>Refresh:</b>&nbsp'.trim($Frequency).'</span>';
+              }
+              echo '<span class="Attrbe" ><b>Category:</b>&nbsp'.trim($Category).'</span>';
+              
+             if ($OrFilter) {
+                 echo '<span class="Attrbe"><b>OR&nbspFilter:</b>&nbsp'.$OrFilter.'</span>';
+             }
+             if ($AndFilter) {
+                 echo '<span class="Attrbe"><b>AND&nbspFilter:</b>&nbsp'.$AndFilter.'</span>';
+             }
+             if ($Minwords) {
+                 echo '<span class="Attrbe" ><b>Min.&nbspWords:</b>&nbsp'.$Minwords.'</span>';
+             }
+             if ($Maxitems) {
+                 echo '<span class="Attrbe"><b>Max&nbspItems:</b>&nbsp'.$Maxitems.'</span>';
+             }
+             if ($Activehours) {
+                 echo '<span class="Attrbe"><b>Active&nbspbetween:</b>&nbsp'.$Activehours.'</span>';
+             }
+            if ($Historical) {
+                echo '<span class="Attrbe"><b>Note:</b>&nbspHistorical&nbspposts&nbsprequested on&nbspnext&nbspfeed&nbspimport.</span>';
+            }
+            if ($Getlogo) {
+                 echo '<span class="Attrbe">Showing&nbspthe&nbspfeed\'s&nbsplogo.</span>';
+            }
+            if ($Noimage) {
+                 echo '<span class="Attrbe">Removing&nbspimages&nbspon&nbspimport.</span>';
+            }
+            echo '<div>';
+            echo '</div><!--'.__LINE__.'  -->'.
+                '</div><!--'.__LINE__.'  -->'.
+            '</div><!--'.__LINE__.'  -->'.
+		  '</span><!--'.__LINE__.'  -->'.
+		'</span><!--'.__LINE__.'  -->'.
+        $Rigtblock.
+      '</div><!--'.__LINE__.'  -->';
       }
    }
-?>
- </div> <!--  -->
-<?php /*
+    echo '</div> <!--'.__LINE__.'  -->';
+ echo '</div> <!--'.__LINE__.'  -->';
+
+ /*
 <script type="text/javascript"> 
    jQuery(document).ready(function($) {
       

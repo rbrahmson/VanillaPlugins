@@ -2,53 +2,81 @@
 		$Mode = $this->Data('Mode');
 		$Feed = $this->Data('Feed');
 		$FeedKey = $this->Data('FeedKey');
-		$FeedURL = $this->Data('FeedURL');
+        $FeedURL = val('FeedURL', $this->Form->FormValues(), $this->Data('FeedURL'));
+        //echo __LINE__."FeedURL = ".$FeedURL.' <br>';
+        $Refresh = $Feed["Refresh"];       
+        $LastImport = $Feed["LastImport"];
+        if ($LastImport == '' | $LastImport == 'never') {
+            $LastImportmsg = '<FFtext>  Feed has not yet been imported</FFtext>';
+        } else {
+            $LastImportmsg = '<FFtext>  last import:'.$LastImport.'</FFtext>';
+        }
+        $SuggestedURL = trim($Feed["SuggestedURL"]);
+        if (c('Plugins.FeedDiscussionsPlus.showurl',false)) {
+            $Internalurlmsg = 'Url:&nbsp<b>'.$Feed['InternalURL'].'</b>';
+        }
 		if ($Mode == 'Add') {
 			$Process = Url('plugin/feeddiscussionsplus/addfeed///Add');
 			$Defaultrefresh = '1w';
+            $LastImportmsg = '';
 		} elseif ($Mode == 'Update') {
 			$Process = Url('plugin/feeddiscussionsplus/updatefeed');
-			$Defaultrefresh = $this->Data('Refresh');
+			$Defaultrefresh = val('Refresh', $this->Form->FormValues(), $Feed["Refresh"]);
+            $Copybutton = '<span title="Copy settings">'.$this->Form->button(' 📄📄 Copy', array('type' => 'submit', 'name' => 'Copy')).'</span>';
+			if (!$FeedURL) {
+				$Msg = '<h1><FFRED>'.__FILE__.' Line '.__LINE__.' error - missing feed url</FFRED>';
+                echo $Msg;
+				//throw new Gdn_UserException($Msg);
+			}
 		} else {
 			$Process = Url('plugin/feeddiscussionsplus/updatefeed');
 			if (!$FeedURL) {
 				$Msg = '<h1>'.__FILE__.' Line '.__LINE__.' error - missing feed url';
-				throw new Gdn_UserException($Msg);
+                echo $Msg;
+				//throw new Gdn_UserException($Msg);
 			}
 		}
-		$Processbutton = $this->Form->button(t($Mode), array('type' => 'submit', 'name' => $FeedKey));
+		//
+		$Processbutton = '<span title="Save">'.$this->Form->button(" 🔽 ".t($Mode), array('type' => 'submit', 'name' => $FeedKey)).'</span>';
 		$Processtitle = $Mode.' Settings for Feed Import';
 		echo $this->Form->Open(array(
          'action'  => $Process
 		));
 		//echo "<br>".__LINE__." Form Action Process:".$Process.'<br>';
+        //
+        $Copied = $this->Data('Copied');
+        //echo "<br>".__LINE__." Copied:".$Copied.'<br>';
+        //
+	    if ($Copied) {
+           $Pastebutton = '<span title="Paste settings">'.$this->Form->button(' 📑 Paste', array('type' => 'submit', 'name' => 'Paste')).'</span>';
+	    } else {
+           $Pastebutton = '';
+	    }
+        //
 		echo '<div id=xPopup><div id=FDP>';
 		$this->AddCssFile('feeddiscussionsplus.css', 'plugins/FeedDiscussionsPlus');
 		$LastImport = $Feed['LastImport'];
 		$Feedtitle = (string)$Feed['Feedtitle'];
 		$Encoding = $Feed['Encoding'];
 		$RSSimage = $Feed['RSSimage'];
-		$Title = $this->Data['Title'];
+        $Plugininfo = Gdn::pluginManager()->getPluginInfo('FeedDiscussionsPlus');
+        $Title = $Plugininfo["Name"];
+        $Version = $Plugininfo["Version"];
+        $IconUrl = $Plugininfo["IconUrl"];
 		$Canelbutton = '<span style="margin: 0 0 0 20px;"><a class="Button DeleteFeed" href="'.Url('/plugin/feeddiscussionsplus/ListFeeds').
-			'" title="'.t('Return to the definitions list').'">Return</a></span>';
-		//
-		if ($RSSimage) {
-             $Logo = '<span class="RSSimageboxtitle"> <img src="' . $RSSimage . '" id=RSSimage class=RSSimagebe title=" " ></span> ';
-             $Logooption = '<span> <img src="' . $RSSimage . '" id=RSSimage class=RSSimageoption title=" " ></span> ';
-		 } else {
-			 $Logo = '';
-			 $Logooption = '';
-		 }
+			'" title="'.t('Return to the definitions list').'">☰ Return to list</a></span>';
 		//
 		$Qmsg = $this->Data('Qmsg');
-		if ($Qmsg != '') {
-			$Titlemsg = '<br><div class=ffqmsg>'.strip_tags($Qmsg).'</div>';
+        $this->SetData('Qmsg', __FUNCTION__.__LINE__);
+		if ($Qmsg) {
+			$Titlemsg = '<br><div class=ffqmsg>'.$Qmsg.'</div>';
 		} else {
 			$Titlemsg = '';
 		}
 		$Sourcetitle = 'Source:'.pathinfo(__FILE__)["basename"];
-		echo '<h1 title="'.$Sourcetitle.'"> <span class=selflogo> </span> '. $Title . '  -  ' . $Processtitle.'  <fftitle>Press' . $Canelbutton . ' to return to the defined feeds list.</fftitle>'.$Titlemsg.'</h1>';
+		echo '<h1 title="'.$Sourcetitle.'"> <span class=selflogo> </span> '. $Title . ' (Version ' . $Version.')  -  ' . $Processtitle.'   '.$Titlemsg.'</h1>';
 		//
+        //
 		echo $this->Form->Errors();
 		echo '<div class="FeedContent" style="line-height: 25px;font-size: 13px;margin: 0px 4px 0px 6px;">';
 		$Refreshments = array(
@@ -59,35 +87,102 @@
                "1d"  => T("Daily"),
                "3d"  => T("Every 3 Days"),
                "1w"  => T("Weekly"),
-               "2w"  => T("Every 2 Weeks")
+               "2w"  => T("Every 2 Weeks"),
+               "3w"  => T("Every 3 Weeks"),
+               "4w"  => T("Every 4 Weeks"),
+               "Monday"  => T("Every Monday"),
+               "Tuesday"  => T("Every Tuesday"),
+               "Wednesday"  => T("Every Wednesday"),
+               "Thursday"  => T("Every Thursday"),
+               "Friday"  => T("Every Friday"),
+               "Saturday"  => T("Every Saturday"),
+               "Sunday"  => T("Every Sunday"),
+               "Manually"  => 'Manual (Button on settings screen)',
             );
         //
 		echo '<ul><li>';
-		//
+        //
+        if (empty($FeedURL)) {
+            $FeedURL = val('FeedURL', $this->Form->FormValues(), null);
+        }
+        //decho ($this->Form->FormValues());
+        if (c('Plugins.FeedDiscussionsPlus.allowupdate', false)) {
+            $Allowupdate = true;
+        }
+        //
+        // If the following validator stops working you can use the next one.
+        $Validatorurl='https://validator.w3.org/feed/check.cgi?url='. $FeedURL;
+        //$Validatorurl='http://www.feedvalidator.org/check?url='. $FeedURL;
+        //
+        $Feedvalidator =   '<span >&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<a class="Button DeleteFeed  " target=_BLANK href="' . $Validatorurl . 
+		   '" title="' . t('Run external feed validator if you have problems with this feed.').'"><b>Issues ?</b> Run Feed Validator</a><span>';
+        $Twitterid = false;
+        $Urltitle= '';
+        $Urllabel= '<FFlabel>Feed URL:</FFlabel>';
+        if (empty($FeedURL) or trim($FeedURL) == '?') {
+            $Feedvalidator = '';
+            $Urltitle= 'title ="Enter feed URL"';
+            $Mode = 'Add';    
+            $Internalurlmsg = '????????????????????????????????????/';
+        } elseif ($Allowupdate) {
+            $Urllabel= '<FFlabel>Feed source:</FFlabel>';
+        } elseif ($Encoding == 'Twitter' | substr($FeedURL,0,1) == '@') {
+            $Twitterid = true;
+            $Feedvalidator = '';
+            $Urllabel= '<FFlabel>Twitter ID</FFlabel>';
+        } elseif ($Encoding == '#Twitter' | substr($FeedURL,0,1) == '#') {
+            $Twitterid = false;
+            $Feedvalidator = '';
+            $Urllabel= '<FFlabel>Twitter hashtag</FFlabel>';
+        } elseif ($Mode == 'Add') {
+            $Urllabel= '<FFlabel>Feed URL or <b>@</b>twitterid</FFlabel>';
+        }
+        //
+		if ($RSSimage) {
+             if ($Twitterid) {    
+                 $Logo = '<span class="RSSimageboxtwitter"> <img src="' . $RSSimage . '" id=RSSimage class=RSSimagebe title=" " ></span> ';
+             } else {
+                 $Logo = '<span class="RSSimageboxtitle"> <img src="' . $RSSimage . '" id=RSSimage class=RSSimagebe title=" " ></span> ';
+             }
+             $Logooption = '<span> <img src="' . $RSSimage . '" id=RSSimage class=RSSimageoption title=" " ></span> ';
+		 } else {
+			 $Logo = '';
+			 $Logooption = '';
+		 }
+        //
+        $Buttonbar = '<div style="display:inline-flex;float:right;"> '.$Processbutton.$Canelbutton.$Copybutton.$Pastebutton.$Feedvalidator.'</div>';
+        //
+		echo $Buttonbar;
         echo '<h4><FFBIG>❂</FFBIG>General Options</h4>';
 		//
 		echo '<FFUfeedhead>';
-			echo $this->Form->Label('<FFlabel>Feed URL</FFlabel>', 'FeedURL');
-			if ($Mode == 'Update') {
-				echo $this->Form->TextBox('FeedURL', array('class' => 'InputBox WideInput NoInput ', 'maxlength' => 1,)).'<FFFIELD>'.$FeedURL.'<br><FFBLUE>'.$Feedtitle.'</FFBLUE></FFFIELD>&nbsp&nbsp&nbsp'.$Logo.'&nbsp&nbsp&nbsp('.$Encoding.' format)&nbsp&nbsp&nbsp';
-				$Validatorurl='http://www.feedvalidator.org/check?url='. $FeedURL;
-				// If the following validator stops working you can use the previous one.
-				$Validatorurl='https://validator.w3.org/feed/check.cgi?url='. $FeedURL;
-				$Feedvalidator =   '<span ><a class="Button PopupWindow " target=_BLANK href="' . $Validatorurl . 
-		   '" title="' . t('Run external feed validator if you have problems with this feed.').'"><FFBLUE><b>Issues ?</b></FFBLUE> Run Feed Validator</a><span>';
-			} else { //no url - assume Add request
-				$Feedvalidator = '';
-				echo $this->Form->TextBox('FeedURL', array('class' => 'InputBox WideInput', 'maxlength' => 200,));
+            $Highlightclass = '';
+            $Helpmsg = '<FFtext> Enter ? for help on valid inputs</FFtext>';
+            if ($SuggestedURL) {
+                $SuggestedURL = '';
+                $Highlightclass = 'FDPredinput';
+                $Urllabel = '<FFRED>Suggested&nbspURL:</FFRED>&nbsp&nbsp&nbsp';
+                $Logo = '';
+                $Encoding = '';
+                $Internalurlmsg = '';
+                $Helpmsg = '<FFtext><FFBLUE>&nbspThe url you entered pointed to the suggested feed url</FFBLUE></FFtext>';
+            }
+            if (($Encoding != '') & ($Encoding != 'N/A')) {
+                $Encodingmsg = '(Feed type:&nbsp'.$Encoding.')';
+            }
+			echo '<span '.$Urltitle.' >'.$this->Form->Label($Urllabel, 'FeedURL').'</span>';
+            if ($Allowupdate) {
+                echo $this->Form->TextBox('FeedURL', array('class' => 'InputBox WideInput '.$Highlightclass, 'maxlength' => 200,)).
+                    $Helpmsg . '</FFline>'.$Logo.' &nbsp&nbsp&nbsp '.$Encodingmsg.'&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp'.$Internalurlmsg;
+			} elseif (($Mode == 'Update')) { 
+                $Helpmsg = '';
+				echo $this->Form->TextBox('FeedURL', array('class' => 'InputBox WideInput NoInput ', 'maxlength' => 1,)).'<FFFIELD>'.$FeedURL.'<br><FFBLUE>'.$Feedtitle.'</FFBLUE></FFFIELD>&nbsp&nbsp&nbsp'.$Logo.'&nbsp&nbsp&nbsp'.$Encodingmsg.'&nbsp&nbsp&nbsp'.$Internalurlmsg;		
+			} else { //no url - assume Add request 
+				echo $this->Form->TextBox('FeedURL', array('class' => 'InputBox WideInput', 'maxlength' => 200,)).       $Helpmsg . '</FFline>';
 			}
-			
-				echo $Feedvalidator;
 		echo '</FFUfeedhead>';
 		//
 		echo '<FFline>'.$this->Form->CheckBox('Historical', '<b>Import Historical Posts</b>', array('value' => '1', 'class' => 'FFCHECKBOX')).'<FFchecktext> Requests import of older feed posts.  This is automatically unchecked after the first import.</FFchecktext></FFline>';
-		//
-		if ($LastImport != 'never') {
-			echo '<FFline>'.$this->Form->CheckBox('Reset', '<b>Check feed ASAP</b>', array('value' => '0', 'class' => 'FFCHECKBOX')).'<FFchecktext> Check & update feed when changes are saved (this option is disabled after the first import. It ignores the frequency check set below). </FFchecktext></FFline>';
-		}
 		//
         echo '<FFline>'.$this->Form->Label('<FFlabel>Target Category</FFlabel>', 'Category');
         echo $this->Form->CategoryDropDown('Category').'<FFdroptext> (Select the category where imported posts are saved)</FFdroptext></FFline>';
@@ -103,7 +198,7 @@
         echo '<FFline>'.$this->Form->Label('<FFlabellong>Feed Check Frequency</FFlabellong>', 'Refresh');
         echo $this->Form->DropDown('Refresh', $Refreshments, array(
                'value'  => $Defaultrefresh,
-            ))."<FFdroptext> (How often to check the feed for new items to import)</FFdroptext>";
+            ))."<FFdroptext> (How often to check the feed for new items to import)</FFdroptext>".$LastImportmsg;
 		//
 		echo '</FFline>';
 		echo '<ffinputs>';
@@ -156,15 +251,6 @@
 		//
 	  echo '</ul>';
 	  echo '<div>'; 
-	  /*
-	  if ($FeedURL == '') { 
-		echo $this->Form->button(t("Add"), array('type' => 'submit', 'name' => $FeedKey));
-	  } else {  
-		//echo $this->Form->button(t("Save"), array('type' => 'submit', 'name' => $FeedKey));
-		echo $this->Form->button(t("Update"), array('type' => 'submit', 'name' => $FeedKey));
-	  }
-	  */
-	  echo $Processbutton;
-	  echo $Canelbutton;
+	  echo $Buttonbar;
 	  echo '</div></div></div></div>'; 
 ?>
