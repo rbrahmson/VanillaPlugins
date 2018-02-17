@@ -1,0 +1,682 @@
+/*--- You may need to update the .RSSlogobox definitions for your theme ---*/
+#FDP {
+    visibility:visible;
+}
+#FDP .PhotoWrap {
+    visibility:visible;
+    opacity: 0;
+}
+/*------Discussion/Discussion List Styles----------*/
+#FDP .RSSlogobox {
+	align-items: center;
+}
+#FDP .RSSlistlogobox {
+	align-items: center;
+}
+#FDP .RSSimagelist0:before {
+    content: "@";
+    color:red;
+}
+#FDP .RSSimagelist0 {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #dddddd;
+    border-radius: 6px;
+    margin-left: 0px;
+    margin-right: 0px;
+    /*left: 9px;*/
+    position: initial;
+}
+#FDP .RSSimageitem0 {
+    visibility: hidden;
+    width: 40px;
+    height: 40px;
+    border: 1px solid #dddddd;
+    border-radius: 6px;
+    margin-left: 0px;
+    margin-right: 0px;
+    left: 9px;
+    position: absolute;
+}
+#xFDP .RSSlogowrap:before {
+    content: "@";
+    position: relative;
+    z-index: 99999;
+    top: 2px;
+    left: 2px;
+    display: inline-block;
+    font-family: "Arial", Arial, sanserif;
+    font-weight: bold;
+    width: 16px;
+    height: 17px;
+    line-height: 14px;
+    border-radius: 7px 6px 6px 7px;
+    background: #0f6089;
+    color: white;
+}
+#FDP .RSSlogowrap {
+    display: inline-block;
+    /*padding: 0px 6px 0px 6px;
+    margin: 0px 6px 0px 6px;*/
+    -webkit-filter: drop-shadow(1px 1px 0px blue);
+}
+#FDP .RSSlogolist:before {
+    top: 17px !important;
+    left: -12px !important;
+}
+#FDP .RSSlogolist {
+    display: inline-block;
+}
+#FDP .RSSlogoedit:before {
+    top: -11px !important;
+    left: 19px !important;
+}
+#FDP .RSSlogoedit {
+    display: block;
+    vertical-align: middle;
+}
+#FDP .RSSlogoallowedit:before {
+    top: 20px !important;
+    left: 0px !important;
+}
+#FDP .RSSlogoallowedit {
+    margin: 0px 0px 24px 4px;
+}
+#FDP .RSSatsign {
+    position: absolute;
+    visibility: hidden;
+    z-index: 99999;
+    display: inline-block;
+    font-size: 16px;
+    font-family: "Arial", Arial, sanserif;
+    font-weight: bold;
+    width: 16px;
+    height: 17px;
+    line-height: 14px;
+    border-radius: 7px 6px 6px 7px;
+    background: #0f6089;
+    color: white;
+}
+#FDP .Twitterlistlogo:before {
+    content: "@";
+    position: relative;
+    z-index: 99999;
+    top: -2px;
+    left: -42px;
+    display: inline-block;
+    font-size: 16px;
+    font-family: "Arial", Arial, sanserif;
+    font-weight: bold;
+    width: 16px;
+    height: 17px;
+    line-height: 14px;
+    border-radius: 7px 6px 6px 7px;
+    background: #0f6089;
+    color: white;
+}
+#FDP .Twitterlogo {
+    display: inline-block;
+}
+#FDP .Twitterlistlogo {
+    display: inline-block;
+}
+#xFDP .RSSlistlogoboxtwitter:before {
+    content: "@";
+    position: absolute;
+    z-index: 99999;
+    top: 8px;
+    left: 8px;
+    display: inline-block;
+    font-size: 15px;
+    font-family: "Arial", Arial, sanserif;
+    font-weight: bold;
+    width: 16px;
+    height: 17px;
+    line-height: 14px;
+    border-radius: 7px 6px 6px 7px;
+    background: #0f6089;
+    color: white;
+}
+#FDP .RSSlistlogoboxtwitter {
+    visibility: visible;
+}
+#xFDP .RSSimageboxtwitter:before {
+    content: "@";
+    position: absolute;
+    z-index: 99999;
+    top: 8px;
+    left: 8px;
+    display: inline-block;
+    font-size: 15px;
+    text-shadow: 1px 1px white;
+    font-family: "Arial", Arial, sanserif;
+    font-weight: bold;
+    width: 15px;
+    height: 15px;
+    line-height: 13px;
+    background: white;
+    border-radius: 32px;
+}
+#FDP .RSSimageboxtwitter {
+    visibility: visible;
+}
+/*------Definition List----------------*/
+#FDP.fdplist {
+   padding: 4px;
+   font-size: 0.81rem;
+}
+#FDP h1 {
+    font-size: 0.88rem;
+    font-weight: bold;
+    padding: 1px;
+    margin: 0px 0px 3px 0;
+    background: #8bc1de3b;
+    border: 1px solid #8bc1de;
+    border-radius: 4px;
+}
+#FDP span.selflogo {
+    zoom:33%;
+}
+#FDP .Sortby {
+    display: inline-block;
+    padding: 0px 16px 0px 35px;
+}
+#FDP .labelupdate {
+    width: 190px;
+    font-weight: bold;
+    display: table-cell;
+}
+#FDP .checkbox {
+    font-weight: bold;
+    display: inline-block;
+}
+#FDPEDIT .checkbox {
+    display: table-cell;
+    width: 190px;
+}
+#FDP select {
+    width: 7rem;
+    margin-right: 5px;
+    line-height: 0.8rem;
+    height: 1.79rem;
+    font-size: 0.75rem;
+    display: inline-block;
+}
+#FDP GlobalInput {
+    width: 10rem;
+}
+#FDP .WideInput {
+    width: 31rem;
+}
+#FDP input.NoInput {
+	border-width: 0;
+    background: initial;
+    pointer-events: none;
+    font-size: 0px;
+    width: 0px;
+}
+#FDP div.Messages.Errors {
+    padding: 4px;
+    margin:2px;
+    border: 0.01rem solid transparent;
+}
+#FDP .ffqmsg {
+    background: red;
+    color: white;
+    display: inline-block;padding: 4px;
+    margin:2px;
+    border: 0.01rem solid transparent;
+}
+#FDP input {
+    width: 12rem;
+    margin-right: 5px;
+    line-height: 0.8rem;
+    font-size: 0.75rem;
+    display: inline-block;
+    color: initial;
+}
+#FDP FFHEAD {
+    padding: 4px 2px 5px 2px;
+    margin-bottom: 0.1rem;
+    background: whitesmoke;
+    display: inline-block;
+    text-align: center;
+    border-radius: 4px 4px 4px 4px;
+    border-right: 2px solid #ccc;
+    border-left: 2px solid #ccc;
+    border-top: 2px solid #8bc1de;
+    border-bottom: 2px solid #8bc1de;
+    width: 100%;
+}
+#FDP .ffspread {
+    padding: 0px 4px 0px 4px;
+    display: table-cell;
+}
+#FDP .ffcolumn {
+    display: inline-block;
+    border-radius: .5ex;
+    padding: 5px 7px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    margin: 0 0 0 20px;
+    min-width: 6rem;
+    color: #0291E5;
+    background-color: #fff;
+    border-color: #0291db;
+    visibility:visible;
+}
+#FDP .ffcolumn:hover {
+    color: #fff;
+    background-color: #0291db;
+    border-color: #0291db;
+}
+#FDP .ffundelete {
+    color: #fa2e1f;
+    border-color: #fa2e1f;
+}
+#FDP .ffhiddenlb {
+    border: 1px dashed rgb(245, 245, 245) !important;
+    border-radius: .5ex;
+    padding: 5px 7px;
+    background: rgba(238, 238, 238, 0) !important;
+    color: rgb(30, 121, 167)!Important;
+    /*font-size: 12px;*/
+    box-shadow: 0 0 2px #f5f5f5;
+    font-weight: bold;
+    margin: 0 0 0 20px;
+    visibility:hidden;
+    display: none;
+}
+
+#FDP .disabled {
+    border: 1px dashed rgb(245, 245, 245) !important;
+    border-radius: .5ex;
+    padding: 5px 7px;
+    background: rgba(238, 238, 238, 0) !important;
+    color: rgb(30, 121, 167)!Important;
+    /*font-size: 12px;*/
+    box-shadow: 0 0 2px #f5f5f5;
+    font-weight: bold;
+    margin: 0 0 0 20px;
+    cursor: none;
+}
+#FDP .Sortbutton {
+border-radius: 0.325rem;
+    min-width: 4rem;
+    padding: 0.1rem 0.3rem 0.1rem 0.3rem;
+    margin: 0rem 0.3rem;
+    font-size: 0.80rem;
+    font-weight: unset;
+    line-height: 1.5;
+}
+#FDP .ffqmsg {	
+	line-height: initial;
+    overflow-wrap: normal;
+    background: #0279b3;
+    color: white;
+    display: inline-block;
+}
+/*---------------------------------*/
+#FDP div.ActiveFeeds {
+   padding: 4px;
+    font-size: 0.81rem;
+}
+/*---------Define the FDP table for the list of feeds -----------*/
+.FDPtable{
+  display: table;
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 100%;
+}
+  .FDPtable-row{
+    display: table-row;
+  }
+  .FDPtable-row-inactive{
+    display: table-row;
+    background: #e0e0e0;
+    border-color: gray;
+    border-width: 2px;
+    border-style: groove;
+  }
+    .FDPtable-cell-left {
+        display: table-cell;
+        padding: 2px;
+        border: #0081b9 1px solid;
+        vertical-align: text-top;
+        text-align: center;
+        width: 60px;
+        line-height: 14px;
+    }
+    .FDPtable-cell, .FDPtable-head{
+        display: table-cell;
+        padding: 1px;
+        border: #0081b9 1px solid;
+        text-align: left;
+        vertical-align: top;
+        width: 100%;
+    }
+    .FDPtable-cell-right {
+        display: table-cell;
+        padding: 4px 1px 2px 3px;
+        vertical-align: top;
+        border: #0081b9 1px solid;
+        width: 98px;
+    }
+    .FDPtable-head{
+        font-weight:bold;
+    }
+    /*-----------------------------------*/
+#FDP .RSSbuttonboxbe {
+    display: inline-grid;
+    width: 100px;
+    text-align: center;
+}
+#FDP .UpdateFeed {
+    margin: 0;
+    padding: 0;
+    max-width: 4.6rem;
+}
+#FDP .ffdisabled {
+    border: 1px dashed #222;
+    background: #eeeeee !important;
+    color: gray!Important;
+	cursor: none;
+    visibility:hidden;
+    display:none;
+}
+#FDP .ffdisablelb {
+    visibility:hidden;
+    display:none;
+}
+#FDP .ffdisabled:hover {
+    background: #eeeeee !important;
+    color: #eeeeee!Important;
+	cursor: none;
+}
+#FDP .RSSdetailbe {
+    display: block;
+    min-height: 6rem;
+}
+#FDP .FeedItemTitle {
+	font-weight: bold;
+	margin-right: 6px;
+}
+#FDP .FeedContent {
+    min-width:300px;
+}
+#FDP .FeedItemURL {
+   font-weight: bold;
+}
+#FDP .FeedItemInfo {
+   color: #555555;
+}
+#FDP .Attrbe  {
+	/*white-space: nowrap;*/
+    margin-left: 4px;
+	overflow: hidden;
+}
+#FDP .Attrbe:after  {
+    content: " ";
+    white-space: unset;
+}
+#FDP ffred {
+    color: #ffffff00;
+    font-size: 12px;
+    border: 0.1px solid red;
+    border-radius: 12px;
+    padding: 0px 4px 0px 3px;
+    margin: 0px 3px 0px 0px;
+    background: red;
+}
+#FDP ffgreen {
+    color: #ffffff00;
+    font-size: 12px;
+    border: 0.1px solid lightgreen;
+    border-radius: 12px;
+    padding: 0px 4px 0px 3px;
+    margin: 0px 3px 0px 0px;
+    background: lightgreen;
+}
+#FDP fforange {
+    color: #ffffff00;
+    font-size: 12px;
+    border: 0.1px solid orange;
+    border-radius: 12px;
+    padding: 0px 4px 0px 3px;
+    margin: 0px 3px 0px 0px;
+    background: orange;
+}
+#FDP ffgray {
+    color: #ffffff00;
+    font-size: 11px;
+    border: 1px solid gray;
+    border-radius: 12px;
+    padding: 0px 2px 0px 3px;
+    margin: 0px 3px 0px 0px;
+    background: lightgray;
+}
+#FDP ffcircle {
+    border-radius: 50%;
+    text-align: center;
+    color: white;
+    background: black;
+    display: inline-block;
+    min-width: 23px;
+    font-size: 14px;
+}
+#FDP .Diffmsg {
+    font-weight: bold;
+    float: right;
+    padding: 0px 6px 1px 6px;
+    background: #ededed;
+    border-radius: 4px;
+}
+#FDP .Diffmsgoverdue {
+    color: red;
+}
+#FDP .redinput {
+    color: red;
+    font-weight: bold;
+}
+#FDP redtext {
+    color: red;
+    font-weight: bold;
+}
+#FDP bluetext {
+    color: blue;
+    font-weight: bold;
+}
+#FDP .RSSimagebe {
+	border: 1px solid #357ae8;
+    border-radius: 6px;
+    width: 40px;
+    height: 40px;
+    background: white;
+    display: inline-block;
+    color: black;
+    word-break: keep-all ;
+    font-size: xx-small;
+    cursor: none;
+    opacity: 0.98;
+}
+
+#FDP .RSSlistlogo {
+    border: 1px solid #357ae8;
+    border-radius: 6px;
+    width: 40px;
+    height: 40px;
+    cursor: none;
+}
+#FDP .RSSlistlogooff:after {
+    content: "";
+    position: absolute;
+    border-top: 5px solid red;
+    width: 49px;
+    transform: rotate(45deg);
+    transform-origin: 0% 0%;
+    margin: 1px 0px 0px -35px;
+    z-index: 9999999999;
+}
+#FDP .RSSlistlogooff {
+    opacity: 0.7;
+}
+#FDP .RSServertime {
+    border: 1px solid #e7e8e9;
+    border-radius: 6px;
+    float:right;
+}
+/************************/
+div#CheckImport1  {
+    font-weight: bold;
+    color:red;
+}
+/*--------Global Config Options---------*/
+#FDP .Globaloptions {
+    line-height: 25px;
+    /*font-size: 13px;*/
+    margin: 0px 4px 0px 6px;
+    width: fit-content;
+    word-wrap: break-word;
+}
+
+#FDP .buttonbar {
+    display: flex;
+    float: right;
+    padding-bottom: 6px;
+}
+#FDP h4 {
+	border-width: 0px 0px 2px 0px !Important;
+    border-style: solid;
+    border-color: #8bc1de!important;
+    margin: 0px 0px 4px 0px;
+    padding: 1px 0px 0px 0px;
+}
+#FDP FFlineglobal {
+    align-items: center;
+    margin-bottom: 4px;
+    border-bottom: solid 2px lightgrey;
+    background: whitesmoke;
+    display: inline-table;
+    width: 100%;
+    text-align: Left;
+}
+#FDP ffinputs {
+    color: black;
+    margin-top: 3px;
+    margin-bottom: 3px;
+}
+#FDP FFtext {
+    display: table-cell !important;
+    float: right;
+    color: darkslategray;
+    margin: 0px 0px 0px 6px;
+}
+#FDP FFsniptext {
+    display: table-cell !important;
+    float: right;
+    color: darkslategray;
+    margin: 0px 0px 0px 6px;
+    white-space: nowrap;
+}
+#FDP  FFFIELD {
+    display: table-cell;
+	margin-right: 10px;
+	font-weight: bolder;
+    font-size: +1.1rem;
+}
+#FDP  FFNote {
+    display: inline-block;
+    margin: 0px 0px 0px 1px;
+    line-height: 0.9rem;
+}
+#FDP .GAside {
+    display: block;
+    float: right;
+    width: 180px;
+}
+#FDP .buttonitem {
+    align-items: center;
+    line-height: 18px !important;
+}
+#FDP .buttonaside {
+    line-height: 18px !important;
+    width: 10.2rem;
+    float: right;
+}
+#FDP .buttonlink {
+    margin: 0px !important;
+    padding: 0px !important;
+    display: inline;
+}
+#FDP .SmallButton {
+    padding: 4px;
+    display: inline-block;
+    text-align: center;
+    line-height: 10px;
+    border: 1px solid #0F7FE6;
+}
+#FDP .SmallButton:hover {
+    color: #fff;
+    background-color: #0291db;
+    border-color: #0291db;
+}
+#FDP label.ffcheckbox {
+    display: table-cell !important;
+    vertical-align: top;
+    width: 190px;
+}
+#FDP .ffcheckboxglobal {
+    display: table-cell !important;
+    vertical-align: top;
+    width: 200px;
+    padding-right: 6px;
+    margin-left: 3px;
+    padding-left: 5px;
+}
+#FDP ffchecktext {
+    line-height: 16px;
+    vertical-align: middle;
+    display: table-cell;
+    text-align: Left;
+}
+/*--------- Edit/Update -------*/
+#FDP FFlabel, #FDP  FFlabellong {
+    float: left;
+    margin: 0px 6px 0px 0px;
+    padding: 0px 2px 0px 0px;
+    display: table-cell;
+    width: 180px;
+}
+#FDP FFUfeedhead {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    margin-bottom: 2px;
+    background: whitesmoke;
+    max-height: 50px;
+}
+#FDP FFline {
+    align-items: center;
+    margin-bottom: 2px ;
+	background:whitesmoke;
+    display: table;
+    width: 100%;
+	text-align:Left;
+}
+#FDP .RSSimageboxtitle {
+    border: 3px solid rgba(53, 122, 232, 0);
+    width: 40px;
+    height: 40px;
+    float: right;
+}
+#FDP .RSSimageoption {
+    border: 1px solid #4787ed;
+    border-radius: 5px;
+    height: 24px;
+    width: 24px;
+    display: table-cell !important;
+    color: black;
+    word-break: keep-all;
+    /*font-size: xx-small;*/
+    cursor: none;
+}

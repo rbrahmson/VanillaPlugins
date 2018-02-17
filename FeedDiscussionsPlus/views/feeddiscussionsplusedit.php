@@ -2,19 +2,35 @@
 		$Mode = $this->Data('Mode');
 		$Feed = $this->Data('Feed');
 		$FeedKey = $this->Data('FeedKey');
-        $FeedURL = val('FeedURL', $this->Form->FormValues(), $this->Data('FeedURL'));
-        //echo __LINE__."FeedURL = ".$FeedURL.' <br>';
-        $Refresh = $Feed["Refresh"];       
-        $LastImport = $Feed["LastImport"];
+		$FormPostValues = $this->Data('FormPostValues');
+        //decho ($FormPostValues);
+        $FeedURL = val('FeedURL', $FormPostValues, $this->Data('FeedURL'));
+        //decho ($FeedURL);
+        if (isset($Feed['Refresh'])) {
+            $Refresh = $Feed['Refresh'];
+        } else {
+            $Refresh = '';
+        }
+        if (isset($Feed['LastImport'])) {
+            $LastImport = $Feed['LastImport'];
+        } else {
+            $LastImport = '';
+        }
         if ($LastImport == '' | $LastImport == 'never') {
             $LastImportmsg = '<FFtext>  Feed has not yet been imported</FFtext>';
         } else {
             $LastImportmsg = '<FFtext>  last import:'.$LastImport.'</FFtext>';
         }
-        $SuggestedURL = trim($Feed["SuggestedURL"]);
-        if (c('Plugins.FeedDiscussionsPlus.showurl',false)) {
-            $Internalurlmsg = 'Url:&nbsp<b>'.$Feed['InternalURL'].'</b>';
+        if (isset($Feed['SuggestedURL'])) {
+            $SuggestedURL = trim($Feed["SuggestedURL"]);
+        } else {
+            $SuggestedURL = '';
         }
+        $Internalurlmsg = '';
+        if (c('Plugins.FeedDiscussionsPlus.showurl',false)) {
+            $Internalurlmsg = '<FFNote>Url:&nbsp<b>'.$Feed['InternalURL'].'</b></FFNote>';
+        }
+        $Copybutton = '';
 		if ($Mode == 'Add') {
 			$Process = Url('plugin/feeddiscussionsplus/addfeed///Add');
 			$Defaultrefresh = '1w';
@@ -22,9 +38,9 @@
 		} elseif ($Mode == 'Update') {
 			$Process = Url('plugin/feeddiscussionsplus/updatefeed');
 			$Defaultrefresh = val('Refresh', $this->Form->FormValues(), $Feed["Refresh"]);
-            $Copybutton = '<span title="Copy settings">'.$this->Form->button(' 📄📄 Copy', array('type' => 'submit', 'name' => 'Copy')).'</span>';
+            $Copybutton = '<span title="Copy settings">'.$this->Form->button(' 📄📄 Copy', array('type' => 'submit', 'name' => 'Copy', 'class' => "Button ffcolumn")).'</span>';
 			if (!$FeedURL) {
-				$Msg = '<h1><FFRED>'.__FILE__.' Line '.__LINE__.' error - missing feed url</FFRED>';
+				$Msg = '<h1><redtext>'.__FILE__.' Line '.__LINE__.' error - missing feed url</redtext>';
                 echo $Msg;
 				//throw new Gdn_UserException($Msg);
 			}
@@ -37,7 +53,7 @@
 			}
 		}
 		//
-		$Processbutton = '<span title="Save">'.$this->Form->button(" 🔽 ".t($Mode), array('type' => 'submit', 'name' => $FeedKey)).'</span>';
+		$Processbutton = '<span title="Save">'.$this->Form->button(" 🔽 ".t($Mode), array('type' => 'submit', 'class' => "Button ffcolumn", 'name' => $FeedKey)).'</span>';
 		$Processtitle = $Mode.' Settings for Feed Import';
 		echo $this->Form->Open(array(
          'action'  => $Process
@@ -48,28 +64,38 @@
         //echo "<br>".__LINE__." Copied:".$Copied.'<br>';
         //
 	    if ($Copied) {
-           $Pastebutton = '<span title="Paste settings">'.$this->Form->button(' 📑 Paste', array('type' => 'submit', 'name' => 'Paste')).'</span>';
+           $Pastebutton = '<span title="Paste settings">'.$this->Form->button(' 📑 Paste', array('type' => 'submit', 'name' => 'Paste', 'class' => "Button ffcolumn")).'</span>';
 	    } else {
            $Pastebutton = '';
 	    }
         //
-		echo '<div id=xPopup><div id=FDP>';
-		$this->AddCssFile('feeddiscussionsplus.css', 'plugins/FeedDiscussionsPlus');
-		$LastImport = $Feed['LastImport'];
-		$Feedtitle = (string)$Feed['Feedtitle'];
-		$Encoding = $Feed['Encoding'];
-		$RSSimage = $Feed['RSSimage'];
+		echo '<div id=FDP><div id=FDPEDIT>';
+        if (isset($Feed['Feedtitle'])) {
+            $Feedtitle = (string)$Feed['Feedtitle'];
+        } else {
+            $Feedtitle = '';
+        }
+        if (isset($Feed['Encoding'])) {
+            $Encoding = $Feed['Encoding'];
+        } else {
+            $Encoding = '';
+        }
+        if (isset($Feed['RSSimage'])) {
+            $RSSimage = $Feed['RSSimage'];
+        } else {
+            $RSSimage = '';
+        }
         $Plugininfo = Gdn::pluginManager()->getPluginInfo('FeedDiscussionsPlus');
         $Title = $Plugininfo["Name"];
         $Version = $Plugininfo["Version"];
         $IconUrl = $Plugininfo["IconUrl"];
-		$Canelbutton = '<span style="margin: 0 0 0 20px;"><a class="Button DeleteFeed" href="'.Url('/plugin/feeddiscussionsplus/ListFeeds').
+		$Canelbutton = '<span style="margin: 0 0 0 20px;"><a class="Button ffcolumn DeleteFeed" href="'.Url('/plugin/feeddiscussionsplus/listfeeds/Not saved/?'.__LINE__).
 			'" title="'.t('Return to the definitions list').'">☰ Return to list</a></span>';
 		//
-		$Qmsg = $this->Data('Qmsg');
-        $this->SetData('Qmsg', __FUNCTION__.__LINE__);
+        $Sourcefile = pathinfo(__FILE__)["basename"];
+        $Qmsg = FeedDiscussionsPlusPlugin::getmsg('', 'GETVIEW,'.$Sourcefile. ', L#'.__LINE__);
 		if ($Qmsg) {
-			$Titlemsg = '<br><div class=ffqmsg>'.$Qmsg.'</div>';
+			$Titlemsg = '<br><div class=ffqmsg>' . $Qmsg . '</div>';
 		} else {
 			$Titlemsg = '';
 		}
@@ -103,9 +129,11 @@
 		echo '<ul><li>';
         //
         if (empty($FeedURL)) {
+            //echo 'l#:'.__LINE__;
             $FeedURL = val('FeedURL', $this->Form->FormValues(), null);
         }
         //decho ($this->Form->FormValues());
+        $Allowupdate = false;
         if (c('Plugins.FeedDiscussionsPlus.allowupdate', false)) {
             $Allowupdate = true;
         }
@@ -114,19 +142,23 @@
         $Validatorurl='https://validator.w3.org/feed/check.cgi?url='. $FeedURL;
         //$Validatorurl='http://www.feedvalidator.org/check?url='. $FeedURL;
         //
-        $Feedvalidator =   '<span >&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<a class="Button DeleteFeed  " target=_BLANK href="' . $Validatorurl . 
+        $Feedvalidator =   '<span >&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<a class="Button ffcolumn DeleteFeed  " target=_BLANK href="' . $Validatorurl .
 		   '" title="' . t('Run external feed validator if you have problems with this feed.').'"><b>Issues ?</b> Run Feed Validator</a><span>';
         $Twitterid = false;
+        if ($Encoding == 'Twitter' | substr($FeedURL,0,1) == '@') {
+            $Twitterid = true;
+        }
         $Urltitle= '';
         $Urllabel= '<FFlabel>Feed URL:</FFlabel>';
         if (empty($FeedURL) or trim($FeedURL) == '?') {
+            //echo 'l#:'.__LINE__;
             $Feedvalidator = '';
             $Urltitle= 'title ="Enter feed URL"';
-            $Mode = 'Add';    
-            $Internalurlmsg = '????????????????????????????????????/';
+            $Mode = 'Add';
+            $Internalurlmsg = ' ';
         } elseif ($Allowupdate) {
             $Urllabel= '<FFlabel>Feed source:</FFlabel>';
-        } elseif ($Encoding == 'Twitter' | substr($FeedURL,0,1) == '@') {
+        } elseif ($Twitterid) {
             $Twitterid = true;
             $Feedvalidator = '';
             $Urllabel= '<FFlabel>Twitter ID</FFlabel>';
@@ -139,11 +171,15 @@
         }
         //
 		if ($RSSimage) {
-             if ($Twitterid) {    
-                 $Logo = '<span class="RSSimageboxtwitter"> <img src="' . $RSSimage . '" id=RSSimage class=RSSimagebe title=" " ></span> ';
+             if ($Twitterid) {
+                 $Logowrapclass = 'RSSlogowrap RSSlogoedit Twitterlogo ';
              } else {
-                 $Logo = '<span class="RSSimageboxtitle"> <img src="' . $RSSimage . '" id=RSSimage class=RSSimagebe title=" " ></span> ';
+                 $Logowrapclass = 'RSSlogowrap RSSlogoedit ';
              }
+             if ($Allowupdate) {
+                 $Logowrapclass = $Logowrapclass . ' RSSlogoallowedit ';
+             }
+             $Logo = '<span class="'.$Logowrapclass.'"> <img src="' . $RSSimage . '" id=RSSimage class=RSSimagebe title=" " ></span> ';
              $Logooption = '<span> <img src="' . $RSSimage . '" id=RSSimage class=RSSimageoption title=" " ></span> ';
 		 } else {
 			 $Logo = '';
@@ -151,34 +187,37 @@
 		 }
         //
         $Buttonbar = '<div style="display:inline-flex;float:right;"> '.$Processbutton.$Canelbutton.$Copybutton.$Pastebutton.$Feedvalidator.'</div>';
+        $Buttonbar = '<ffhead><div Class="ffspread"> '.$Processbutton.$Canelbutton.$Copybutton.$Pastebutton.$Feedvalidator.'</div></ffhead>';
         //
 		echo $Buttonbar;
         echo '<h4><FFBIG>❂</FFBIG>General Options</h4>';
 		//
 		echo '<FFUfeedhead>';
             $Highlightclass = '';
-            $Helpmsg = '<FFtext> Enter ? for help on valid inputs</FFtext>';
+            $Helpmsg = '<FFsniptext> Enter ? for help on valid inputs</FFsniptext>';
+            $Highlightclass = '';
             if ($SuggestedURL) {
                 $SuggestedURL = '';
-                $Highlightclass = 'FDPredinput';
-                $Urllabel = '<FFRED>Suggested&nbspURL:</FFRED>&nbsp&nbsp&nbsp';
+                $Highlightclass = 'redinput';
+                $Urllabel = '<redtext>Suggested&nbspURL:</redtext>&nbsp&nbsp&nbsp';
                 $Logo = '';
                 $Encoding = '';
                 $Internalurlmsg = '';
-                $Helpmsg = '<FFtext><FFBLUE>&nbspThe url you entered pointed to the suggested feed url</FFBLUE></FFtext>';
+                $Helpmsg = '<FFsniptext><bluetext>&nbspThe url you entered pointed to the suggested feed url</bluetext></FFsniptext>';
             }
             if (($Encoding != '') & ($Encoding != 'N/A')) {
-                $Encodingmsg = '(Feed type:&nbsp'.$Encoding.')';
+                $Encodingmsg = '<FFNote>(Feed type:&nbsp'.$Encoding.')</FFNote>';
             }
 			echo '<span '.$Urltitle.' >'.$this->Form->Label($Urllabel, 'FeedURL').'</span>';
             if ($Allowupdate) {
-                echo $this->Form->TextBox('FeedURL', array('class' => 'InputBox WideInput '.$Highlightclass, 'maxlength' => 200,)).
-                    $Helpmsg . '</FFline>'.$Logo.' &nbsp&nbsp&nbsp '.$Encodingmsg.'&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp'.$Internalurlmsg;
-			} elseif (($Mode == 'Update')) { 
+                echo $this->Form->TextBox('FeedURL', array('class' => 'InputBox WideInput '.$Highlightclass, 'maxlength' => 200, 'value' => $FeedURL)).
+                    $Helpmsg . $Logo.' &nbsp&nbsp&nbsp '.$Encodingmsg.'&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp'.'</FFline>'.$Internalurlmsg ;
+			} elseif (($Mode == 'Update')) {
                 $Helpmsg = '';
-				echo $this->Form->TextBox('FeedURL', array('class' => 'InputBox WideInput NoInput ', 'maxlength' => 1,)).'<FFFIELD>'.$FeedURL.'<br><FFBLUE>'.$Feedtitle.'</FFBLUE></FFFIELD>&nbsp&nbsp&nbsp'.$Logo.'&nbsp&nbsp&nbsp'.$Encodingmsg.'&nbsp&nbsp&nbsp'.$Internalurlmsg;		
-			} else { //no url - assume Add request 
-				echo $this->Form->TextBox('FeedURL', array('class' => 'InputBox WideInput', 'maxlength' => 200,)).       $Helpmsg . '</FFline>';
+				echo $this->Form->TextBox('FeedURL', array('class' => 'InputBox WideInput NoInput ', 'maxlength' => 1, 'value' => $FeedURL)).'<FFtext>'.$FeedURL.'<br><bluetext>'.$Feedtitle.'</bluetext></FFtext>&nbsp&nbsp&nbsp'.$Logo.'&nbsp&nbsp&nbsp'.$Encodingmsg.'&nbsp&nbsp&nbsp'.$Internalurlmsg;
+			} else { // assume Add request
+				echo $this->Form->TextBox('FeedURL', array('class' => 'InputBox WideInput '.$Highlightclass, 'maxlength' => 200, 'value' => $FeedURL)). $Helpmsg .
+                ' &nbsp' . '</FFline>';
 			}
 		echo '</FFUfeedhead>';
 		//
@@ -189,7 +228,7 @@
 		//
 		echo '<FFline>'.$this->Form->CheckBox('Active', 'Activate the feed', array('value' => '1', 'class' => 'FFCHECKBOX'))."<FFchecktext> (uncheck to deactivate while keeping the inactive definition)</FFchecktext></FFline>";
 		//
-		echo '<FFline>'.$this->Form->CheckBox('Getlogo', "Show the feed's logo", array('value' => '1', 'class' => 'FFCHECKBOX')).$Logooption."<FFchecktext> (show feed's logo in the discussion and the discussion list)</FFchecktext></FFline>";
+		echo '<FFline>'.$this->Form->CheckBox('Getlogo', "Show the feed's logo", array('value' => '1', 'class' => 'FFCHECKBOX  labelupdate')).$Logooption."<FFchecktext> (show feed's logo in the discussion and the discussion list)</FFchecktext></FFline>";
 		//
 		echo '<FFline>'.$this->Form->CheckBox('Noimage', "Don't include images", array('value' => '1', 'class' => 'FFCHECKBOX'))."<FFchecktext> (Don't include <i>embedded</i> images when saving feeds as discussions)</FFchecktext></FFline>";
 		//
@@ -217,7 +256,7 @@
 		} else {
 			$Hournote = 'The current server hour is '.$Serverthour;
 		}
-			
+
 		echo $this->Form->Label('<FFlabel>Active between:</FFlabel>', 'Activehours');
             echo $this->Form->TextBox('Activehours', array('class' => 'InputBox')).'<FFtext> Feeds are checked whenever a user dispays a discussion. This option limits checking for new feed items between the specified <b>server</b> hours (format:hh-hh.  Examples:0-5, 21-05, or 14-21). <br>'.$Hournote . '</FFtext>';
 		echo '</FFline>';
@@ -225,12 +264,14 @@
 		echo '<h4><FFBIG>☶</FFBIG> Feed item filters</h4>';
 		//
 		echo '<FFline>';
-		echo '<note>If specified, a feed items must match the following filters to be imported. ';
+		echo 'If filters are specified, a feed items must match the following filters to be imported. ';
 		echo '</FFline>';
+		//
+		echo '<FFline>'.$this->Form->CheckBox('Filterbody', "Filter full Content", array('value' => '0', 'class' => 'FFCHECKBOX'))."<FFchecktext>If left unchecked filters only apply to the feed item <b>titles</b> (More efficient but may miss some items).</FFchecktext></FFline>";
 		//
 		echo '<FFline>';
 		echo 'When specifying multiple words they must be comma delimited.  The match is case-insensitive.</note>';
-		
+
 		echo '</FFline>';
 		//
 		echo '<FFline>';
@@ -250,7 +291,9 @@
 		echo '</ffinputs>';
 		//
 	  echo '</ul>';
-	  echo '<div>'; 
+	  echo '<div>';
 	  echo $Buttonbar;
-	  echo '</div></div></div></div>'; 
+	  echo '</div></div></div></div>';
+      $this->Form->close;
+
 ?>
