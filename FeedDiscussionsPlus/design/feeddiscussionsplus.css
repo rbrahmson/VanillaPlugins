@@ -4,7 +4,6 @@
 }
 #FDP .PhotoWrap {
     visibility:visible;
-    opacity: 0;
 }
 /*------Discussion/Discussion List Styles----------*/
 #FDP .RSSlogobox {
@@ -27,6 +26,16 @@
     /*left: 9px;*/
     position: initial;
 }
+#FDP .FDPlogolist {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #dddddd;
+    border-radius: 6px;
+    margin-left: 0px;
+    margin-right: 0px;
+    /*left: 9px;*/
+    position: initial;
+}
 #FDP .RSSimageitem0 {
     visibility: hidden;
     width: 40px;
@@ -38,27 +47,50 @@
     left: 9px;
     position: absolute;
 }
-#xFDP .RSSlogowrap:before {
-    content: "@";
-    position: relative;
-    z-index: 99999;
-    top: 2px;
-    left: 2px;
+#FDP .FDPlogoitem {
+    visibility: visible;
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    -webkit-filter: drop-shadow(1px 1px 0px #3498db);
+    margin-left: 0px;
+    margin-right: 0px;
     display: inline-block;
-    font-family: "Arial", Arial, sanserif;
-    font-weight: bold;
-    width: 16px;
-    height: 17px;
-    line-height: 14px;
-    border-radius: 7px 6px 6px 7px;
-    background: #0f6089;
-    color: white;
+}
+#FDP .FDPlogowrap {
+    display: -webkit-box;
+    height: 0px;
+    margin: 0px 0px 0px 0px;
+    padding: 0px 0px 0px 0px;
 }
 #FDP .RSSlogowrap {
     display: inline-block;
-    /*padding: 0px 6px 0px 6px;
-    margin: 0px 6px 0px 6px;*/
+    height: 40px;
     -webkit-filter: drop-shadow(1px 1px 0px blue);
+}
+.RSSsourcebox {
+	padding: 0px 0px 0px 2px;
+    display: inline-block;
+}
+.RSSsource {
+    white-space: nowrap;
+    display: inline-block;
+}
+.RSSsourcetext {
+    white-space: nowrap;
+    display: inline-block;
+    font-size: 23px;
+    font-family: "Arial", Arial, sanserif;
+    font-weight: normal;
+    width: 15px;
+    height: 18px;
+    line-height: 13px;
+    color: #fcfcfc;
+    -webkit-filter: drop-shadow(0.7px 0.7px 0.7px #9c9190);
+    border-radius: 13px;
+    background: #3498db;
+    margin: 0px 0px 0px 4px;
+    padding: 2px 0px 0px 6px;
 }
 #FDP .RSSlogolist:before {
     top: 17px !important;
@@ -81,6 +113,35 @@
 }
 #FDP .RSSlogoallowedit {
     margin: 0px 0px 24px 4px;
+}
+#FDP .FDPatsign {
+    position: relative;
+    visibility: visible;
+    z-index: 20;
+    display: inline-block;
+    font-size: 16px;
+    font-family: "Arial", Arial, sanserif;
+    font-weight: bold;
+    width: 17px;
+    height: 17px;
+    line-height: 14px;
+    border-radius: 7px 6px 6px 7px;
+    background: #0f6089;
+    color: white;
+    top: -11px;
+    left: -43px;
+    padding: 0px;
+    margin: 0;
+}
+#FDP .FDPatsignitem {
+    display: -webkit-box;
+    top: 1px;
+    left: -39px;
+}
+#FDP .FDPatsignlist {
+    display: -webkit-box;
+    top: 1px;
+    left: -39px;
 }
 #FDP .RSSatsign {
     position: absolute;
@@ -223,7 +284,8 @@
 #FDP .ffqmsg {
     background: red;
     color: white;
-    display: inline-block;padding: 4px;
+    display: inline-block;
+    padding: 4px;
     margin:2px;
     border: 0.01rem solid transparent;
 }
@@ -354,6 +416,7 @@ border-radius: 0.325rem;
         text-align: left;
         vertical-align: top;
         width: 100%;
+        max-width: 500px;
     }
     .FDPtable-cell-right {
         display: table-cell;
@@ -422,38 +485,43 @@ border-radius: 0.325rem;
 #FDP ffred {
     color: #ffffff00;
     font-size: 12px;
-    border: 0.1px solid red;
+    background: red;
+    border: 1px solid darkred;
+    border-radius: 12px;
     border-radius: 12px;
     padding: 0px 4px 0px 3px;
     margin: 0px 3px 0px 0px;
-    background: red;
+    font-family: "Arial", Arial, sanserif;
 }
 #FDP ffgreen {
     color: #ffffff00;
     font-size: 12px;
-    border: 0.1px solid lightgreen;
+    background: lightgreen;
+    border: 1px solid darkgreen;
     border-radius: 12px;
     padding: 0px 4px 0px 3px;
     margin: 0px 3px 0px 0px;
-    background: lightgreen;
+    font-family: "Arial", Arial, sanserif;
 }
 #FDP fforange {
     color: #ffffff00;
     font-size: 12px;
-    border: 0.1px solid orange;
+    border: 1px solid #dc7a02;
     border-radius: 12px;
     padding: 0px 4px 0px 3px;
     margin: 0px 3px 0px 0px;
     background: orange;
+    font-family: "Arial", Arial, sanserif;
 }
 #FDP ffgray {
     color: #ffffff00;
-    font-size: 11px;
+    font-size: 12px;
     border: 1px solid gray;
     border-radius: 12px;
-    padding: 0px 2px 0px 3px;
+    padding: 0px 4px 0px 3px;
     margin: 0px 3px 0px 0px;
     background: lightgray;
+    font-family: "Arial", Arial, sanserif;
 }
 #FDP ffcircle {
     border-radius: 50%;
@@ -463,6 +531,32 @@ border-radius: 0.325rem;
     display: inline-block;
     min-width: 23px;
     font-size: 14px;
+}
+#FDP .FDPlink {
+    padding: 0px 0px 0px 2px;
+    margin: 0;
+    display: inline-block;
+}
+#FDP .FDPlinkitem {
+    padding: 0px 0px 0px 2px;
+    margin: 0;
+    display: inline-table;
+}
+#FDP .FDPlinklist {
+    padding: 0px 0px 0px 2px;
+    margin: 0;
+    display: -webkit-box;
+}
+#FDP .RSSlink {
+    font-weight: bold;
+    font-size: 32px;
+    line-height: 32px;
+    padding: 0px 10px 0px 10px;
+    margin: 1px 5px 0px 4px;
+    display: inline-block;
+    font-family: "Arial", Arial, sanserif;
+    color: #0074d9a1;
+    background: #eee;
 }
 #FDP .Diffmsg {
     font-weight: bold;
