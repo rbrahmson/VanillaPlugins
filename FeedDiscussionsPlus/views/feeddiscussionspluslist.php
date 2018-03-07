@@ -285,20 +285,52 @@
                 $Getlogo = $FeedItem['Getlogo'];
                 $Logowrapclass = 'RSSlogowrap';
                 $Logoimgclass =  'RSSlistlogo';
-                if (!$Getlogo) {
-                    $Logowrapclass = $Logowrapclass . ' RSSlistlogooff';
-                }
+                $Logowrapclass = 'FDPlogowrap FDPlogowrapbend';
+                $Logoimgclass =  'FDPlogobend';
+                $Addspan = '';
+                /*if (!$Getlogo) {
+                    //$Logowrapclass = $Logowrapclass . ' RSSlistlogooff';
+                    $Logowrapclass = $Logowrapclass . ' FDPlogooffbend';
+                }*/
                 if ($FeedItem['RSSimage']) {
-                    if ($FeedItem['Encoding'] == "Twitter") {
-                        $Logowrapclass = $Logowrapclass . ' RSSlogolist Twitterlistlogo ';
-                        $Logo = '<span class="'.$Logowrapclass.'" id=RSSlogowrap><img src="' .
-                                $FeedItem['RSSimage'] . '" id=RSSimage class=RSSlistlogo title="' .
-                                $FeedItem['Feedtitle'] . '" ></span> ';
+                    if ($FeedItem['Encoding'] == "xxxTwitter") {
+                        $Addspan =  '<span id=RSSatsign class="FDPatsign FDPatsignbend" title="'.$FeedItem['Feedtitle'].'">@</span>';
+                        //$Logowrapclass = $Logowrapclass . ' RSSlogolist Twitterlistlogo ';
+                        //$Logowrapclass = $Logowrapclass . ' FDPTwitterwrap ';
+                        $Logo = '<img src="' .
+                                $FeedItem['RSSimage'] . '" id=RSSimage class=FDPlogobend title="' .
+                                $FeedItem['Feedtitle'] . '" > ' . $Addspan; 
                     } else {
-                        $Logo = '<span class="'.$Logowrapclass.'" id=RSSlogowrap><img src="' .
-                                $FeedItem['RSSimage'] . '" id=RSSimage class=RSSlistlogo title="' .
-                                $FeedItem['Feedtitle'] . '" ></span> ';
+                        $Logo = '<img src="' .
+                                $FeedItem['RSSimage'] . '" id=RSSimage class=FDPlogobend title="' .
+                                $FeedItem['Feedtitle'] . '" > ';
                     }
+                    $Logo = '<img src="' .
+                                $FeedItem['RSSimage'] . '" id=RSSimage class=FDPlogobend title="' .
+                                $FeedItem['Feedtitle'] . '" > ';
+                    $Bottom = 40;
+                    if ($FeedItem['Encoding'] == "Twitter") {
+                        $Logo = $Logo . '<img class=FDPatsignbendimg style="Bottom:' . $Bottom . 'px;" id=FDPatsignbendimg src="' . 
+                                url('plugins/FeedDiscussionsPlus/design/TwitterMark.png') . 
+                                '" >' ;
+                        $Bottom += 16;
+                    } elseif ($FeedItem['Encoding'] == "Instagram") {
+                        $Logo = $Logo . '<img class=FDPinstasignbendimg style="Bottom:' . $Bottom . 'px;" id=FDPinstasignbendimg src="' . 
+                                url('plugins/FeedDiscussionsPlus/design/instalogoc.jpg') . 
+                                '" >' ;
+                        $Bottom += 16;
+                    }
+                    if (!$Getlogo) {
+                        /*$Logo = $Logo . ' <span class="FDPnologobend" <img class="FDPnologobendimg" id=FDPnologobendimg src="' . 
+                                url('plugins/FeedDiscussionsPlus/design/unimage.png') . 
+                                '" ></span>' ;
+                        */
+                        $Logo = $Logo . '<img class=FDPnologobendimg style="Bottom:' . $Bottom . 'px;" id=FDPnologobendimg src="' . 
+                                url('plugins/FeedDiscussionsPlus/design/unimage.png') . 
+                                '" >' ;
+                        $Bottom += 40;
+                    }
+                    $Logo = '<span class="'.$Logowrapclass.'" id=FDPlogowrap>'.$Logo.' </span> ';
                 } else {
                     $Logo = '';
                 }
@@ -328,7 +360,8 @@
                     '</span>';
                 $Leftblock = '<span class="RSSleftblock">'.$Logo.$Activemsg.'</span> ';
                 $Rigtblock = '<span class="RSSrightblock">'.$Buttons. '</span> ';
-                $Leftblock = '<span class="FDPtable-cell-left">'.$Logo.$Activemsg.$EncodingMsg.'</span> ';
+                $Leftblock = '<span class="FDPtable-cell-left">'.$Logo.
+                             '<span class="FDPlogotextbend">'.$Activemsg.$EncodingMsg.'</span> </span> ';
                 $Rigtblock = '<span class="FDPtable-cell-right">'.$Buttons. '</span> ';
                 echo '<div class="'.$FeedItemClass.'" >';
                 //

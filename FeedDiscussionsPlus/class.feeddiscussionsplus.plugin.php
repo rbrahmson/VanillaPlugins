@@ -35,12 +35,13 @@
  *  Version 2.5.1 - Support Vanilla 2.5
  *  Version 2.5.2 - Better handling of forum source image
  *  Version 2.5.3 - Support for rich RSS/Atom content, few back end interface enhancements
+ *  Version 2.5.4 - Experimental support for Instagram content, additional interface enhancements
  */
 //
 $PluginInfo['FeedDiscussionsPlus'] = array(
     'Name' => 'Feed Discussions Plus',
-    'Description' => "Automatically create Vanilla discussions based on RSS/Atom feed imported content.",
-    'Version' => '2.5.3',
+    'Description' => "Automatically create Vanilla discussions based on RSS/Atom/Twitter feeds imported content.",
+    'Version' => '2.5.4',
     'RequiredApplications' => array('Vanilla' => '>=2.3'),
     'MobileFriendly' => true,
     'HasLocale' => true,
@@ -627,6 +628,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $Feedarray = array_merge($Defaults, $Feedarray);
         //$this->DebugData($Feedarray, '---Feedarray---', 1);
         $FeedRSS = $this->validatefeed($Sender, $Feedarray, 'Update');  //Validate form inputs in "Update" mode
+        //$this->DebugData($FeedRSS["FeedURL"], '---FeedRSS["FeedURL"]---', 1);
         $Feed = $this->GetFeed($FeedRSS["FeedURL"], false);
         $Sender->SetData('Feed', $Feed);
         if ($FeedRSS['Error']) {
@@ -645,6 +647,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $Feedarray["FeedURL"] = $FeedRSS['FeedURL'];
         $Feedarray["Feedtitle"] = $FeedRSS['Feedtitle'];
         $Feedarray["InternalURL"] = $FeedRSS['InternalURL'];
+        $Feedarray["Scheme"] = $FeedRSS['Scheme'];
         //Calculate and set next import due date/time
         $LastImport = val('LastImport', $Feed);
         $Refresh = val('Refresh', $Feedarray);
@@ -654,7 +657,10 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Feedarray["NextImport"] = $this->getimportdate($Sender, "Next", $Refresh, $LastImport);
         }
         //$this->DebugData($Feedarray, '---Feedarray---', 1);
-        $this->AddFeed($Feedarray['FeedURL'], $Feedarray);
+        //$this->DebugData($Feedarray["FeedURL"], '---Feedarray["FeedURL"]---', 1);
+        //$FeedKey = self::EncodeFeedKey($FeedURL);
+        //$this->UpdateFeed($FeedKey, $Feedarray);
+        $this->AddFeed($Feedarray["FeedURL"], $Feedarray);
         $Msg = $this->setmsg('"'.SliceString($FeedRSS['Feedtitle'], 40).
                                 '" Feed import definition updated.');
         //$this->DebugData($Msg, '---Msg---', 1);
@@ -767,6 +773,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Feedarray["Encoding"] = $FeedRSS['Encoding'];
             $Feedarray["Feedtitle"] = $FeedRSS['Feedtitle'];
             $Feedarray["InternalURL"] = $FeedRSS['InternalURL'];
+            $Feedarray["Scheme"] = $FeedRSS['Scheme'];
             //$this->DebugData($Feedarray["FeedURL"], '---Feedarray["FeedURL"]---', 1);
             //Calculate and set next import due date/time
             $Refresh = val('Refresh', $Feedarray);
@@ -1428,6 +1435,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Feedarray["FeedURL"] = strtolower($Feedarray["FeedURL"]);
         } elseif (substr($Feedarray["FeedURL"], 0, 1) == '#') {
             $Feedarray["FeedURL"] = strtolower($Feedarray["FeedURL"]);
+        } elseif (substr($Feedarray["FeedURL"], 0, 1) == '!') {
+            $Feedarray["FeedURL"] = strtolower($Feedarray["FeedURL"]);
         }
         //
         try {
@@ -1443,6 +1452,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                         $Msg = $this->setmsg('The Twitter user "<b>' . $Feedarray["FeedURL"] . '</b>" is already in the list');
                     } elseif (substr($Feedarray["FeedURL"], 0, 1) == '#') {
                         $Msg = $this->setmsg('The Twitter hashtag "' . $Feedarray["FeedURL"] . '" is already in the list');
+                    } elseif (substr($Feedarray["FeedURL"], 0, 1) == '!') {
+                        $Msg = $this->setmsg('The Instagram entity "' . $Feedarray["FeedURL"] . '" is already in the list');
                     } else {
                         $Msg = $this->setmsg('The Feed URL you supplied is already in the list');
                     }
@@ -1472,6 +1483,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                 throw new Exception($this->setmsg($FeedRSS['Error']));
             }
             //$this->postmsg($Sender, __FUNCTION__.' '.__LINE__.' InternalURL:'.$FeedRSS['InternalURL']);
+            //
+            //$this->DebugData($FeedRSS["Scheme"], '---FeedRSS["Scheme"]---', 1);
             if (!array_key_exists($Feedarray["Category"], CategoryModel::Categories())) {
                 throw new Exception($this->setmsg("Specify a valid destination category"));
             }
@@ -1596,7 +1609,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Datekey = 'published';
             $Contentkey = 'content';
             $Linkkey = '@attributes.href';
-        } elseif ($Encoding == 'RSS' OR $Encoding == 'Rich RSS') {
+        } elseif ($Encoding == 'RSS' OR $Encoding == 'Rich RSS' OR $Encoding == 'Instagram') {
             $Itemkey = 'channel.item';
             $Datekey = 'pubDate';
             $Contentkey = 'description';
@@ -1639,7 +1652,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             //$this->DebugData(htmlspecialchars(substr($RSSdata,0,500)), "---RSSdata(0:500)---", 1);
             //if (!array_key_exists('item', $RSSdata)) {
             if ($AutoImport) {
-                echo '<br> Feed does not have a valid RSS content (code '.__LINE__.')<br>';
+                echo '<br> Feed is empty or does not have a valid RSS content (code '.__LINE__.')<br>';
             }
             return false;
         }
@@ -1887,7 +1900,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                     //$this->DebugData($l, '---l ---', 1);
                     //$this->DebugData($Maxbodysize, '---Maxbodysize ---', 1);
                     $ParsedStoryBody = '<div class="AutoFeedDiscussion">'.substr($StoryBody, 0, $Maxbodysize).'</div>';
-
+                    $FeedKey = self::EncodeFeedKey($FeedURL);
                     $DiscussionData = array(
                                 'Name'          => $StoryTitle,
                                 'Format'        => 'Html',
@@ -1898,6 +1911,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                                 'Attributes'    => array(
                                     'FeedURL'            => $FeedURL,
                                     'Itemurl'            => $Itemurl,
+                                    'FeedKey'            => $FeedKey,
                                   ),
                             );
                     //Post as feed ID if one was defined
@@ -1936,7 +1950,11 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                         $DiscussionData[$DiscussionModel->Type] = 'Feed';
                         $DiscussionModel->Validation->Results(true);
                         setValue('Type', $DiscussionModel, 'Feed');
+                        //$this->DebugData($DiscussionData["Name"], '---$DiscussionData["Name"]---', 1);
+                        echo '<span style="Display:none;visibility:invisible;">';
                         $InsertID = $DiscussionModel->Save($DiscussionData);
+                        echo '</span>';
+                        //$this->DebugData($DiscussionData["Name"], '---$DiscussionData["Name"]---', 1);;
                         if ($InsertID) {
                             $NumSavedItems += 1;
                             //var_dump ($InsertID);
@@ -2115,7 +2133,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
     protected function getstorybody($Item, $Contentkey) {
         //$this->DebugData(__LINE__, '', 1);
         //$Item = (array)json_decode(json_encode($Item), true);
-        //$this->DebugData($Contentkey, '---Contentkey---', 1);;
+        //$this->DebugData($Contentkey, '---Contentkey---', 1);
         //$StoryBody = (string)
                     valr($Contentkey, $Item, valr('description', $Item, valr('content', $Item, valr('summary', $Item, ''))), ' ');
 
@@ -2130,6 +2148,104 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         return '';
     }
 /**
+* Create instagram feed from instagram xml page.
+*
+* @param string $FeedRSS Source from url
+* @param string $InstaID Instragram entity
+* @param string $Link    Link to Instragram entity
+* @param bool   $Data    Indication whether data requested
+*
+* @return string
+*/
+    protected function getinstafeed($FeedRSS, $InstaID, $Link, $Data) {
+        //$this->DebugData(__LINE__, '', 1);
+        //$this->DebugData(gettype($FeedRSS), '---gettype(/$FeedRSS)---', 1);
+        //$this->DebugData(substr($FeedRSS,0,500), '---substr(/$FeedRSS,0,500)---', 1);
+        $Instadata = (array)json_decode($FeedRSS, true);
+        //decho (json_last_error());
+        //$this->DebugData(gettype($Instadata), '---gettype(/$Instadata)---', 1);
+        //var_dump(get_object_vars($FeedRSS));
+        //$this->DebugData(array_keys($Instadata), '---array_keys(/$Instadata)---', 1);
+        //$this->DebugData($Instadata, '---/$Instadata---', 1);
+        $InstaUser = $Instadata["user"];
+        //$this->DebugData($InstaUser, '---/$InstaUser---', 1);
+        if (isset($Instadata["user"]["profile_pic_url"])) {
+            $Response["RSSimage"] = $Instadata["user"]["profile_pic_url"];
+        } elseif (is_set($Instadata["graphql"]["profile_pic_url"])) {
+            $Response["RSSimage"] = $Instadata["graphql"]["profile_pic_url"];
+        } else {
+            $Response["RSSimage"] = null;
+        }
+        //$this->DebugData($Response["RSSimage"], '---/$Response["RSSimage"]---', 1);
+        $Instadata = $Instadata["user"]["media"]["nodes"];
+        //$this->DebugData($Instadata, '---/$Instadata---', 1);
+        $i = 0;
+        $RSSdata =  '';
+        $RSShead = '<?xml version="1.0" encoding="utf-8"?>';//  encoding="ISO-8859-1";
+        $RSShead .= '<rss version="2.0">';
+        $RSShead .= '<channel>';
+        $RSShead .= '<title>Instagram feed for ' . $InstaID . '</title>';
+        $RSShead .= '<link>' . $Link . '</link>';
+        if (!$Data) {
+            $i = count($Instadata);
+        }
+        $Instapubdate = '';
+        while($i <= count($Instadata)) {
+            $RSSitem  = '';
+            $Instaitem = $Instadata[$i];
+            $i += 1;
+            //$this->DebugData(array_keys($Instaitem), '---array_keys(/$Instaitem)---', 1);
+            $Instatypename = $Instaitem["__typename"];
+            $Instathumbnail = $Instaitem["thumbnail_src"];
+            $Instaisvideo = $Instaitem["is_video"];
+            $Instacode = $Instaitem["code"];
+            $Instadate = (int)$Instaitem["date"];
+            //$this->DebugData($Instatypename, '---Instatypename---', 1);
+            //$this->DebugData($Instaisvideo, '---Instaisvideo---', 1);
+            $Instadate = date("Y-m-d\TH:i:s",$Instadate);
+            if ($Instapubdate == '') {
+                $Instapubdate = $Instadate;
+            }
+            //$this->DebugData($Instadate, '---Instadate---', 1);
+            $Instacaption = strip_tags($Instaitem["caption"]);
+            $Instacaption = $Instaitem["caption"];
+            //$Instacaption = Gdn_Format::replaceButProtectCodeBlocks('/(^|[\s,\.>])\#([\w\-]+)(?=[\s,\.!?<]|$)/i', 
+            //                  '', $Instacaption);
+            $Instacaption = preg_replace('/#([\w-]+)/i', '', $Instacaption);
+            $Instacaption = preg_replace('/@([\w-]+)/i', '', $Instacaption);
+            $Instatitle = str_replace(array('()', ' ) ', ' >'),
+                                        array(' ', '', '', ''),  
+                                     $Instacaption);
+            //
+            $Instatitle = SliceString($Instatitle, 150);
+            //$this->DebugData($Instatitle, '---Instatitle---', 1);
+            if ($Instaisvideo) {
+            } elseif($Instatypename == "GraphImage") {
+                $RSSitem .= '<item>';
+                $RSSitem .= '<title><![CDATA[' . $Instatitle . ' >]]></title>';
+                $Instadesc = '<description><![CDATA[' . $Instacaption . ' ' . 
+                              '<br><img height="300" src="' . $Instathumbnail . '" >]]></description>';
+                //$this->DebugData($Instadesc, '---Instadesc---', 1);
+                $RSSitem .= $Instadesc;
+                $RSSitem .= '<link>' . "https://www.instagram.com/p/" . $Instacode . "/</link>";
+                $RSSitem .= '<pubDate>' . $Instadate . '</pubDate>';
+                $RSSitem .= '</item>';
+                //$this->DebugData($RSSitem, '---RSSitem--- i:'.$i, 1);
+            }
+            $RSSdata .= $RSSitem;
+            //$this->DebugData($RSSdata, '---RSSdata---', 1);
+        
+        }
+        $Response["FeedRSS"] = $RSShead . 
+                               '<lastBuildDate>' . $Instapubdate . '</lastBuildDate>'.
+                               '<pubDate>' . $Instapubdate . '</pubDate>'.
+                               '<description>Instagram RSS feed for ' . $InstaID . '</description><language>en-us</language>'.
+                               $RSSdata .'</channel></rss>';
+        //$this->DebugData($Response["FeedRSS"], '---Response["FeedRSS"]---', 1);
+        //$this->DebugData(array_keys($Instadata), '---array_keys(/$Instadata)---', 1);
+        return $Response;
+    }
+/**
 * Add feed to feed definitions array.
 *
 * @param string $FeedURL url of feed
@@ -2139,7 +2255,9 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 */
     protected function addfeed($FeedURL, $Feed) {
         //$this->DebugData(__LINE__, '', 1);
+        //$this->DebugData($FeedURL, '---FeedURL---', 1);
         $FeedURL = $this->rebuildurl($FeedURL, '');
+        //$this->DebugData($FeedURL, '---FeedURL---', 1);
         $FeedKey = self::EncodeFeedKey($FeedURL);
         $Feed['URL'] = $FeedURL;
         $Feed['FeedKey'] = $FeedKey;
@@ -2162,7 +2280,9 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         if (!is_array($FeedOptionKey)) {
             $FeedOptionKey = array($FeedOptionKey => $FeedOptionValue);
         }
-        $Feed = array_merge($Feed, $FeedOptionKey);
+        if (is_array($Feed)) { 
+            $Feed = array_merge($Feed, $FeedOptionKey);
+        } 
         $Feed['FeedKey'] = $FeedKey;
         $EncodedFeed = json_encode($Feed);
         $this->SetUserMeta(0, "Feed.{$FeedKey}", $EncodedFeed);
@@ -2230,15 +2350,30 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $Logoclass = $Classprefix . 'logo'.$Type;
         $Linkclass = $Classprefix . 'link'.$Type;
         $Logowrapclass = $Classprefix . 'logowrap';
-        $Atsignclass = $Classprefix . 'atsign ' . $Classprefix . 'atsign' .$Type;
-        $Addclass = '';
-        $Addspan = '';
-        if ($Encoding == 'Twitter') {
-            $Addclass = $Classprefix . 'Twitterwrap';
-            $Addspan =  '<span id=RSSatsign class="' . $Atsignclass . '" title="'.$Tooltip.'">@</span>';
+        $Atsignclass = $Classprefix . 'atsign ' . $Classprefix . 'atsign' . $Type;
+        $Markclass = $Classprefix . 'instasign' . $Type;
+        $Addwrapclass = '';
+        $Addmark = '';
+        $Useencoding = '';
+        if ($Encoding == 'RSS' OR $Encoding == 'Atom') {
+            if (c('Plugins.FeedDiscussionsPlus.Marklogo', false)) {
+                $Useencoding = 'Feed';
+            }
+        } else {
+            $Useencoding = $Encoding;
         }
-        $Logo = '<span class="'.trim($Logowrapclass . ' ' . $Addclass).'" id="'.$Logowrapclass.'"><img src="' . $Logourl . 
-                '" id=RSSimage class="'.$Logoclass.'" title="'.$Tooltip.'"> ' . $Addspan . '</span> ';                
+        if ($Useencoding == 'Feed' OR $Useencoding == 'Twitter' OR $Useencoding == 'Instagram' OR $Useencoding == 'Pinterest') {
+            $Addwrapclass = $Classprefix . $Type . 'wrap';
+            $Markclass = $Classprefix . $Useencoding  . $Type;
+            $Markid = $Classprefix . $Useencoding . 'img';
+            $Markimage = $Useencoding . 'Mark.png';
+            $Bottom = 25;
+            $Addmark = '<img class=' . $Markclass . ' style="Bottom:' . $Bottom . 'px;" id=' . $Markid . ' src="' . 
+                                url('plugins/FeedDiscussionsPlus/design/' . $Markimage) . '" >' ;
+        }
+        //
+        $Logo = '<span class="'.trim($Logowrapclass . ' ' . $Addwrapclass).'" id="'.$Logowrapclass.'"><img src="' . $Logourl . 
+                '" id=RSSimage class="'.$Logoclass.'" title="'.$Tooltip.'"> ' . $Addmark . '</span> ';                
         if ($Link) {
             //$this->DebugData($Link, '---Link---', 1);
             $Logo = ' '.anchor($Logo, $Link, $Linkclass, array('rel' => 'nofollow', 'target' => '_BLANK', 'id' => 'RSSlink', 'class' => $Classprefix . 'link'));
@@ -2257,11 +2392,19 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
     public function embedrssimage($Sender, $Type = 'list') {
         //$this->DebugData(__LINE__, '', 1);
         $Discussion = $Sender->EventArguments['Discussion'];
+        //$this->DebugData($Discussion->Attributes, '---Discussion->Attributes---', 1);
+        //
         $Feed = $this->getdiscussionfeed($Discussion);    //Try to get feed info for the current discussion
         if (!$Feed) {
             //$FeedURL = $Discussion->Attributes['FeedURL'];
             //$this->DebugData($FeedURL, '---FeedURL---', 1);
             //var_dump($Discussion->Type, $Discussion->Attributes);
+            return;
+        }
+        if ($Feed == -1) {
+            if ($Type == 'item') {
+                echo $this->setmsg(t('Imported from a malfunctioning feed'), true);
+            }
             return;
         }
         if ($Type == 'list') {            //Discussion list
@@ -2272,8 +2415,10 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         //
         $FeedURL = $Feed['FeedURL'];
         $RSSimage = $Feed['RSSimage'];
+        $Scheme = $Feed['Scheme'];
         //$this->DebugData($RSSimage, '---RSSimage---', 1);
         //$this->DebugData($FeedURL, '---FeedURL---', 1);
+        //$this->DebugData($Scheme, '---Scheme---', 1);
         if (!$FeedURL | !$RSSimage) {       //if there is no url or image ignore this discussion
             return;
         }
@@ -2443,7 +2588,16 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         if (empty($Feed)) {    //Feed definition deleted...
             //$this->DebugData($FeedURL, '---FeedURL---', 1);
             //$this->DebugData($FeedKey, '---FeedKey---', 1);
-            return null;
+            if ($Discussion->Attributes['FeedKey']) {
+                //$this->DebugData($FeedKey, '---FeedKey---', 1);
+                 $Feed = $this->GetFeed($Discussion->Attributes['FeedKey']);
+                 if (empty($Feed)) {
+                     return -1;
+                 } else {
+                     return $Feed;
+                 }
+            }
+            return -1;
         }
         return $Feed;
     }
@@ -2587,8 +2741,10 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         if (!$Feed) {
             echo '<span id=NOFDP  > <!–– '.__LINE__.' ––> ';
             return;
-        }
-        if (!$Feed['Getlogo']) {
+        } elseif ($Feed == -1) {
+            echo '<span id=NOFDP  > <!–– ERROR Retrieving Feed  '.__LINE__.' ––> ';
+            return;
+        } elseif (!$Feed['Getlogo']) {
             echo '<span id=NOFDP >  <!–– '.__LINE__.' ––> ';
             return;
         }
@@ -2654,6 +2810,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         //$this->DebugData('','',true,true);
         //$this->DebugData($Encoding, '---Encoding---', 1);
         //$this->DebugData($Url, '---Url---', 1);
+        $Imagepath = url("plugins/FeedDiscussionsPlus/design/", true);
+        //$this->DebugData($Imagepath, '---Imagepath---');
         if ($Encoding == 'Twitter') {
             //return 'https://avatars.io/twitter/'  . substr($Url,1);  //Alternate method
             $RSSimage = 'https://twitter.com/' . substr($Url, 1) . '/profile_image?size=original';
@@ -2671,6 +2829,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             //$this->DebugData($Url, '---Url---', 1);
         } elseif ($Encoding == '#Twitter') {
             return 'https://pbs.twimg.com/profile_images/588413275659972608/twWBhD7b_400x400.png';
+        } elseif ($Encoding == 'Instagram') {
+            return $Imagepath . "instalogo.jpg";
         }
         $Parsedurl = @parse_url($Url);
         //
@@ -2681,17 +2841,17 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             //$this->DebugData($Parsedurl, '---Parsedurl---', 1);
         }
         //$this->DebugData($Url, '---Url---', 1);
-        $Ignorepattern = '/(.doubeclick|.staticworld|feedproxy.google|feedburner.com|blogspot.com|.rackcdn|empty|twitter|facebook|google_plus|linkedin|vulture)/i'; //Ignore few logo domains
+        $Ignorepattern = '/(.doubeclick|.staticworld|feedproxy.google|feedburner.com|blogspot.com|.rackcdn|empty|twitter|facebook|google_plus|linkedin|instagram.com|vulture)/i'; //Ignore few logo domains
         if (preg_match($Ignorepattern, $Url)) {
             //$this->DebugData($Url, '---Url in the ignore logo list---', 1);
-            $Imagepath = url("plugins/FeedDiscussionsPlus/design/", true);
-            //$this->DebugData($Imagepath, '---Imagepath---');
             if (preg_match('/(feedproxy.google|blogspot.com)/i', $Url)) {
                 $Logo = $Imagepath . "feedburner.png";
             } elseif (preg_match('/(feedburner.com)/i', $Url)) {
                 $Logo = $Imagepath . "feedburner.png";
             } elseif (preg_match('/(twitter.com)/i', $Url)) {
                 $Logo = $Imagepath . "twitter.png";
+            } elseif (preg_match('/(instagram.com)/i', $Url)) {
+                $Logo = $Imagepath . "instalogo.jpg";
             } else {
                 $Logo = $Imagepath . "noimage.png";
             }
@@ -2758,22 +2918,29 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $Response['InternalURL'] = $Url;
         $Response['Error'] = '';
         $Response['Compressed'] = '';
+        $Response['Scheme'] = '';
         $Response['Redirect'] = false;
         $Proxy = new ProxyRequest();
         $Pagedata = $Proxy->Request(array(
             'URL' => $Url, 'Debug' => false, 'SSLNoVerify' => true
         ));
-        //$this->DebugData((array)$Proxy->ResponseHeaders, '---Proxy->ResponseHeaders---', 1);
-        //$Rhk = array_keys($Proxy->ResponseHeaders);
-        //$this->DebugData($Rhk, '---Rhk---', 1);
+        $ResponseHeaders = $Proxy->ResponseHeaders;
+        $RHtext = reset(array_keys($ResponseHeaders));
+        $RHlocation = $ResponseHeaders["Location"];
+        //$this->DebugData($ResponseHeaders, '---ResponseHeaders---', 1);
+        //$this->DebugData($RHlocation, '---RHlocation---', 1);
+        //$this->DebugData($RHtext, '---RHtext---', 1);
         $Status = $Proxy->ResponseStatus;
         //$this->DebugData($Proxy, '---Proxy---', 1);
         //$this->DebugData($Status, '---Status---', 1);
         $Pagedata = $Proxy->ResponseBody;
+        if (!$RHtext) {        //In case of error
+            $RHtext = $Status;
+        }
         switch ($Status) {
             case 200:       //What we expect
-                if (isset($Proxy->ResponseHeaders["Content-Encoding"])) {
-                    $Zipped = $Proxy->ResponseHeaders["Content-Encoding"];
+                if (isset($ResponseHeaders["Content-Encoding"])) {
+                    $Zipped = $ResponseHeaders["Content-Encoding"];
                     if ($Zipped == 'gzip') {              //Compressed site?
                         $Response['Compressed'] = $Zipped;
                         $Pagedata = gzdecode(Pagedata);    //Uncompress it
@@ -2782,12 +2949,12 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                 //$Response["data"] = $Pagedata;
                 $Response["data"] = $this->removescripts($Pagedata);  // return the data without Java scripts
                 //
-                if (isset($Proxy->ResponseHeaders["location"])) {
-                    $InternalURL = (array) $Proxy->ResponseHeaders["location"];
+                if ($RHlocation) {
+                    $InternalURL = $RHlocation;
                     if (empty($InternalURL)) {
                         $Response['InternalURL'] = $Url;
                     } else {
-                        $Response['InternalURL'] = end($InternalURL);
+                        $Response['InternalURL'] = $InternalURL;
                         //$this->DebugData(strtolower($this->rebuildurl($Response['InternalURL'])), '---lowercase rebuild Response[InternalURL]---', 1);
                         //$this->DebugData(strtolower($this->rebuildurl($Url)), '---lowercase rebuild URL---', 1);
                         if (strtolower($this->rebuildurl($Response['InternalURL'])) !=
@@ -2796,17 +2963,22 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                         }
                         //$this->DebugData($Response["Redirect"], '---Response["Redirect"]---', 1);
                     }
+                    $Response["Scheme"] = parse_url($Response['InternalURL'], PHP_URL_SCHEME);
                     if ($Response["Redirect"]) {
                         if ($Follow < 1) {      //No more follows?
                             return $Response;
                         }
                         $Redirect = $Response['InternalURL'];
                         //echo '<br>'.__LINE__.'Redirecting from:'.$Url.' to:'.$Redirect.' Follow:'.$Follow;
-                        $Response = $this->fetchurl($Redirect, true, ($Follow-1));   //One less refollow/redirects
+                        $Response = $this->fetchurl($Redirect, true, ($Follow-1));   //One less follow/redirects
                         return $Response;
                     }
+                } elseif (!$Scheme) {
+                    $Response["Scheme"] = parse_url($Response['Url'], PHP_URL_SCHEME);                    
                 }
+                //$this->DebugData($Scheme, '---Scheme---', 1);
                 //var_dump($Proxy);
+                //$this->DebugData(htmlspecialchars(substr($Response["data"],0,100)), '---Response[data] 0:100---', 1);
                 if ($Follow < 1) {      //No more follows?
                     return $Response;
                 }
@@ -2820,7 +2992,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                 */
                 $Redirect = $this->getbetweentexts($Response["data"], '<META http-equiv="refresh" content="0;URL=', '"');
                 //$this->DebugData($Response["InternalURL"], '---Response["InternalURL"]---', 1);
-                //$this->DebugData($Proxy->ResponseHeaders["location"], '---Proxy->ResponseHeaders["location"]---', 1);
+                //$this->DebugData($ResponseHeaders["location"], '---ResponseHeaders["location"]---', 1);
                 //if($Follow > 3) die(0);
                 
                 if (!$Redirect) {
@@ -2838,11 +3010,12 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                 }
                 return $Response;
             case 404:
-                $Response['Error'] = $this->setmsg(' Error ' . $Status . ': The specified url was not found on the server '. $Url);
+                $Response['Error'] = $this->setmsg(' Error ' . $RHtext . ': The specified url was not found '. $Url);
                 return $Response;
             case 400:
             case 500:
-                $Response['Error'] = $this->setmsg(' Error ' . $Status . ': The server url was not accessible at this time: '. $Url);
+                $Url =  @parse_url($Url, PHP_URL_HOST).@parse_url($Url, PHP_URL_PATH);
+                $Response['Error'] = $this->setmsg(' Error ' . $RHtext . ': The server url was not accessible at this time: '. $Url);
                 return $Response;
             default:
                 $Statustext = $Proxy->ResponseBody;
@@ -2859,7 +3032,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                     }
                 }
         }
-        $Response['Error'] = $this->setmsg('Error ' . $Status . ': '. $Statustext);
+        $Response['Error'] = $this->setmsg('Error ' . $Status . $RHtext . ': '. $Statustext);
         //die(0);
         return $Response;
     }
@@ -2872,15 +3045,27 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 * @return reformatted url
 */
     private function rebuildurl($Url, $Setscheme = '') {
+        //$this->DebugData('','',true,true);
         //$this->DebugData($Url, '---Url---', 1);
-        //$this->DebugData(@parse_url($Url), '---@parse_url(Url)---', 1);
+        //$this->DebugData(parse_url($Url), '---parse_url(Url)---', 1);
         $Url = trim($Url);
-        if (substr($Url, 0, 1) == '@' | substr($Url, 0, 1) == '#') {
+        if (substr($Url, 0, 1) == '@' | substr($Url, 0, 1) == '#'| substr($Url, 0, 1) == '!') {
             return $Url;
         }
         $Domain = @parse_url($Url, PHP_URL_HOST);
         $Path   = @parse_url($Url, PHP_URL_PATH);
         $Query   = @parse_url($Url, PHP_URL_QUERY);
+        $Scheme   = @parse_url($Url, PHP_URL_SCHEME);
+        //$this->DebugData($Scheme, '---Scheme---', 1);
+        if (!$Scheme) {
+        }
+        if ($Setscheme == -1) {
+            if ($Scheme == "https") {
+               $Setscheme =  "http";
+            } else {
+               $Setscheme =  "https";
+            }                
+        } 
         if ($Setscheme) {
             $Url = $Setscheme . '://' . $Domain . $Path;
         } else {
@@ -3320,6 +3505,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             'Updated' => '',
             'Feedtitle' => '',
             'RSSimage' => '',
+            'Scheme' => '',
             'RSSdata' => ''
         );
         $TwitterID = '';
@@ -3335,6 +3521,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                 $Response['InternalURL'] = $Url;
                 $Encoding = 'Twitter';
                 $Response["RSSimage"] = $this->Getlogo($Response['URL'], $Encoding);
+                $Response["Scheme"] = "@";
             } else {
                 $Response['Error'] = $this->setmsg(" invalid Twitter ID: ".$Url);
                 return $Response;
@@ -3349,10 +3536,23 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                 $Response['InternalURL'] = $Url;
                 $Encoding = '#Twitter';
                 $Response['RSSimage'] = $this->Getlogo($Response['URL'], $Encoding);
+                $Response["Scheme"] = "#";
             } else {
                 $Response['Error'] = $this->setmsg(" invalid Twitter hashtag: ".$Url);
                 return $Response;
             }
+        } elseif (Substr($Url, 0, 1) == "!") {
+            //Convert !instagram-ID to https://www.instagram.com/ID/?__a=1
+            $InstaID = substr($Url, 1);
+            $Response["URL"] = strtolower($Url);
+            $Url = 'https://www.instagram.com/' . $InstaID . "/?__a=1";
+            $Response['InternalURL'] = $Url;
+            $Encoding = 'Instagram';
+            $Response["Scheme"] = "!";
+        /*} elseif (Substr($Url, 0, 1) == "https://www.instagram.com") {
+            $Response['Error'] = "?";
+            return $Response;
+        */
         } elseif (trim($Url) == "?") {
             $Response['Error'] = "?";
             return $Response;
@@ -3368,6 +3568,10 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $Response['Compressed'] = $Webpage["Compressed"];
         $Response['InternalURL'] = $Webpage["InternalURL"];
         $Response["Redirect"] = $Webpage["Redirect"];
+        if ($Response["Scheme"] == "") {
+            $Response["Scheme"] = $Webpage["Scheme"];
+        }
+        //$this->DebugData($Response["Scheme"], '---Response["Scheme"]---', 1);
         //$URL = $Webpage["InternalURL"];
         //
         if (!$Encoding) {
@@ -3386,6 +3590,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                 //$this->DebugData(htmlspecialchars(substr($FeedRSS,0,2500)), "---FeedRSS(0:2500)---", 1);
             case 'Twitter':
             case '#Twitter':
+                break;
+            case 'Instagram':
                 break;
             case 'BadURL':
                 $Response['Error'] = $this->setmsg(" Url not found or is not a feed.");
@@ -3437,9 +3643,21 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                 return $Response;
         }
         //
-        //
+        if ($InstaID) {
+            $Instadata = $this->getinstafeed($FeedRSS, $InstaID, $Response['InternalURL'], $Data);
+            $FeedRSS = $Instadata["FeedRSS"];
+            if ($Instadata["RSSimage"]) {
+                $Response["RSSimage"] = $Instadata["RSSimage"];
+            } else {                
+                $Response["RSSimage"] = $this->Getlogo($Response['URL'], $Encoding);
+            }
+            //$Response["RSSimage"] = '';
+            //$Response['Error'] = $this->setmsg("Instagram not supported.");
+            //return $Response;
+        }
         libxml_use_internal_errors(true);
         $RSSdata = simplexml_load_string($FeedRSS, 'SimpleXMLElement', LIBXML_NOCDATA );
+        
         //$RSSdata = simplexml_load_string($FeedRSS, 'SimpleXMLElement', LIBXML_NOCDATA | LIBXML_NOBLANKS );
         //$this->DebugData(gettype($RSSdata), '---gettype(/$RSSdata)---', 1);
         if ($RSSdata === false) {
@@ -3452,11 +3670,12 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                     echo "<br>".__LINE__.' ', $error->message;
                     var_dump ($error);
                 }
+                $this->DebugData($FeedRSS, '---FeedRSS---', 1);
                 return $Response;
             }
         }
         //
-        if ($Data | $TwitterID | $Hashtag) {
+        if ($Data | $TwitterID | $Hashtag | $InstaID) {
             //$this->DebugData(htmlspecialchars(substr($FeedRSS,0,500)), '---FeedRSS(0:500)---', 1);
             $Response['RSSdata']  = $RSSdata;           //Return data, not just the metadata
             //$Response['RSSdata']  = $Webpage["data"];
@@ -3467,6 +3686,10 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         //
         switch ($Encoding) {
             case 'Atom':
+                $Updated = (string)$this->getentity($RSSdata, 'updated', 'channel.lastBuildDate', $FeedRSS, '');
+                $Feedtitle = (string)$this->getentity($RSSdata, 'title', 'channel.title', $FeedRSS, '');
+                break;
+            case 'Instagram':
                 $Updated = (string)$this->getentity($RSSdata, 'updated', 'channel.lastBuildDate', $FeedRSS, '');
                 $Feedtitle = (string)$this->getentity($RSSdata, 'title', 'channel.title', $FeedRSS, '');
                 break;

@@ -52,21 +52,48 @@
     width: 40px;
     height: 40px;
     border-radius: 4px;
-    -webkit-filter: drop-shadow(1px 1px 0px #3498db);
+        
     margin-left: 0px;
     margin-right: 0px;
     display: inline-block;
+}
+#FDP .FDPlogobend {
+    visibility: visible;
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    -webkit-filter: drop-shadow(1px 1px 0px #3498db);
+    margin-left: 0px;
+    margin-right: 0px;
+    display: block;
+    left:0px;
+}
+#FDP .FDPTwitterwrap {
+    visibility:visible;
+}
+#FDP .FDPInstagramwrap {
+    visibility:visible;
 }
 #FDP .FDPlogowrap {
     display: -webkit-box;
     height: 0px;
     margin: 0px 0px 0px 0px;
     padding: 0px 0px 0px 0px;
+    -webkit-filter: drop-shadow(0px 0px 1px #000000);
+}
+#FDP .FDPlogowrapbend {
+    display: block; 
+    border-radius: 5px;
+    height: 44px;
+    width: 44px;
 }
 #FDP .RSSlogowrap {
     display: inline-block;
     height: 40px;
     -webkit-filter: drop-shadow(1px 1px 0px blue);
+}
+#FDP .FDPlogotextbend {
+    display: inline-block;
 }
 .RSSsourcebox {
 	padding: 0px 0px 0px 2px;
@@ -78,19 +105,26 @@
 }
 .RSSsourcetext {
     white-space: nowrap;
-    display: inline-block;
-    font-size: 23px;
+    display: block;
+    font-size: 16px;
     font-family: "Arial", Arial, sanserif;
     font-weight: normal;
-    width: 15px;
-    height: 18px;
-    line-height: 13px;
+    width: 11px;
+    height: 14px;
+    line-height: 11px;
     color: #fcfcfc;
-    -webkit-filter: drop-shadow(0.7px 0.7px 0.7px #9c9190);
     border-radius: 13px;
     background: #3498db;
     margin: 0px 0px 0px 4px;
     padding: 2px 0px 0px 6px;
+}
+Activebe {
+	color:green;
+    margin-top: -28px;
+}
+.Inactivebe {
+	color:red;
+    margin-top: -28px;
 }
 #FDP .RSSlogolist:before {
     top: 17px !important;
@@ -142,6 +176,120 @@
     display: -webkit-box;
     top: 1px;
     left: -39px;
+}
+#FDP .FDPFeeditem {
+    display: block;
+    position: relative;
+    border-radius: 4px;
+    height: 13px;
+    top: 0px;
+    left: -40px;
+}
+#FDP .FDPFeedlist {
+    display: block;
+    position: relative;
+    border-radius: 4px;
+    height: 13px;
+    top: 0px;
+    left: -40px;
+}
+#FDP .FDPPinterestitem {
+    display: block;
+    position: relative;
+    border-radius: 4px;
+    height: 13px;
+    -webkit-filter: drop-shadow(1px 1px 0px #000000);
+    top: 0px;
+    left: -40px;
+}
+#FDP .FDPPinterestlist {
+    position: relative;
+    border-radius: 3px;
+    height: 13px;
+    background: white;
+    left: -43px;
+    top: 0px;
+    display: block;
+}
+#FDP .FDPInstagramitem {
+    display: block;
+    position: relative;
+    border-radius: 4px;
+    height: 13px;
+    -webkit-filter: drop-shadow(1px 1px 0px #000000);
+    top: 0px;
+    left: -40px;
+}
+#FDP .FDPTwitteritem {
+    position: relative;
+    border-radius: 6px;
+    height: 12px;
+    background: #5ab1dc;
+    padding: 1px;
+    left: -40px;
+    top: 0px;
+    display: block
+}
+#FDP .FDPInstagramlist {
+    display: block;
+    position: relative;
+    border-radius: 4px;
+    height: 13px;
+    -webkit-filter: drop-shadow(1px 1px 0px #000000);
+    top: 0px;
+    left: -40px;
+}
+#FDP .FDPTwitterlist {
+    position: relative;
+    border-radius: 6px;
+    height: 12px;
+    background: #5ab1dc;
+    padding: 1px;
+    left: -41px;
+    top: 0px;
+    display: block;
+}
+#FDP .FDPatsignbend {
+    top: -38px;
+    left: 0px;
+}
+#FDP .FDPinstabend {
+    top: -38px;
+    left: 0px;
+}
+#FDP .FDPnologobend {
+    display: block;
+    left: 0px;
+    position: relative;
+}
+#FDP .FDPnologobendimg {
+    display: block;
+    position: relative;
+    width: 40px;
+    bottom: 40px;
+    z-index: 100;
+    left: 0px;
+}
+#FDP .FDPatsignbendimg {
+    display: block;
+    position: relative;
+    width: 16px;
+    padding: 1px;
+    border-radius: 8px;
+    background: #0f6089;
+    bottom: 30px;
+    z-index: 10;
+    left: 0px;
+}
+#FDP .FDPinstasignbendimg {
+    display: block;
+    position: relative;
+    width: 16px;
+    padding: 1px;
+    background: black;
+    border-radius: 4px;
+    z-index: 10;
+    left: 0px;
 }
 #FDP .RSSatsign {
     position: absolute;
@@ -346,7 +494,7 @@
     box-shadow: 0 0 2px #f5f5f5;
     font-weight: bold;
     margin: 0 0 0 20px;
-    visibility:hidden;
+    visibility:hidden !important;
     display: none;
 }
 
@@ -601,6 +749,19 @@ border-radius: 0.325rem;
     height: 40px;
     cursor: none;
 }
+#FDP .FDPlogooffbend:after {
+    content: "";
+    position: absolute;
+    border-top: 5px solid red;
+    width: 49px;
+    transform: rotate(45deg);
+    transform-origin: 0% 0%;
+    margin: 1px 0px 0px -35px;
+    z-index: 9999999999;
+}
+#FDP .FDPlogooffbend {
+    opacity: 0.7;
+}
 #FDP .RSSlistlogooff:after {
     content: "";
     position: absolute;
@@ -691,6 +852,7 @@ div#CheckImport1  {
 #FDP .buttonitem {
     align-items: center;
     line-height: 18px !important;
+    display: inline-block;
 }
 #FDP .buttonaside {
     line-height: 18px !important;

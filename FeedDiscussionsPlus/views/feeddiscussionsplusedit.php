@@ -145,8 +145,11 @@
         $Feedvalidator =   '<span >&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<a class="Button ffcolumn DeleteFeed  " target=_BLANK href="' . $Validatorurl .
 		   '" title="' . t('Run external feed validator if you have problems with this feed.').'"><b>Issues ?</b> Run Feed Validator</a><span>';
         $Twitterid = false;
+        $Instaid = false;
         if ($Encoding == 'Twitter' | substr($FeedURL,0,1) == '@') {
             $Twitterid = true;
+        } elseif ($Encoding == 'Instagram' | substr($FeedURL,0,1) == '!') {
+            $Instaid = true;
         }
         $Urltitle= '';
         $Urllabel= '<FFlabel>Feed URL:</FFlabel>';
@@ -158,8 +161,10 @@
             $Internalurlmsg = ' ';
         } elseif ($Allowupdate) {
             $Urllabel= '<FFlabel>Feed source:</FFlabel>';
+        } elseif ($Instaid) {
+            $Feedvalidator = '';
+            $Urllabel= '<FFlabel>Instagram entity</FFlabel>';
         } elseif ($Twitterid) {
-            $Twitterid = true;
             $Feedvalidator = '';
             $Urllabel= '<FFlabel>Twitter ID</FFlabel>';
         } elseif ($Encoding == '#Twitter' | substr($FeedURL,0,1) == '#') {
@@ -232,6 +237,13 @@
 		//
 		echo '<FFline>'.$this->Form->CheckBox('Noimage', "Don't include images", array('value' => '1', 'class' => 'FFCHECKBOX'))."<FFchecktext> (Don't include <i>embedded</i> images when saving feeds as discussions)</FFchecktext></FFline>";
 		//
+        if (c('Plugins.FeedDiscussionsPlus.Tagging',false)) {
+            echo '<FFline>';
+            echo $this->Form->Label('<FFlabel>Tag Feeds:</FFlabel>', 'Tag');
+            echo $this->Form->TextBox('Tag', array('class' => 'InputBox')).'<FFtext> Optionally tag imported discussion with a single tag. (Tagging must be enabled for this option to have an effect)</FFtext>';
+            echo '</FFline>';
+        }
+        //
         echo '<h4><FFBIG>🏃</FFBIG>Performance controls</h4>';
 		//
         echo '<FFline>'.$this->Form->Label('<FFlabellong>Feed Check Frequency</FFlabellong>', 'Refresh');
