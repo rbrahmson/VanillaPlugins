@@ -36,19 +36,20 @@
  *  Version 2.5.2 - Better handling of forum source image
  *  Version 2.5.3 - Support for rich RSS/Atom content, few back end interface enhancements
  *  Version 2.5.4 - Experimental support for Instagram content, additional interface enhancements
+ *  Version 2.5.5 - Optional auto-tagging of imported feeds
  */
 //
 $PluginInfo['FeedDiscussionsPlus'] = array(
     'Name' => 'Feed Discussions Plus',
-    'Description' => "Automatically create Vanilla discussions based on RSS/Atom/Twitter feeds imported content.",
-    'Version' => '2.5.4',
+    'Description' => "Automatically create Vanilla discussions by importing RSS/Atom/Twitter/Youtube/Instagram feeds.",
+    'Version' => '2.5.5',
     'RequiredApplications' => array('Vanilla' => '>=2.3'),
     'MobileFriendly' => true,
     'HasLocale' => true,
     'RegisterPermissions' => false,
     'SettingsUrl' => '/plugin/feeddiscussionsplus/listfeeds',
     'Author' => "RB, inspired by Tim Gunter's original FeedDiscussion plugin",
-    'GitHub' => 'rbrahmson/FeedDiscussionsPlus',
+    'GitHub' => '/rbrahmson/VanillaPlugins/tree/master/FeedDiscussionsPlus',
     'License' => 'GPLv2'
 );
 /**
@@ -139,6 +140,18 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
           $Menu = $Sender->EventArguments['SideMenu'];
           $Menu->AddItem('Forum', T('Forum'));
           $Menu->AddLink('Forum', T('Feed Discussions Plus'), 'plugin/feeddiscussionsplus', 'Garden.Settings.Manage');
+    }
+/**
+* This hook handles the saving of the initial discussion body (but not comments)
+*
+* @param Standard $Sender Standard
+*
+*  @return boolean n/a
+*///.
+	public function FeedDiscussionsPlusPlugin_SaveDiscussion_handler($Sender,$Args) {
+        $this->DebugData(__LINE__, '', 1);
+        decho (__LINE__);
+        die(0);
     }
 /**
 * Set up Admin Panel link (Vanilla 2.5)
@@ -589,6 +602,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Sender->Form->setValue('Minwords', $Feed['Minwords']);
             $Sender->Form->setValue('Activehours', $Feed['Activehours']);
             $Sender->Form->setValue('Maxitems', $Feed['Maxitems']);
+            $Sender->Form->setValue('Feedtag', $Feed['Feedtag']);
             //
             $this->renderview($Sender, 'feeddiscussionsplusedit', $Msg);
             return;
@@ -658,6 +672,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         }
         //$this->DebugData($Feedarray, '---Feedarray---', 1);
         //$this->DebugData($Feedarray["FeedURL"], '---Feedarray["FeedURL"]---', 1);
+        //$this->DebugData($Feedarray["Feedtag"], '---Feedarray["Feedtag"]---', 1);
         //$FeedKey = self::EncodeFeedKey($FeedURL);
         //$this->UpdateFeed($FeedKey, $Feedarray);
         $this->AddFeed($Feedarray["FeedURL"], $Feedarray);
@@ -1503,6 +1518,17 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             if ($Msg != '') {
                 throw new Exception($this->setmsg($Msg));
             }
+            // Validate Feedtag
+            if ($Feedarray["Feedtag"]){
+                $Tagarray =array_map("trim",  explode(',',$Feedarray["Feedtag"]));
+                foreach ($Tagarray as $Feedtag) {
+                    if (!preg_match('/^([a-z0-9\._ \-\@#]+)$/', $Feedtag)) {
+                    //if (!ctype_alpha($Feedtag)) {
+                        $Msg = 'Invalid tag "'.$Feedtag. '" Use only alphabetic characters';
+                        throw new Exception($this->setmsg($Msg));
+                    }
+                }
+            }
         } catch (Exception $e) {
             $FeedRSS['Error'] = T($this->setmsg($e->getMessage()));
             $FeedRSS['Error'] = T($e->getMessage());
@@ -1584,6 +1610,10 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $Historical = $FeedData["Historical"];
         $LastImport = $FeedData["LastImport"];
         $NextImport = $FeedData["NextImport"];
+        $Feedtag = '';
+        if (c('Tagging.Discussions.Enabled',false)) {
+            $Feedtag = $FeedData["Feedtag"];
+        }
         $Maxbodysize = (int) c('Vanilla.Comment.MaxLength', 1000)-40;
         //$this->DebugData($LastImport, '---LastImport---', 1);
         //$this->DebugData($NextImport, '---NextImport---', 1);
@@ -1958,6 +1988,13 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                         if ($InsertID) {
                             $NumSavedItems += 1;
                             //var_dump ($InsertID);
+                            //Add tag if auttagging requested
+                            if  ($Feedtag) {
+                                $TagModel = new TagModel;
+                                $Types = array();
+                                TagModel::instance()->saveDiscussion($InsertID, $Feedtag, $Types, $DiscussionData["CategoryID"]);
+                            }
+                            //
                         } else {
                             if ($AutoImport) {
                                  echo '<br>'.__LINE__.' Failed save';
@@ -3392,6 +3429,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             'Maxitems'       => $FormPostValues["Maxitems"],
             'Getlogo'       => $FormPostValues["Getlogo"],
             'Noimage'       => $FormPostValues["Noimage"],
+            'Feedtag'       => $FormPostValues["Feedtag"],
             'Activehours'       => $FormPostValues["Activehours"]
           );
     }
@@ -3419,6 +3457,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                     'NextImport'  => null,
                     'Getlogo'     => true,
                     'Noimage'     => false,
+                    'Feedtag'   => '',
                     'Added'       => date('Y-m-d H:i:s'),
               );
     }

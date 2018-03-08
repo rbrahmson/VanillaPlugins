@@ -237,10 +237,10 @@
 		//
 		echo '<FFline>'.$this->Form->CheckBox('Noimage', "Don't include images", array('value' => '1', 'class' => 'FFCHECKBOX'))."<FFchecktext> (Don't include <i>embedded</i> images when saving feeds as discussions)</FFchecktext></FFline>";
 		//
-        if (c('Plugins.FeedDiscussionsPlus.Tagging',false)) {
+        if (c('Tagging.Discussions.Enabled',false)) {
             echo '<FFline>';
-            echo $this->Form->Label('<FFlabel>Tag Feeds:</FFlabel>', 'Tag');
-            echo $this->Form->TextBox('Tag', array('class' => 'InputBox')).'<FFtext> Optionally tag imported discussion with a single tag. (Tagging must be enabled for this option to have an effect)</FFtext>';
+            echo $this->Form->Label('<FFlabel>Tag Feeds:</FFlabel>', 'Feedtag');
+            echo $this->Form->TextBox('Feedtag', array('class' => 'InputBox')).'<FFtext> Optionally tag imported discussion with the  specified tags. (comma separated alphabetic tags)</FFtext>';
             echo '</FFline>';
         }
         //

@@ -345,6 +345,7 @@
                 $Activehours = $FeedItem['Activehours'];
                 $InternalURL = $FeedItem['InternalURL'];
                 $Ftitle = (string)$FeedItem['Feedtitle'];
+                $Feedtag = $FeedItem['Feedtag'];
                 $Frequency = GetValue($Refresh, $Refreshments, T('Unknown'));
                 if (c('Plugins.FeedDiscussionsPlus.showurl', false)) {
                      $Internalurlmsg = ' Url:'.$InternalURL;
@@ -465,6 +466,9 @@
                 }
                 if ($Activehours) {
                     echo '<span class="Attrbe"><b>Active&nbspbetween:</b>&nbsp'.$Activehours.'</span>';
+                }
+                if ($Feedtag) {
+                    echo '<span class="Attrbe"><b>Tagged as:</b>&nbsp'.$Feedtag.'</span>';
                 }
                 if ($Historical) {
                     echo '<span class="Attrbe"><b>Note:</b>&nbspHistorical&nbspposts&nbsprequested on&nbspnext&nbspfeed&nbspimport.</span>';
