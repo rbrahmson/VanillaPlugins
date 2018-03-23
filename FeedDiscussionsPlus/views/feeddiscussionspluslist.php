@@ -47,6 +47,7 @@
                "LastImport"  => T("Last import"),
                "Category"  => T("Category"),
                "URL"  => T("url"),
+               "Encoding"  => T("Feed type"),
                "Nosort"  => T("Not sorted"),
             );
     //
@@ -55,12 +56,18 @@
     $Readytoimport = 0;
     $NumFeedsActive = count(array_keys(array_column($Feedsarray, 'Active'), true));
     $Sortbutton = '';
+    $Searchbutton = '';
+    $Searchfor = '';
+    $Searchformsg = '';
+    $Sortby = c('Plugins.FeedDiscussionsPlus.Sortby', 'Feedtitle');
     if ($NumFeeds > 2) {
         $Defaulsortby = c('Plugins.FeedDiscussionsPlus.Sortby', 'Feedtitle');
         if (IsMobile()) {
             $Sortclick = "(Select sort order and press";
+            $Searchclick = '<i class="fas fa-search"></i>(enter text and and press';
         } else {
             $Sortclick = "(Select sort order and click";
+            $Searchclick = '(enter text and and click';
         }
         $Sortbutton = '<span class="Sortby">'.
                            $this->Form->Label('Sort by', 'Sortby').
@@ -68,7 +75,14 @@
                            $this->Form->button("🔃 Sort", array('type' => 'submit', 'name' => 'Sort', 'class' => 'Button Sortbutton')).
                            " )</span>";
         //
-        $Sortby = c('Plugins.FeedDiscussionsPlus.Sortby', 'Feedtitle');
+        $Searchfor = $this->Data('Searchfor');
+                           //$this->Form->Label('Search', 'Searchfor').
+        $Searchbutton = '<span class="Sortby">'.
+                           $this->Form->TextBox('Searchfor', array('class' => 'InputBox ', 'maxlength' => 200, 'value' => $Searchfor, 
+                           "title" => t('Search in the feed title and url'))).
+                           $this->Form->button('🔍', array('type' => 'submit', 'name' => 'Search', 'class' => ' ', "title" => t('Search in the feed title and url'), 'style' => "min-width: 1px;")).
+                           "</span>";
+        //
         if ($Sortby != 'Nosort') {
             usort($Feedsarray, function ($a, $b) use ($Sortby, $Categories) {
                 if ($a['Active'] == $b['Active']) {
@@ -88,11 +102,11 @@
               Plural($NumFeeds, "Defined Feed ", "Defined Feeds ").
               ',  '.$NumFeedsActive." ".
               Plural($NumFeedsActive, "Active Feed ", "Active Feeds ").
-              "</span>".$Sortbutton.$Hournote;
+              "</span>".$Sortbutton.$Searchbutton.$Hournote;
     } elseif ($NumFeeds) {
         $Headmsg  = "<span>".$NumFeeds." ".
               Plural($NumFeeds, "Inactive Feed ", "Inactive Feeds ").
-              "</span>".$Sortbutton.$Hournote;
+              "</span>".$Sortbutton.$Searchbutton.$Hournote;
     } else {
         $Headmsg =  T("Add your first feed import definition:");
         //echo $Importbutton;  Import is not fully tested yet so this is disabled
@@ -106,7 +120,7 @@
     $Sourcetitle = 'Source:'.pathinfo(__FILE__)["basename"];
     echo '<div id=FDP Class=fdplist><div Class=xUnPopup>';
     echo '<h1 title="'.$Sourcetitle.'"><!–– '.$Sourcetitle.' L#'.__LINE__.' ––>';
-    echo '<span class=selflogo> <img src="../../plugins/FeedDiscussionsPlus/icon.png"></span> '.
+    echo '<span class=selflogo> <img src="'.url('plugins/FeedDiscussionsPlus/icon.png').'"></span> '.
           $Title . ' (Version ' . $Version.')   '.
           '&nbsp&nbsp&nbsp&nbsp&nbsp   <FFtitle>'.' '.
           $Headmsg.'</FFtitle>'.$Titlemsg.'</h1>';
@@ -124,6 +138,11 @@
     }
     $Restorebutton = '<a class="Button ' . $Restorestyle . '" href="' . Url('/plugin/feeddiscussionsplus/restorefeed/'.$RestoreFeedURL).
           '" title="' . t('Restore recently deleted feed').' '.$RestoreFeedURL.'"> ↻ '.t("Undo Delete").'</a>';
+    //
+    if (c('Vanilla.Comment.UserPhotoFirst',false)) {
+        echo '<FFline><b>Note</b>: "Vanilla.Comment.UserPhotoFirst" is set to "true". This disables the plugin\'s ability to display the feeds logos. See "Readme" for more information';
+    }
+    //
     if (!$NumFeeds) {
         $Readmebutton = '';
         $Addbutton = '&nbsp';
@@ -191,6 +210,7 @@
     }
     echo '<div class="ActiveFeeds">';
     //
+    $Hides = 0;
     if (!$NumFeeds) {
         echo '<ffcenter>'.'Read the customization guide and then add your first feed'.'</ffcenter>';
         $Addbutton = '<a class="Button ffhighlightbutton" href="' .
@@ -209,7 +229,18 @@
         foreach ($Feedsarray as $FeedURL => $FeedItem) {
             $FeedURL = $FeedItem['FeedURL'];
             $Active = $FeedItem['Active'];
-            if (!$Hideinactive | $Active) {
+            $Hide = false;
+            if ($Hideinactive AND $Active) {
+                $Hide = true;
+            }
+            if ($Searchfor) {
+                if (stripos(' '.$FeedItem['Feedtitle'].' '.$FeedItem['InternalURL'].' '.$FeedItem['FeedURL'], $Searchfor) == false) {
+                    $Hide = true;
+                    $Hides += 1;            
+                    $Searchformsg = '('.$Hides.' feed(s) hidden by search for "'.$Searchfor.'")';
+                }
+            }
+            if (!$Hide) {
                 $FeedKey = $FeedItem['FeedKey'];
                 if (!isset($FeedItem['Compressed'])) {
                     $FeedItem['Compressed'] = '';
@@ -229,6 +260,19 @@
                 $Category = val('Name',$Categories[$FeedItem['Category']], '??');
                 $AnchorUrl = $FeedItem['FeedURL'];
                 $AnchorUrl = $FeedURL;
+                $Encoding = $FeedItem['Encoding'];
+                $Feedtypeicon = "";
+                if ($Encoding == "RSS" | $Encoding == "Rich RSS") {
+                    $Feedtypeicon = '<i class="fas fa-rss-square icon" > </i>';
+                } elseif ($Encoding == "Atom" | $Encoding == "Rich Atom") {
+                    $Feedtypeicon = '<i class="fas fa-rss icon" > </i>';
+                } elseif($Encoding == "Youtube") {
+                    $Feedtypeicon = '<i class="fab fa-youtube icon" > </i>';
+                } elseif($Encoding == "Instagram") {
+                    $Feedtypeicon = '<i class="fab fa-instagram icon" > </i>';
+                } elseif($Encoding == "Twitter") {
+                    $Feedtypeicon = '<i class="fab fa-twitter-square icon" > </i>';
+                }
                 $EncodingMsg = '<span class="Encodingbe">'.$FeedItem['Compressed'].
                                 ' '.$FeedItem['Encoding'].' feed</span>';
                 if ($FeedItem['Encoding'] == 'Twitter') {
@@ -345,7 +389,7 @@
                 $Activehours = $FeedItem['Activehours'];
                 $InternalURL = $FeedItem['InternalURL'];
                 $Ftitle = (string)$FeedItem['Feedtitle'];
-                $Feedtag = $FeedItem['Feedtag'];
+                $Feedtag = val('Feedtag',$FeedItem, null);
                 $Frequency = GetValue($Refresh, $Refreshments, T('Unknown'));
                 if (c('Plugins.FeedDiscussionsPlus.showurl', false)) {
                      $Internalurlmsg = ' Url:'.$InternalURL;
@@ -410,7 +454,7 @@
                 echo '<span class="FDPtable-cell"><!--'.__LINE__.'  -->';
                 echo '<span class="Diffmsg">'.$Diffmsg.'</span>';
                 echo    '<span class="RSSdetailbe"><!--'.__LINE__.'  -->'.
-                    '<div class="FeedItemTitle"><FFBLUE>'.
+                    '<div class="FeedItemTitle"><FFBLUE>'.$Feedtypeicon.' '.
                     $FeedItem["Feedtitle"].'</FFBLUE>   </div>'.
                  '<div class="FeedContent"><!--'.__LINE__.'  -->'.
                     '<div class="FeedItemURL"><!--'.__LINE__.'  -->';
@@ -494,7 +538,7 @@
             echo '<div id=CheckImport1 style="display:table-caption;text-align:center;min-width: 200px;"><span id=CheckImport2 >'.
               $Readytoimport.
               '</span>'.Plural($Readytoimport, " feed is", " feeds are").
-              ' ready for import </div>';
+              ' ready for import '.$Searchformsg.' </div>';
       }
   echo '</div> <!--'.__LINE__. '  -->';
  echo '</div> <!--'.__LINE__.'  -->';

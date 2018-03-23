@@ -1,5 +1,5 @@
 <?php if (!defined('APPLICATION')) exit();
-/**
+/** 
  * Feed Discussions Plus Plugin
  *
  * Automatically creates new discussions based on content imported from supplied RSS/Atom feeds.
@@ -37,18 +37,21 @@
  *  Version 2.5.3 - Support for rich RSS/Atom content, few back end interface enhancements
  *  Version 2.5.4 - Experimental support for Instagram content, additional interface enhancements
  *  Version 2.5.5 - Optional auto-tagging of imported feeds
+ *  Version 2.5.6 - Option to add popup link to the source of the feed entry at the bottom of the imported discussion.
+ *                - Aecognition of Pinterest feeds when the proper Pinterest feed url is used
+ *                - Ability to filter the list of defined feed imports (back end function)
  */
 //
 $PluginInfo['FeedDiscussionsPlus'] = array(
     'Name' => 'Feed Discussions Plus',
     'Description' => "Automatically create Vanilla discussions by importing RSS/Atom/Twitter/Youtube/Instagram feeds.",
-    'Version' => '2.5.5',
+    'Version' => '2.5.6',
     'RequiredApplications' => array('Vanilla' => '>=2.3'),
     'MobileFriendly' => true,
     'HasLocale' => true,
     'RegisterPermissions' => false,
     'SettingsUrl' => '/plugin/feeddiscussionsplus/listfeeds',
-    'Author' => "RB, inspired by Tim Gunter's original FeedDiscussion plugin",
+    'Author' => "Roger Brahmson",
     'GitHub' => '/rbrahmson/VanillaPlugins/tree/master/FeedDiscussionsPlus',
     'License' => 'GPLv2'
 );
@@ -142,22 +145,11 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
           $Menu->AddLink('Forum', T('Feed Discussions Plus'), 'plugin/feeddiscussionsplus', 'Garden.Settings.Manage');
     }
 /**
-* This hook handles the saving of the initial discussion body (but not comments)
-*
-* @param Standard $Sender Standard
-*
-*  @return boolean n/a
-*///.
-	public function FeedDiscussionsPlusPlugin_SaveDiscussion_handler($Sender,$Args) {
-        $this->DebugData(__LINE__, '', 1);
-        decho (__LINE__);
-        die(0);
-    }
-/**
 * Set up Admin Panel link (Vanilla 2.5)
 */
     public function dashboardNavModule_init_handler($Sender) {
-        $Sender->addLinkToSection('Forum', t('Feed Discussions Plus'), 'plugin/feeddiscussionsplus', 'Garden.Settings.Manage', '', [], ['icon' => 'icon']);
+        $Sender->addLinkToSection('Forum', t('Feed Discussions Plus'), 
+        'plugin/feeddiscussionsplus', 'Garden.Settings.Manage', '', [], ['icon' => 'icon']);
     }
 /**
 * Set the appropriate CSS file
@@ -211,15 +203,14 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 */
     public function discussioncontroller_beforediscussionrender_handler($Sender) {
         //$this->DebugData(__LINE__, '', 1);
+        //echo '<!––  DEBUG '.__FUNCTION__.' L#'.__LINE__.' ––> ';
         if (IsMobile()) {                  //Don't do that on mobile users (don't further increase response time)
-            //$this->DebugData(__LINE__, '', 1);
             return;
         }
         if (!Gdn::Session()->IsValid()) {   //Don't bother for users who are not logged on
             return;
         }
         if (!c('Plugins.FeedDiscussionsPlus.Userinitiated', true)) {    //User initiated not allowed?
-            //$this->DebugData(__LINE__, '', 1);
             return;
         }
         $this->checkfeeds($Sender, false); //Check the feed in autoimport mode
@@ -603,6 +594,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Sender->Form->setValue('Activehours', $Feed['Activehours']);
             $Sender->Form->setValue('Maxitems', $Feed['Maxitems']);
             $Sender->Form->setValue('Feedtag', $Feed['Feedtag']);
+            $Sender->Form->setValue('Marklogo', $Feed['Marklogo']);
+            $Sender->Form->setValue('Addfollow', $Feed['Addfollow']);
             //
             $this->renderview($Sender, 'feeddiscussionsplusedit', $Msg);
             return;
@@ -662,6 +655,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $Feedarray["Feedtitle"] = $FeedRSS['Feedtitle'];
         $Feedarray["InternalURL"] = $FeedRSS['InternalURL'];
         $Feedarray["Scheme"] = $FeedRSS['Scheme'];
+        $Feedarray["Feedtag"] = val("Feedtag", $FeedRSS, null);
+        $Sender->Form->setFormValue('Feedtag', $Feedarray["Feedtag"]);
         //Calculate and set next import due date/time
         $LastImport = val('LastImport', $Feed);
         $Refresh = val('Refresh', $Feedarray);
@@ -672,7 +667,6 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         }
         //$this->DebugData($Feedarray, '---Feedarray---', 1);
         //$this->DebugData($Feedarray["FeedURL"], '---Feedarray["FeedURL"]---', 1);
-        //$this->DebugData($Feedarray["Feedtag"], '---Feedarray["Feedtag"]---', 1);
         //$FeedKey = self::EncodeFeedKey($FeedURL);
         //$this->UpdateFeed($FeedKey, $Feedarray);
         $this->AddFeed($Feedarray["FeedURL"], $Feedarray);
@@ -789,6 +783,9 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Feedarray["Feedtitle"] = $FeedRSS['Feedtitle'];
             $Feedarray["InternalURL"] = $FeedRSS['InternalURL'];
             $Feedarray["Scheme"] = $FeedRSS['Scheme'];
+            $Feedarray["Marklogo"] = $FeedRSS['Marklogo'];
+            $Feedarray["Addfollow"] = $FeedRSS['Addfollow'];
+            $Feedarray["Feedtag"] = $FeedRSS['Feedtag'];
             //$this->DebugData($Feedarray["FeedURL"], '---Feedarray["FeedURL"]---', 1);
             //Calculate and set next import due date/time
             $Refresh = val('Refresh', $Feedarray);
@@ -1016,21 +1013,50 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             }
         }
         if ($Postback) {    //Postback
+            $Msg = '';
             $FormPostValues = $Sender->Form->FormValues();
             //$this->DebugData($FormPostValues, '---FormPostValues---', 1);
             //  Handle Sort request
             if (isset($FormPostValues["Sort"])) {
                 $Sortby = $FormPostValues["Sortby"];
-                SaveToConfig('Plugins.FeedDiscussionsPlus.Sortby', $Sortby);
-                $Sorts = array(
-                   "Feedtitle"  => T("Sorted by feed title"),
-                   "NextImport"  => T("Sorted by next import date"),
-                   "LastImport"  => T("Sorted by last import date"),
-                   "Category"  => T("Sorted by category"),
-                   "URL"  => T("Sorted by url"),
-                   "Nosort"  => T("Not sorted"),
-                );
-                $Msg = $this->setmsg($Sorts[$Sortby]);
+                $Oldsortby = c('Plugins.FeedDiscussionsPlus.Sortby',null);
+                if ($Oldsortby != $Sortby) {
+                    SaveToConfig('Plugins.FeedDiscussionsPlus.Sortby', $Sortby);
+                    $Sorts = array(
+                       "Feedtitle"  => T("Sorted by feed title"),
+                       "NextImport"  => T("Sorted by next import date"),
+                       "LastImport"  => T("Sorted by last import date"),
+                       "Encoding"  => T("Sorted by feed type"),
+                       "Category"  => T("Sorted by category"),
+                       "URL"  => T("Sorted by url"),
+                       "Nosort"  => T("Not sorted"),
+                    );
+                    $Msg = $this->setmsg($Sorts[$Sortby].'.');
+                }
+                $Searchfor = strip_tags($FormPostValues["Searchfor"]);
+                $Sender->SetData('Searchfor', $Searchfor);
+                if ($Searchfor) {
+                    $Msg = $this->setmsg($Msg.' searching for "'.$Searchfor.'"');
+                    setcookie("IBPDfeedSearch", $Searchfor, time() + (890), "/");
+                }
+            } elseif (isset($FormPostValues["Nosearch"])) {
+                $Searchfor = '';
+                setcookie("IBPDfeedSearch", '', time() - (990), "/");
+                $Sender->Form->setvalue('Searchfor', '');
+                $Msg = $this->setmsg('Search filter removed');
+                $Sender->SetData('Searchfor', $Searchfor);
+            } elseif (isset($FormPostValues["Search"])) {
+                $Searchfor = strip_tags($FormPostValues["Searchfor"]);
+                if ($Searchfor) {
+                    setcookie("IBPDfeedSearch", $Searchfor, time() + (890), "/");
+                    $Sender->Form->setvalue('Searchfor', __LINE__.$Searchfor);
+                    $Msg = $this->setmsg('Searching for "'.$Searchfor.'"');
+                } else {
+                    setcookie("IBPDfeedSearch", '', time() - (990), "/");
+                    $Sender->Form->setvalue('Searchfor', __LINE__);
+                    $Msg = $this->setmsg('Search filter removed');
+                }
+                $Sender->SetData('Searchfor', $Searchfor);
             } else {
                 $Msg = '-';
             }
@@ -1050,6 +1076,14 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Sortby = c('Plugins.FeedDiscussionsPlus.Sortby', 'Feedtitle');
             $RestoreFeedURL = (string)$this->GetStash('RestoreFeedURL');
             $Sender->SetData('RestoreFeedURL', $RestoreFeedURL);
+            $Searchfor = '';
+            if (isset($_COOKIE["IBPDfeedSearch"])) {
+                $Searchfor = $_COOKIE["IBPDfeedSearch"];
+                setcookie("IBPDfeedSearch", $Searchfor, time() + (890), "/");
+            } else {
+                //setcookie("IBPDfeedSearch", '', time() - (990), "/");
+            }
+            $Sender->SetData('Searchfor', $Searchfor);
             //$this->DebugData($RestoreFeedURL, '---RestoreFeedURL---', 1);
             //$this->DebugData($Sender->Data, '---Sender->Data---', 1);
         }
@@ -1221,8 +1255,10 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
               ->get();
 
         $i = $UserMetaData->numRows();
+        $this->DebugData($i, '---i---', 1);
         $olds = 0;
         foreach ($UserMetaData as $Entry) {
+            $this->DebugData($Entry, '---Entry---', 1);
             $Name = $Entry->Name;
             $Value = $Entry->Value;
             $DecodedFeedItem = json_decode($Value, true);
@@ -1236,12 +1272,13 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             }
             $olds += 1;
             $this->AddFeed($this->rebuildurl($FeedURL, ''), array(
+              'Mustedit'    => true,
               'Historical'   => val('Historical', $DecodedFeedItem, null),
               'Refresh'     => val('Refresh', $DecodedFeedItem, null),
               'Category'    => val('Category', $DecodedFeedItem, null),
               'Added'       => val('Added', $DecodedFeedItem, null),
               'Active'       => false,
-              'Feedtitle'       => '',
+              'Feedtitle'       => 'Imported from FeedDiscussions Plugin',
               'OrFilter'       => '',
               'AndFilter'       => '',
               'Filterbody'      => false,
@@ -1402,8 +1439,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Copyfeed[$Key] = $FormPostValues[$Key];
             //if ($Key == 'Historical') $this->DebugData($FormPostValues, '---FormPostValues---', 1);
         }
-        $this->SetStash($Copyfeed, 'Copyfeed');
         $Sender->SetData('Copied', true);
+        $this->SetStash($Copyfeed, 'Copyfeed');
         $this->SetStash(true, 'Copied');
         $this->postmsg($Sender, 'Feed settings were copied.', false, true, false, true);
         //postmsg($Sender, $Msg, $Inform = false, $Addline = true, $Adderror = false, $Stash = false)
@@ -1519,15 +1556,23 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                 throw new Exception($this->setmsg($Msg));
             }
             // Validate Feedtag
+            $Taglist = array('');
+            $i = 0;
             if ($Feedarray["Feedtag"]){
                 $Tagarray =array_map("trim",  explode(',',$Feedarray["Feedtag"]));
+                $Tagpattern = '/[a-z0-9\._\-\@#]/i';             //Change to allow other characters
+                $Tagpattern ='/^[a-z#@\._\-0-9]{0,31}$/im';
                 foreach ($Tagarray as $Feedtag) {
-                    if (!preg_match('/^([a-z0-9\._ \-\@#]+)$/', $Feedtag)) {
-                    //if (!ctype_alpha($Feedtag)) {
-                        $Msg = 'Invalid tag "'.$Feedtag. '" Use only alphabetic characters';
-                        throw new Exception($this->setmsg($Msg));
+                    if ($Feedtag) {
+                       if (!preg_match($Tagpattern, $Feedtag)) {
+                           $Msg = 'Invalid tag "'.$Feedtag. '" Use only alphabetic characters- <FFYELLOW># . _ - @</FFYELLOW> and blanks also allowed';
+                           throw new Exception($this->setmsg($Msg));
+                       }
+                       $i += 1;
+                       $Taglist[$i] = $Feedtag;// .= ',' . $Feedtag;
                     }
                 }
+                $FeedRSS["Feedtag"] = trim(implode(',',array_unique($Taglist)), ',');//trim($Taglist,',');
             }
         } catch (Exception $e) {
             $FeedRSS['Error'] = T($this->setmsg($e->getMessage()));
@@ -1547,11 +1592,12 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
     protected function helpfeedurl($Sender) {
         //$this->DebugData(__LINE__, '', 1);
         //postmsg($Sender, $Msg, $Inform = false, $Addline = true, $Adderror = false, $Stash = false)
-        $this->postmsg($Sender, " Valid inputs: ", false, false, true);
-        $this->postmsg($Sender, "&nbsp Url of a feed (supported feed formats: RSS, ATOM, RDFprism)", false, false, true);
-        $this->postmsg($Sender, "&nbsp URL of a website (if it references a feed, the referenced feed's url will be used)", false, false, true);
-        $this->postmsg($Sender, "&nbsp Shortened url (e.g. bitly url). The referenced url will be used.", false, false, true);
-        $this->postmsg($Sender, "&nbsp @TwitterID for twitter feed stream (e.g. @vanilla)", false, false, true);
+        $this->postmsg($Sender, "<syntax> Valid inputs: </syntax>", false, false, true);
+        $this->postmsg($Sender, "<syntax>&nbsp Url of a feed (supported feed formats: RSS, ATOM, RDFprism)</syntax>", false, false, true);
+        $this->postmsg($Sender, "<syntax>&nbsp URL of a website (if it references a feed, the referenced feed's url will be used)</syntax>", false, false, true);
+        $this->postmsg($Sender, "<syntax>&nbsp Shortened url (e.g. bitly url). The referenced url will be used.</syntax>", false, false, true);
+        $this->postmsg($Sender, "<syntax>&nbsp @TwitterID for twitter feed stream (e.g. @vanilla)</syntax>", false, false, true);
+        $this->postmsg($Sender, "<syntax>&nbsp !Instragram entity for Instagram feed (e.g. !vanillaforums)</syntax>", false, false, true);
     }
 /**
 * Get feed definitions array.
@@ -1610,8 +1656,15 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $Historical = $FeedData["Historical"];
         $LastImport = $FeedData["LastImport"];
         $NextImport = $FeedData["NextImport"];
+        $Marklogo = $FeedData["Marklogo"];
+        $Addfollow = $FeedData["Addfollow"];
         $Feedtag = '';
-        if (c('Tagging.Discussions.Enabled',false)) {
+        if (version_compare(APPLICATION_VERSION, '2.5', '>=')) {
+            $Taggingsetting = 'Tagging.Discussions.Enabled';
+        } else {
+            $Taggingsetting = 'EnabledPlugins.Tagging';
+        }
+        if (c($Taggingsetting,false)) {
             $Feedtag = $FeedData["Feedtag"];
         }
         $Maxbodysize = (int) c('Vanilla.Comment.MaxLength', 1000)-40;
@@ -1639,7 +1692,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             $Datekey = 'published';
             $Contentkey = 'content';
             $Linkkey = '@attributes.href';
-        } elseif ($Encoding == 'RSS' OR $Encoding == 'Rich RSS' OR $Encoding == 'Instagram') {
+        } elseif ($Encoding == 'RSS' OR $Encoding == 'Rich RSS' OR $Encoding == 'Instagram' OR $Encoding == 'Pinterest') {
             $Itemkey = 'channel.item';
             $Datekey = 'pubDate';
             $Contentkey = 'description';
@@ -1850,13 +1903,12 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                 }
                 if (!$Skipitem && $OrFilter != '') {
                     //$this->DebugData($OrFilter, '---OrFilter---', 1);
-                    $Tokens = explode(",", $OrFilter);
+                    $Tokens = array_filter(explode(",", $OrFilter));
                     $Found = false;
                     foreach ($Tokens as $Token) {
-                        //$this->DebugData($StoryTitle, '---OrFilter test--- on: '.$Token.' ', 1);
                         if (preg_match('/\b'.$Token.'\b/i', $Filtercontent)) {
                             if ($AutoImport && $Reportindetail) {
-                                echo " Matched OR Filter:".$Token." ";
+                                echo ' Matched OR Filter:"'.$Token.'" ';
                             }
                             $Found = true;
                         }
@@ -1874,7 +1926,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                 //
                 if (!$Skipitem && $AndFilter != '') {
                     //$this->DebugData($AndFilter, '---AndFilter---', 1);
-                    $Tokens = explode(",", $AndFilter);
+                    $Tokens = array_filter(explode(",", $AndFilter));
                     foreach ($Tokens as $Token) {
                         if (!$Skipitem && !preg_match('/\b'.$Token.'\b/i', $Filtercontent)) {
                             //$this->DebugData($StoryTitle, '---AndFilter NOT Matched--- on: '.$Token.' ', 1);
@@ -2208,7 +2260,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         //$this->DebugData($InstaUser, '---/$InstaUser---', 1);
         if (isset($Instadata["user"]["profile_pic_url"])) {
             $Response["RSSimage"] = $Instadata["user"]["profile_pic_url"];
-        } elseif (is_set($Instadata["graphql"]["profile_pic_url"])) {
+        } elseif (isset($Instadata["graphql"]["profile_pic_url"])) {
             $Response["RSSimage"] = $Instadata["graphql"]["profile_pic_url"];
         } else {
             $Response["RSSimage"] = null;
@@ -2375,15 +2427,17 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 /**
 * Prepare and return logo string for presentation.
 *
-* @param string $Logourl  Logo url
-* @param string $Type     indicates typeof display (list,item,etc.)
-* @param string $Link     Where logo should link
-* @param string $Tooltip  Tooltip
-* @param string $Encoding Logo feed Encoding
+* @param string $Logourl     Logo url
+* @param string $Type        indicates typeof display (list,item,etc.)
+* @param string $Link        Where logo should link
+* @param string $Tooltip     Tooltip
+* @param string $Encoding    Logo feed Encoding
+* @param string $Marklogo    Add logo mark
+* @param string $Classprefix css class prefix
 *
 * @return string
 */
-    protected function logowrap($Logourl, $Type, $Link, $Tooltip = '', $Encoding = '', $Classprefix = 'FDP') {
+    protected function wraplogo($Logourl, $Type, $Link, $Tooltip = '', $Encoding = '', $Marklogo = false, $Classprefix = 'FDP') {
         $Logoclass = $Classprefix . 'logo'.$Type;
         $Linkclass = $Classprefix . 'link'.$Type;
         $Logowrapclass = $Classprefix . 'logowrap';
@@ -2391,15 +2445,20 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         $Markclass = $Classprefix . 'instasign' . $Type;
         $Addwrapclass = '';
         $Addmark = '';
-        $Useencoding = '';
-        if ($Encoding == 'RSS' OR $Encoding == 'Atom') {
-            if (c('Plugins.FeedDiscussionsPlus.Marklogo', false)) {
+        switch ($Encoding) {
+            case 'Instagram':
+            case 'Youtube':
+            case 'Twitter':
+            case 'Pinterest':
+                $Useencoding = $Encoding;
+                break;
+            case '#Twitter':
+                $Useencoding = 'PndTwitter';
+                break;
+            default:        //Atom,RSS,RDFprism,RDF,Rich RSS,Rich Atom,
                 $Useencoding = 'Feed';
-            }
-        } else {
-            $Useencoding = $Encoding;
         }
-        if ($Useencoding == 'Feed' OR $Useencoding == 'Twitter' OR $Useencoding == 'Instagram' OR $Useencoding == 'Pinterest') {
+        if($Marklogo) {
             $Addwrapclass = $Classprefix . $Type . 'wrap';
             $Markclass = $Classprefix . $Useencoding  . $Type;
             $Markid = $Classprefix . $Useencoding . 'img';
@@ -2427,7 +2486,18 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 * @return none
 */
     public function embedrssimage($Sender, $Type = 'list') {
-        //$this->DebugData(__LINE__, '', 1);
+        //$this->DebugData(__LINE__, '', 1);        
+        //echo '<!––  DEBUG '.__FUNCTION__.' L#'.__LINE__.' ––> ';
+        if ($Type == 'list') {
+            if (!c('EnabledPlugins.IndexPhotos',false)) {
+                echo '<!–– (no IndexPhotos) '.__LINE__.' ––> ';
+                return;
+            }
+        }
+        if (c('Vanilla.Comment.UserPhotoFirst',false)) {
+            echo '<!–– (UserPhotoFirst) '.__LINE__.' ––> ';
+            return;
+        }
         $Discussion = $Sender->EventArguments['Discussion'];
         //$this->DebugData($Discussion->Attributes, '---Discussion->Attributes---', 1);
         //
@@ -2444,29 +2514,45 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             }
             return;
         }
-        if ($Type == 'list') {            //Discussion list
-            if (!$Feed['Getlogo']) {
-                return;
-            }
-        }
         //
         $FeedURL = $Feed['FeedURL'];
         $RSSimage = $Feed['RSSimage'];
+        $Marklogo = $Feed['Marklogo'];
         $Scheme = $Feed['Scheme'];
-        //$this->DebugData($RSSimage, '---RSSimage---', 1);
+        //$this->DebugData($Marklogo, '---Marklogo---', 1);
         //$this->DebugData($FeedURL, '---FeedURL---', 1);
-        //$this->DebugData($Scheme, '---Scheme---', 1);
+        //$this->DebugData($Feed["Getlogo"], '---Feed["Getlogo"]---', 1);
+        //
+        if (!$Feed["Getlogo"]) {
+            $RSSimage = '';
+            if ($Marklogo) {
+                $Saveduser = c('Plugins.FeedDiscussionsPlus.Feedusername', 'Feed');
+                $User = Gdn::userModel()->getByUsername(trim($Saveduser));
+                if ($User) {
+                    $Userphoto = val('PhotoUrl', $User);
+                    if (empty($Userphoto)) {
+                        if (function_exists('UserPhotoDefaultUrl')) {
+                            $Userphoto = userPhotoDefaultUrl($User, ['Size' => 25]);
+                        }
+                    }
+                    if ($Userphoto) {
+                        $RSSimage = $Userphoto;
+                    }
+                }
+            } elseif ($Type == 'list') {
+                return;
+            }
+        }
+        //$this->DebugData($RSSimage, '---RSSimage---', 1);
+        if ($Type == 'list') {            //Discussion list
+            if (!$RSSimage) {
+                return;
+            }
+        }
         if (!$FeedURL | !$RSSimage) {       //if there is no url or image ignore this discussion
             return;
         }
         $Encoding = $Feed['Encoding'];
-        $Logoclass = 'RSSimage'.$Type.'0 ';
-        $Logowrapclass = 'RSSlogowrap';
-        $Oneitemclass = 'RSSlogobox';
-        $Listitemclass = 'RSSlistlogobox';
-        if ($Encoding == 'Twitter') {
-            $Logowrapclass = $Logowrapclass . ' Twitterlogo';
-        }
         $Itemurl = val('Itemurl', $Discussion->Attributes);
         //If there is no link to the imported item (RSS feeds are unreliable...) then revert to the feed's url
         if (!$Itemurl) {
@@ -2476,28 +2562,22 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         }
         //$this->DebugData($Discussion->Attributes, '---Discussion->Attributes---', 1);
         //$this->DebugData($FeedURL, '---FeedURL---', 1);
-        //$this->DebugData($Feed, '---Feed---', 1);
-        //$this->DebugData($Itemurl, '---Itemurl---', 1);
-        //
-        $Logo = '<img src="' . $RSSimage . '" id=RSSimage class=RSSimage'.$Type.'0 title="'.$Feed["Feedtitle"].'"> ';
-        $Logo = '<span class="'.$Logowrapclass.'" id=RSSlogowrap><img src="' . $RSSimage . '" id=RSSimage class="'.$Logoclass.'" title="'.$Feed["Feedtitle"].'"></span> ';
-        if ($Encoding == 'Twitter') {
-            $Logo = $Logo . '<span id=RSSatsign class="RSSatsign">@</span>';
-        }
-        //$this->DebugData(htmlspecialchars($Logo), '---htmlspecialchars(Logo)---', 1); 
-        $Logo = $this->logowrap($RSSimage, $Type, $Itemurl, $Feed["Feedtitle"], $Encoding);
-        //
-        
+        //$this->DebugData(htmlspecialchars($Logo), '---htmlspecialchars(Logo)---', 1);
+        $Logo = $this->wraplogo($RSSimage, $Type, $Itemurl, $Feed["Feedtitle"], $Encoding, $Marklogo);
+        //  
         if ($Type == 'list') {            //Discussion list
             echo $Logo;
+            $this->repositionfeedimage($Type);
         } elseif ($Type == 'item') {      //Discussion item
-            if ($Feed['Getlogo']) {
+            //if ($Feed['Getlogo']) {
+            if ($RSSimage) {
                 echo $Logo;
             }
             echo wrap(
                     wrap(
-                        ' '.anchor(T('Imported from:').$Feed["Feedtitle"].'<span class="RSSsourcetext" title="'.
-                        t('Click to view the feed source').'">ℹ</span> ', $Itemurl, ' ', array('rel' => 'nofollow', 'target' => '_BLANK', 'class' => 'RSStextlink')),
+                        ' '.anchor(T('Imported from:').$Feed["Feedtitle"].'<span class="Hiddentext RSSsourcetext" title="'.
+                        t('Click to view the feed source').'">ℹ</span> ', $Itemurl, 'PopupWindow ', 
+                        array('rel' => 'nofollow', 'target' => '_BLANK', 'class' => 'RSStextlink')),
                         'span',
                         array('class' => 'RSSsource')
                     ),
@@ -2505,89 +2585,28 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                     array('class' => 'RSSsourcebox')
                 );
         }
-        $this->repositionfeedimage($Type);
     }
 /**
 * Script to reposition feed image on author's image.
 *
-* @param string $Type   indicates whether the embed request is on an ind
+* @param string $Type   indicates whether the embed request is on an individual item or a list
+* @param string $Spanid ID of photowrap to manipulate
 *
 * @return string (domain or a url)
 */
-    public function repositionfeedimage($Type) {
+    public function repositionfeedimage($Type, $Spanid = 'FDP') {
+        //$this->DebugData(__LINE__, '', 1);
+        //echo '<!––  DEBUG '.__FUNCTION__.' L#'.__LINE__.' ––> ';
+        //echo __LINE__.$Type;
         echo '<script language="javascript" type="text/javascript"> '.
-             '$("#FDP .PhotoWrap").css({opacity:  "0.01", zoom: "0.01"});'.
-             '</script>';
+             '$("#'.$Spanid.' .PhotoWrap").css({opacity:  "0.01", zoom: "0.01"});';
+        if ($Type == 'item') {
+            echo '$(".Message a").attr("target", "_blank");'.
+                 '$(".Message a").attr("title", "'.t('Click to open a new window').'");'.
+                 '$(".Message a").addClass("FDPoutlink");';
+        }
+        echo '</script>';
         return;
-        /*
-        if ($Type == 'list') {      
-            echo '<script language="javascript" type="text/javascript"> '.
-                 'var float = $("#FDP .PhotoWrap").css("float"); '.
-                 'var margin = $("#FDP .PhotoWrap").css("margin"); '.
-                 'var padding = $("#FDP .PhotoWrap").css("padding"); '.
-                 '$("#FDP #RSSlogowrap").css({float: float});'.
-                 'var cssposition = $("#FDP .PhotoWrap").css("position");'.
-                 'var position = $("#FDP .PhotoWrap").position();'.
-                 'var display = $("#FDP .PhotoWrap").css("display"); '.
-                 '$("#FDP #xxxRSSimage").css({float: float,
-                                                visibility: "visible",
-                                                top: position.top, 
-                                                left: position.left,
-                                                display: display,
-                                                margin: margin,
-                                                position: "relative"
-                                                });'. 
-                 '$("#FDP #xxxRSSimage").css({float: "unset",
-                                                visibility: "visible",
-                                                display: display,
-                                                margin: margin,
-                                                position: "relative"
-                                                });'. 
-                 '$("#FDP #xxxRSSatsign").css({visibility: "visible",
-                                                float: "unset",
-                                                display: "inline-block",
-                                                margin: margin,
-                                                position: "absolute"
-                                                });'. 
-                 '$("#FDP #xxxRSSlogowrap").css({float: float, width: "0px", height: "40px"});'.
-                 '$("#FDP .RSSlistlogobox").css({height:  "1px", display: "block"});'.
-                 '$("#FDP .PhotoWrap").css({opacity:  "0.01", zoom: "0.01"});'.
-                 '</script>'; 
-            return;
-        }
-        if ($Type == 'item') {      
-            echo '<script language="javascript" type="text/javascript"> '.
-                 '$("#FDP .PhotoWrap").css({opacity:  "0.01", zoom: "0.01"});'.
-                 'var float = $("#FDP .PhotoWrap").css("float"); '.
-                 'var float = "unset";'.
-                 'var display = $("#FDP .PhotoWrap").css("display"); '.
-                 'var cssposition = $("#FDP .PhotoWrap").css("position");'.
-                 'var offset = $("#FDP .PhotoWrap").offset();'.
-                 'var margin = $("#FDP .PhotoWrap").css("margin");'.
-                 'var position = $("#FDP .PhotoWrap").position();'.
-                 '$("#FDP #xxxRSSlogowrap").css({float: float, width: "0px"});'.
-                 '$("#FDP #xxxRSSimage").css({position: "initial",
-                                                visibility: "visible",
-                                                float: float
-                                                });'. 
-                 '$("#FDP #xxxRSSatsign").css({visibility: "visible",
-                                                float: "unset",
-                                                display: "inline-block",
-                                                margin: "0px",
-                                                position: "absolute"
-                                                });'. 
-                 '$("#FDP #xxxRSSimage").css({float: float,
-                                                visibility: "visible",
-                                                top: "unset", 
-                                                left: "unset",
-                                                display: display,
-                                                margin: margin,
-                                                position: "relative"
-                                                });'.
-                 '</script>'; 
-            return;
-        }
-        */
     }
 /**
 * Get the domain of a url.
@@ -2757,36 +2776,107 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 *
 * @return none
 */
+    public function discussionController_BeforeDiscussionBody_handler($Sender, $Args) {
+        //$this->DebugData(__LINE__, '', 1);
+        //echo '<div>L#'.__LINE__.'</div>';     //  Discussion View Event
+        //echo '<!––  DEBUG '.__FUNCTION__.' L#'.__LINE__.' ––> ';
+        //$this->setfdpspan($Sender->EventArguments['Discussion']);
+    }
+/**
+* Insert feed meta info.
+*
+* @param object $Sender standard
+* @param string $Args   standard
+*
+* @return none
+*/
     public function discussionsController_beforeDiscussionContent_handler($Sender, $Args) {
-       //echo '<div>L#'.__LINE__.'</div>';
-        $this->setfdpspan($Sender->EventArguments['Discussion']);
+        //echo '<div>L#'.__LINE__.'</div>';         //Discussion List Event
+        //$this->DebugData(__LINE__, '', 1);
+        //echo '<!––  DEBUG '.__FUNCTION__.' L#'.__LINE__.' ––> ';
+        //$this->setfdpspan($Sender->EventArguments['Discussion']);
+    }
+/**
+* Adjust author image on specific discussion view.
+*
+* @param object $Sender standard
+* @param string $Args   standard
+*
+* @return none
+*/
+    public function discussionController_AfterDiscussionBody_handler($Sender, $Args) {
+        //$this->DebugData(__LINE__, '', 1);        // Discussion View Event
+        //echo '<div>L#'.__LINE__.'</div>';        
+        //echo '<!––  DEBUG '.__FUNCTION__.' L#'.__LINE__.' ––> ';
+        if (c('Vanilla.Comment.UserPhotoFirst',false)) {
+            echo '<!–– (UserPhotoFirst) '.__LINE__.' ––> ';
+            return;
+        }
+        $Discussion = $Sender->EventArguments['Discussion'];
+        if (($Discussion->Type != 'Feed')) {
+            echo '<!––NOFDP '.__LINE__.' ––> ';
+            return;
+        }
+        $Feed = $this->getdiscussionfeed($Discussion);
+        if (!$Feed) {
+            echo '<!––NOFDP '.__LINE__.' ––> ';
+            return;
+        } elseif ($Feed == -1) {
+            echo '<!––NOFDP '.__LINE__.' ––> ';
+            return;
+        } elseif (!$Feed['Getlogo']) {
+            //return;
+        }
+        if (isset($Feed['Addfollow']) AND $Feed['Addfollow']) {
+            $Itemurl = val('Itemurl', $Discussion->Attributes);
+            if (!$Itemurl) {
+                 $Itemurl = $this->rebuildurl($Feed['FeedURL'], 'https');
+            }
+            if ($Itemurl) {
+                echo anchor('<i class="fas fa-external-link-square-alt"></i> '
+                            .T('See original at:').$Feed["Feedtitle"], $Itemurl, 'PopupWindow RSSfollowtext', 
+                        array('rel' => 'nofollow', 'title' =>  t('Click to view the feed source')));
+            }
+        }
+        $this->repositionfeedimage('item', "Discussion_".$Discussion->DiscussionID);
+        //echo '</span> <!–– closing ID=FDP or NOFDP '.__LINE__.' ––> ';
+        return;
     }
 /**
 * Insert id to allow css manipulation.
 *
 * @param object $Discussion discussion object
 *
-* @return none
+* @return flag true if FDP
 */
     private function setfdpspan($Discussion) {
         //echo '<span>L#'.__LINE__.'</span>';
+        //echo '<!––  DEBUG '.__FUNCTION__.' L#'.__LINE__.' ––> ';
+        if (!c('EnabledPlugins.IndexPhotos',false)) {
+            echo '<!––NOFDP (no IndexPhotos) '.__LINE__.' ––> ';
+            return false;
+        }
+        if (c('Vanilla.Comment.UserPhotoFirst',false)) {
+            echo '<!––NOFDP (UserPhotoFirst) '.__LINE__.' ––> ';
+            return false;
+        }
         if (($Discussion->Type != 'Feed')) {
             echo '<span id=NOFDP  > <!–– '.__LINE__.' ––> ';
-            return;
+            return false;
         }
         $Feed = $this->getdiscussionfeed($Discussion);
         if (!$Feed) {
             echo '<span id=NOFDP  > <!–– '.__LINE__.' ––> ';
-            return;
+            return false;
         } elseif ($Feed == -1) {
             echo '<span id=NOFDP  > <!–– ERROR Retrieving Feed  '.__LINE__.' ––> ';
-            return;
+            return false;
         } elseif (!$Feed['Getlogo']) {
-            echo '<span id=NOFDP >  <!–– '.__LINE__.' ––> ';
-            return;
+            //echo '<span id=NOFDP >  <!–– '.__LINE__.' ––> ';
+            //return false;
         }
         echo '<span id=FDP> <!-- '.__LINE__.' --> ';
-        return;
+        return true;
     }
 /**
 * Insert feed meta info in the discussion list.
@@ -2799,16 +2889,25 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         //echo '<span>L#'.__LINE__.'</span>';
         $this->EmbedRSSImage($Sender, 'list');
     }
+    
+    public function base_beforediscussionname_handler($Sender, $Args) {
+        //echo '<span>L#'.__LINE__.'</span>';     //  Discussion List Event
+        //echo '<!––  DEBUG '.__FUNCTION__.' L#'.__LINE__.' ––> ';
+        $this->setfdpspan($Sender->EventArguments['Discussion']);
+        
+    }
 /**
-* Close the span with ID that includes the feed meta info.
+* For Discussion List Close Close <span id=FDP> or  <span id=NOFDP>.
 *
 * @param object $Sender standard
 *
 * @return none
 */
     public function base_afterdiscussioncontent_handler($Sender) {
+        //$this->DebugData(__LINE__, '', 1);  //Discussion List event
         //echo '<div>L#'.__LINE__.'</div>';
-        echo '</span> <!–– closing ID=FDP or NOFDP '.__LINE__.' ––> ';   // Close Close <span id=FDP> or  <span id=NOFDP>
+        // For Discussion List Close Close <span id=FDP> or  <span id=NOFDP>
+        echo '</span> <!–– closing ID=FDP or NOFDP '.__LINE__.' ––> ';
     }
 /**
 * Insert feed meta info in a specific discussion.
@@ -2819,8 +2918,10 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 * @return none
 */
     public function discussioncontroller_beforediscussiondisplay_handler($Sender, $Args) {
-        //echo '<div>L#'.__LINE__.'</div>';
+        //echo '<span>L#'.__LINE__.'</span>';     //  Discussion View Event
+        //echo '<!––  DEBUG '.__FUNCTION__.' L#'.__LINE__.' ––> ';
         $this->setfdpspan($Sender->EventArguments['Discussion']);
+        $this->EmbedRSSImage($Sender, 'item');
     }
 /**
 *  Close span used to add feed logo.
@@ -2831,9 +2932,11 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 * @return none
 */
     public function discussioncontroller_authorinfo_handler($Sender, $Args) {
+        //$this->DebugData(__LINE__, '', 1);
+        //echo '<span>L#'.__LINE__.'</span>';     //  Discussion View Event
         //echo '<div>L#'.__LINE__.'</div>';
-        $this->EmbedRSSImage($Sender, 'item');
-        echo '</span> <!–– closing ID=FDP or NOFDP '.__LINE__.' ––> ';   // Close <span id=FDP> or  <span id=NOFDP>
+        //$this->EmbedRSSImage($Sender, 'item');
+        //echo '</span> <!–– closing ID=FDP or NOFDP '.__LINE__.' ––> ';   // Close <span id=FDP> or  <span id=NOFDP>
     }
 /**
 * Get feed's logo
@@ -2868,14 +2971,30 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             return 'https://pbs.twimg.com/profile_images/588413275659972608/twWBhD7b_400x400.png';
         } elseif ($Encoding == 'Instagram') {
             return $Imagepath . "instalogo.jpg";
+        } elseif ($Encoding == 'Youtube') {
+            return $Imagepath . "Youtube.png";
         }
         $Parsedurl = @parse_url($Url);
-        //
         //$this->DebugData($Parsedurl, '---Parsedurl---', 1);
         if (!$Parsedurl["scheme"]) {
             $Url = $this->rebuildurl($Url, 'HTTP');   //For the purpose of the logo we don't care it it's https
             $Parsedurl = @parse_url($Url);
             //$this->DebugData($Parsedurl, '---Parsedurl---', 1);
+        }
+        //
+        if ($Encoding == 'Pinterest') {
+            //Look for company in Pinterest url: www.pinterest.com/ibm/feed.rss/
+            $Path   = $Parsedurl["path"];
+            //$this->DebugData($Parsedurl, '---Parsedurl---', 1);
+            $Entity = strtok($Path, "/");
+            $Logo = 'https://logo.clearbit.com/' . $Entity . '.com?size=46';
+            //$this->DebugData($Logo, '---Logo---', 1);
+            $Size=getimagesize($Logo);
+            if (isset($Size[0])) {
+                //$this->DebugData($Logo, '---Logo---', 1);
+                return $Logo;
+            }
+            return $Imagepath . "Pinterest.png";
         }
         //$this->DebugData($Url, '---Url---', 1);
         $Ignorepattern = '/(.doubeclick|.staticworld|feedproxy.google|feedburner.com|blogspot.com|.rackcdn|empty|twitter|facebook|google_plus|linkedin|instagram.com|vulture)/i'; //Ignore few logo domains
@@ -2963,7 +3082,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         ));
         $ResponseHeaders = $Proxy->ResponseHeaders;
         $RHtext = reset(array_keys($ResponseHeaders));
-        $RHlocation = $ResponseHeaders["Location"];
+        $RHlocation = val('Location',$ResponseHeaders,null);
+        $Rurl = val('URL',$Response,null);
         //$this->DebugData($ResponseHeaders, '---ResponseHeaders---', 1);
         //$this->DebugData($RHlocation, '---RHlocation---', 1);
         //$this->DebugData($RHtext, '---RHtext---', 1);
@@ -3010,8 +3130,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                         $Response = $this->fetchurl($Redirect, true, ($Follow-1));   //One less follow/redirects
                         return $Response;
                     }
-                } elseif (!$Scheme) {
-                    $Response["Scheme"] = parse_url($Response['Url'], PHP_URL_SCHEME);                    
+                } elseif (!$Response["Scheme"]) {
+                    $Response["Scheme"] = parse_url($Rurl, PHP_URL_SCHEME);                    
                 }
                 //$this->DebugData($Scheme, '---Scheme---', 1);
                 //var_dump($Proxy);
@@ -3430,6 +3550,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             'Getlogo'       => $FormPostValues["Getlogo"],
             'Noimage'       => $FormPostValues["Noimage"],
             'Feedtag'       => $FormPostValues["Feedtag"],
+            'Marklogo'       => $FormPostValues["Marklogo"],
+            'Addfollow'       => $FormPostValues["Addfollow"],
             'Activehours'       => $FormPostValues["Activehours"]
           );
     }
@@ -3458,6 +3580,8 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                     'Getlogo'     => true,
                     'Noimage'     => false,
                     'Feedtag'   => '',
+                    'Marklogo'   => true,
+                    'Addfollow'   => false,
                     'Added'       => date('Y-m-d H:i:s'),
               );
     }
@@ -3545,9 +3669,12 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
             'Feedtitle' => '',
             'RSSimage' => '',
             'Scheme' => '',
+            'Marklogo' => '',
+            'Addfollow' => '',
             'RSSdata' => ''
         );
         $TwitterID = '';
+        $InstaID = '';
         $Hashtag = '';
         $Encoding = '';
         //  Convert TwitterID to https://twitrss.me/twitter_user_to_rss/?user=TwitterID
@@ -3614,12 +3741,13 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         //$URL = $Webpage["InternalURL"];
         //
         if (!$Encoding) {
-            $Encoding = $this->getencoding($Sender, $FeedRSS);
+            $Encoding = $this->getencoding($Sender, $Url, $FeedRSS);
         }
         //$this->DebugData($Encoding, '---Encoding---', 1);
         $Response['Encoding'] = $Encoding;
         switch ($Encoding) {
             case 'Atom':
+            case 'Pinterest':
             case 'RSS':     //bypass simplexml parsing error
                 $FeedRSS = strtr($FeedRSS, 
                             array("<content:encoded>" => '<description2>', 
@@ -3733,6 +3861,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                 $Feedtitle = (string)$this->getentity($RSSdata, 'title', 'channel.title', $FeedRSS, '');
                 break;
             case 'RSS':
+            case 'Pinterest':
                 $Updated = (string)valr('channel.lastBuildDate', $RSSdata, $this->getbetweentags($FeedRSS, 'lastBuildDate'));
                 $Feedtitle = (string)$this->getentity($RSSdata, 'title', 'channel.title', $FeedRSS, '');
                 break;
@@ -3831,11 +3960,12 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
 * Get the encoding format for a web page
 *
 * @param object $Sender  standard
+* @param object $Url     page url
 * @param object $FeedRSS page source
 *
 * @return string - feed enclding
 */
-    private function getencoding($Sender, $FeedRSS) {
+    private function getencoding($Sender, $Url, $FeedRSS) {
         //$this->tracemsg($Sender);
         $Tags = array(  'Youtube' => "<feed xmlns:yt",
                         'Atom' => '<Feed',
@@ -3867,6 +3997,17 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
                     }
                 }
                 //$this->DebugData($Encoding, '---Encoding---', 1);
+                if ($Encoding == "RSS") {
+                    //Look for Pinterest url: www.pinterest.com/ibm/feed.rss/
+                    $Parsed = @parse_url($this->rebuildurl($Url, "https"));
+                    $Host = $Parsed["host"];
+                    //$Path   = $Parsed["path"];
+                    //$this->DebugData($Host, '---Host---', 1);
+                    //$this->DebugData($Path, '---Path---', 1);
+                    if (stripos($Host, "www.pinterest.com") !== false) {
+                        return 'Pinterest';
+                    }
+                }
                 return $Encoding;
             }
         }
@@ -4084,6 +4225,7 @@ class FeedDiscussionsPlusPlugin extends Gdn_Plugin {
         touchConfig('Plugins.FeedDiscussionsPlus.Userinitiated', true);
         touchConfig('Plugins.FeedDiscussionsPlus.Detailedreport', false);
         touchConfig('Plugins.FeedDiscussionsPlus.Globalmaximport', 5);
+        touchConfig('Plugins.FeedDiscussionsPlus.Addfollow', false);
         //Internal settings
         touchConfig('Plugins.FeedDiscussionsPlus.showkey', false);
         touchConfig('Plugins.FeedDiscussionsPlus.allowupdate', false);

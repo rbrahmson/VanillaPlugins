@@ -128,6 +128,7 @@
         //
 		echo '<ul><li>';
         //
+        //
         if (empty($FeedURL)) {
             //echo 'l#:'.__LINE__;
             $FeedURL = val('FeedURL', $this->Form->FormValues(), null);
@@ -144,6 +145,18 @@
         //
         $Feedvalidator =   '<span >&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<a class="Button ffcolumn DeleteFeed  " target=_BLANK href="' . $Validatorurl .
 		   '" title="' . t('Run external feed validator if you have problems with this feed.').'"><b>Issues ?</b> Run Feed Validator</a><span>';
+        //
+        $Feedtypeicon = "";
+        if ($Encoding == "RSS" | $Encoding == "Atom" | $Encoding == "Rich RSS" | $Encoding == "Rich Atom") {
+            $Feedtypeicon = '<i class="fas fa-rss-square" style="font-size: 20px;"> </i>';
+        } elseif($Encoding == "Youtube") {
+            $Feedtypeicon = '<i class="fab fa-youtube" style="font-size: 20px;"></i>';
+        } elseif($Encoding == "Instagram") {
+            $Feedtypeicon = '<i class="fab fa-instagram" style="font-size: 20px;"></i>';
+        } elseif($Encoding == "Twitter") {
+            $Feedtypeicon = '<i class="fa fa-at" style="font-size: 20px;"></i>';
+        }
+        //
         $Twitterid = false;
         $Instaid = false;
         if ($Encoding == 'Twitter' | substr($FeedURL,0,1) == '@') {
@@ -163,14 +176,14 @@
             $Urllabel= '<FFlabel>Feed source:</FFlabel>';
         } elseif ($Instaid) {
             $Feedvalidator = '';
-            $Urllabel= '<FFlabel>Instagram entity</FFlabel>';
+            $Urllabel= '<FFlabel>'.$Feedtypeicon.' Instagram entity</FFlabel>';
         } elseif ($Twitterid) {
             $Feedvalidator = '';
-            $Urllabel= '<FFlabel>Twitter ID</FFlabel>';
+            $Urllabel= '<FFlabel>'.$Feedtypeicon.' Twitter ID</FFlabel>';
         } elseif ($Encoding == '#Twitter' | substr($FeedURL,0,1) == '#') {
             $Twitterid = false;
             $Feedvalidator = '';
-            $Urllabel= '<FFlabel>Twitter hashtag</FFlabel>';
+            $Urllabel= '<FFlabel> Twitter hashtag</FFlabel>';
         } elseif ($Mode == 'Add') {
             $Urllabel= '<FFlabel>Feed URL or <b>@</b>twitterid</FFlabel>';
         }
@@ -190,12 +203,14 @@
 			 $Logo = '';
 			 $Logooption = '';
 		 }
+         $Marktoption = '<span> <img src="' . url('plugins/FeedDiscussionsPlus/design/vanillaforum.png') .
+                        '" id=RSSimage class=FDPmarkoption title=" " ></span> ';
         //
         $Buttonbar = '<div style="display:inline-flex;float:right;"> '.$Processbutton.$Canelbutton.$Copybutton.$Pastebutton.$Feedvalidator.'</div>';
         $Buttonbar = '<ffhead><div Class="ffspread"> '.$Processbutton.$Canelbutton.$Copybutton.$Pastebutton.$Feedvalidator.'</div></ffhead>';
         //
 		echo $Buttonbar;
-        echo '<h4><FFBIG>❂</FFBIG>General Options</h4>';
+        echo '<h4 class=FFSectionHead><FFICON>❂</FFICON><b>General Feed Definition Options</b></h4>';
 		//
 		echo '<FFUfeedhead>';
             $Highlightclass = '';
@@ -211,7 +226,7 @@
                 $Helpmsg = '<FFsniptext><bluetext>&nbspThe url you entered pointed to the suggested feed url</bluetext></FFsniptext>';
             }
             if (($Encoding != '') & ($Encoding != 'N/A')) {
-                $Encodingmsg = '<FFNote>(Feed type:&nbsp'.$Encoding.')</FFNote>';
+                $Encodingmsg = '<FFNote>(Feed type:&nbsp'.$Feedtypeicon.' '.$Encoding.')</FFNote>';
             }
 			echo '<span '.$Urltitle.' >'.$this->Form->Label($Urllabel, 'FeedURL').'</span>';
             if ($Allowupdate) {
@@ -233,18 +248,54 @@
 		//
 		echo '<FFline>'.$this->Form->CheckBox('Active', 'Activate the feed', array('value' => '1', 'class' => 'FFCHECKBOX'))."<FFchecktext> (uncheck to deactivate while keeping the inactive definition)</FFchecktext></FFline>";
 		//
-		echo '<FFline>'.$this->Form->CheckBox('Getlogo', "Show the feed's logo", array('value' => '1', 'class' => 'FFCHECKBOX  labelupdate')).$Logooption."<FFchecktext> (show feed's logo in the discussion and the discussion list)</FFchecktext></FFline>";
+        echo '<h4 class=FFSectionHead><FFICON>▤</FFICON><b>Presentation Options</b></h4>';
+		//
+        if (c('Vanilla.Comment.UserPhotoFirst',false)) {
+            echo '<FFline><b>Note</b>: "Vanilla.Comment.UserPhotoFirst" is set to "true" in the configuration file.  Change the setting to "false" to enable the presentation options.<br>This is done with the following statement in config.php:<br>'.
+            "<b>\$Configuration['Vanilla']['Comment']['UserPhotoFirst'] = true;</b>";
+        }
+        //
+		echo '<FFline>'.$this->Form->CheckBox('Getlogo', "Show the feed's logo", array('value' => '1', 'class' => 'FFCHECKBOX  labelupdate')).$Logooption."<FFchecktext> (show feed's logo instead of the author's thumbnail in the discussion and the discussion list)</FFchecktext></FFline>";
+        //
+		echo '<FFline>'.$this->Form->CheckBox('Marklogo', "Mark logo icon",
+                array('value' => '1', 'class' => 'FFCHECKBOX  labelupdate')).
+                "<FFchecktext>Overlay logo with feed source mark. Example: ".$Marktoption.
+                "(This is independent of whether the feed logo is shown or not)</FFchecktext></FFline>";
+        //
+		echo '<FFline>'.$this->Form->CheckBox('Addfollow', "Add follow link",
+                array('value' => '1', 'class' => 'FFCHECKBOX  labelupdate')).
+                '<FFchecktext>Add a "'.
+                '<span class=RSSfollowtext style="display:inline-block;color:#1da1f2">'.
+                '<i class="fas fa-external-link-square-alt"></i> '.
+                'See original at:'.$Feedtitle.'</span>"'.' link at the bottom of imported feed item </FFchecktext></FFline>';
+        //
+        echo '<h4 class=FFSectionHead><FFICON>🖥</FFICON><b>Save Discussions Options</b></h4>';
 		//
 		echo '<FFline>'.$this->Form->CheckBox('Noimage', "Don't include images", array('value' => '1', 'class' => 'FFCHECKBOX'))."<FFchecktext> (Don't include <i>embedded</i> images when saving feeds as discussions)</FFchecktext></FFline>";
 		//
-        if (c('Tagging.Discussions.Enabled',false)) {
-            echo '<FFline>';
-            echo $this->Form->Label('<FFlabel>Tag Feeds:</FFlabel>', 'Feedtag');
-            echo $this->Form->TextBox('Feedtag', array('class' => 'InputBox')).'<FFtext> Optionally tag imported discussion with the  specified tags. (comma separated alphabetic tags)</FFtext>';
-            echo '</FFline>';
-        }
+        echo '<FFline>';
+        echo $this->Form->Label('<FFlabel>Tag Feeds:</FFlabel>', 'Feedtag');
+        echo $this->Form->TextBox('Feedtag', array('class' => 'InputBox WideInput')).
+             '<FFtext> Optionally tag imported discussion with the specified tags. (comma separated alphabetic tags)';
         //
-        echo '<h4><FFBIG>🏃</FFBIG>Performance controls</h4>';
+        if (version_compare(APPLICATION_VERSION, '2.5', '>=')) {
+            $Taggingsetting = 'Tagging.Discussions.Enabled';
+        } else {
+            $Taggingsetting = 'EnabledPlugins.Tagging';
+        }
+        if (!c($Taggingsetting,false)) {
+            if (version_compare(APPLICATION_VERSION, '2.5', '>=')) {
+                $Tagsettinglink = '<a class="buttontagaside Button PopupWindow"  target=_BLANK href="' .
+                    Url('/settings/tagging') . '" title="' . t('Click to access the Tagging Settings').'">'.
+                    t('enable tagging').'</a>';
+            } else {
+                $Tagsettinglink = 'enable the tagging plugin';
+            }
+            echo '<div><FFICON>🔖</FFICON> <b2>Note:</b2> Currently tagging is disabled. You must '.$Tagsettinglink.' to activate this option </div>';
+        }
+        echo '</FFtext></FFline>';
+        //
+        echo '<div><h4 class=FFSectionHead><FFICON>📈</FFICON><b>Performance Options</b></h4></div>';
 		//
         echo '<FFline>'.$this->Form->Label('<FFlabellong>Feed Check Frequency</FFlabellong>', 'Refresh');
         echo $this->Form->DropDown('Refresh', $Refreshments, array(
@@ -273,7 +324,7 @@
             echo $this->Form->TextBox('Activehours', array('class' => 'InputBox')).'<FFtext> Feeds are checked whenever a user dispays a discussion. This option limits checking for new feed items between the specified <b>server</b> hours (format:hh-hh.  Examples:0-5, 21-05, or 14-21). <br>'.$Hournote . '</FFtext>';
 		echo '</FFline>';
 		//
-		echo '<h4><FFBIG>☶</FFBIG> Feed item filters</h4>';
+		echo '<h4 class=FFSectionHead><FFICON>☶</FFICON><b> Feed item filters</b></h4>';
 		//
 		echo '<FFline>';
 		echo 'If filters are specified, a feed items must match the following filters to be imported. ';
