@@ -1,0 +1,86 @@
+If you wish to change this plugin you will need to understand the data structure.
+The following is a var_dump of the conversation data formatted to reveal the keys array structure.
+var_dump was taken on VF Ver 2.1.11.   The data itself has been masked to conceal the site information.   
+95=====var_dump ConversationString
+[0]=> array(21) { 
+  ["ConversationID"]=> int(13) 
+  ["Subject"]=> NULL 
+  ["Contributors"]=> string(26) "a:2:{i:0;i:1;i:1;s:1:"2";}" 
+  ["FirstMessageID"]=> int(17) 
+  ["InsertUserID"]=> int(2) 
+  ["DateInserted"]=> string(19) "2016-11-28 18:00:39" 
+  ["InsertIPAddress"]=> string(13) "168.0.0.192" 
+  ["UpdateUserID"]=> int(1) 
+  ["DateUpdated"]=> string(19) "2016-11-29 19:05:54" 
+  ["UpdateIPAddress"]=> string(13) "168.0.0.192" 
+  ["CountMessages"]=> int(3) 
+  ["LastMessageID"]=> int(19) 
+  ["RegardingID"]=> NULL 
+  ["DateLastViewed"]=> string(19) "2016-11-28 19:55:11" 
+  ["CountReadMessages"]=> int(2) 
+  ["CountNewMessages"]=> int(1) 
+  ["Participants"]=> array(2) { 
+    [0]=> array(5) { 
+		["UserID"]=> int(1) 
+		["Name"]=> string(5) "admin" 
+		["Email"]=> string(22) "someuseri@mydomain.com" 
+		["Photo"]=> string(29) "userpics/028/6WVDS0RWWM1B.png" 
+		["ConversationID"]=> int(13) } 
+	[1]=> array(5) { 
+		["UserID"]=> int(2) 
+		["Name"]=> string(6) "joedoe" 
+		["Email"]=> string(27) "joedoe@mydomainl.com" 
+		["Photo"]=> string(29) "userpics/0232/IJKVWW5BOIHCU.jpg" 
+		["ConversationID"]=> int(13) } }
+  ["LastInsertUserID"]=> int(1) 
+  ["LastDateInserted"]=> string(19) "2016-11-29 19:05:54" 
+  ["LastBody"]=> string(1002) "Some patients are responding ... practices." 
+  ["LastFormat"]=> string(4) "Html" }
+[1]=> array(21) { 
+  ["ConversationID"]=> int(1) 
+  ["Subject"]=> NULL 
+  ["Contributors"]=> string(26) "a:2:{i:0;i:1;i:1;s:1:"2";}" 
+  ["FirstMessageID"]=> int(1) 
+  ["InsertUserID"]=> int(2) 
+  ["DateInserted"]=> string(19) "2016-06-11 11:39:58" 
+  ["InsertIPAddress"]=> string(13) "168.0.0.192" 
+  ["UpdateUserID"]=> int(2) 
+  ["DateUpdated"]=> string(19) "2016-06-11 11:39:58" 
+  ["UpdateIPAddress"]=> string(13) "168.0.0.192" 
+  ["CountMessages"]=> int(1) 
+  ["LastMessageID"]=> int(1) 
+  ["RegardingID"]=> NULL 
+  ["DateLastViewed"]=> string(19) "2016-11-27 21:24:37" 
+  ["CountReadMessages"]=> int(1) 
+  ["CountNewMessages"]=> int(0) 
+  ["Participants"]=> array(2) { 
+	[0]=> array(5) { 
+		["UserID"]=> int(1) 
+		["Name"]=> string(5) "admin" 
+		["Email"]=> string(22) 
+		"someuseri@mydomain.com" 
+		["Photo"]=> string(29) "userpics/028/6WVDS0RWWM1B.png" 
+		["ConversationID"]=> int(1) } 
+	[1]=> array(5) { 
+		["UserID"]=> int(2) 
+		["Name"]=> string(6) "joedoe" 
+		["Email"]=> string(27) 
+		"joedoe@mydomainl.com" 
+		["Photo"]=> string(29) "userpics/0232/IJKVWW5BOIHCU.jpg" 
+		["ConversationID"]=> int(1) } } 
+  ["LastInsertUserID"]=> int(2) 
+  ["LastDateInserted"]=> string(19) "2016-06-11 11:39:58" 
+  ["LastBody"]=> string(23) "How successful was the treatment? " 
+  ["LastFormat"]=> string(4) "Html" } } }
+
+====================================================
+Todo:  Add notification counter to the heading.  This can be done through 
+counting of messages where the meta includes "new" or through the special 
+Vanilla url that indicates notifications: /dashboard/notifications/inform
+
+The format of the screen when notification are pending is:
+
+{"FormSaved":false,"DeliveryType":"BOOL","Data":"MQ==","InformMessages":[{"CssClass":"Dismissable AutoDismiss Activity-ConversationMessage HasIcon","Message":"<a href=\"http:\/\/forum.com\/subdirectoryhome\/messages\/15#46\" class=\"Icon\"><img src=\"http:\/\/forum.com\/subdirectoryhome\/uploads\/userpics\/18\/n8KCDS0GGRM1B.png\" class=\"ProfilePhotoMedium\" \/><\/a><div class=\"Title\"><a href=\"\/subdirectoryhome\/profile\/1\/admin\">admin<\/a> sent you a <a href=\"\/Vanilla\/messages\/16#26\">message<\/a>.<\/div><div class=\"Excerpt\"><\/div>"}],"ErrorMessages":"","RedirectUrl":""}
+
+and when none are available:
+{"FormSaved":false,"DeliveryType":"BOOL","Data":"MQ==","InformMessages":[],"ErrorMessages":"","RedirectUrl":""}

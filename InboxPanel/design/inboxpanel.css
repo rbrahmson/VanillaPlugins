@@ -1,0 +1,172 @@
+/* Set style for elements in the Inbo Panel*/
+.PopListConversations {
+    margin: 2px;
+    border: 1px solid #DDDDDD;
+	border-radius: 4px;
+	background:whitesmoke;
+	list-style: none;
+}
+.BoxInboxPanel {
+	border-width: 0px;
+	/*
+	border: 1px solid #DDDDDD;
+	border-radius:4px;
+	*/
+}
+.InboxEntry {
+    background-color: white;
+}
+.InboxItem {
+    border: 0px;
+    border-bottom: thin solid lightgray;
+    border-top: thin solid lightgray;
+    padding: 2px;
+}
+.InboxItem .Author .PhotoWrap {
+    margin: 0 10px 4px 0;
+    zoom: 70%;
+}
+.InboxEntry .ItemContent {
+	line-height: 1.2;
+    margin: -25px 0px 2px 42px;
+}
+.InboxEntry .ItemContent .Subject{
+	font-size: 90%;
+    font-weight: normal;
+    margin-left: -8px;
+}
+.InboxEntry .ItemContent .HasNew{
+    padding: 1px 3px 1px 3px;
+    margin-left: 64px;
+}
+.InboxEntry .ItemContent .Excerpt{
+    font-size: 100%;
+    line-height: 110%;
+    color: darkblue;
+}
+.InboxEntry .ItemContent .Meta{
+    font-size: 100%;
+    line-height: 90%;
+    color: green;
+}
+.MsgPreview {
+    background-image: url(previewgray.png);
+    background-size: 100%;
+    background-repeat: no-repeat;
+    background-color: rgba(102, 51, 153, 0);
+    position: relative;
+    top: 27px;
+    left: 2px;
+    margin-left: -31pt;
+    padding: 1px 2px 6px 2px;
+}
+.MsgPreviewHide{
+    background: rgba(255, 0, 0, 0);
+    color: rgba(255, 0, 0, 0);
+    border-color: rgba(255,0,0,0);
+}
+.InboxEntry .ItemContent .Meta  .MItem{
+    font-size: 94%;
+    line-height: 92%;
+    margin: 0;
+}
+.EmailBubbleWrap {
+	background: rgba(245, 245, 245, 0);
+    height: 19px;
+    width: 27px;
+    float: right;
+    font-size: 100%;
+    line-height: 100%;
+    color: #222;
+    padding: 0px 3px 0px 0px;
+    margin-top: -11px;
+    border-radius: 4px;
+    border-width: thin;
+    border-color: rgba(255, 255, 255, 0);
+}
+.EmailPopButton {
+    position: relative;
+	margin: -2px 0px -2px -4px;
+    line-height: 85%;
+    background: rgba(245, 245, 245, 0);
+    font-size: 140%;
+    max-height: 24px;
+    color: #222;
+    border-radius: 4px;
+    border-width: thin;
+    border-color: whitesmoke;
+}
+
+.EmailPopBubble {
+    background: red;
+    font-size: 70%;
+    font-weight: bold;
+    border-radius: 3px;
+    color: #fff;
+    padding: 0px 2px 0px 2px;
+    position: absolute;
+    margin: -20px 0px 0px 19px;
+	display:none;
+}
+div.InboxTitle {
+    line-height: 7pt;
+}
+
+span.InboxAll:Before {
+    Content: '✉';
+    font-size: large;
+    color: darkgray;
+    border: darkgrey;
+    border-style: solid;
+    border-width: 1pt;
+    border-radius: 2pt;
+    margin: 0px 0px 3px 3px;
+    padding-left: 1pt;
+    padding-right: 1pt;
+    background-color: white;
+}
+span.InboxAll {
+    line-height: 0.1px;
+}
+span.NewMSG:Before {
+	Content: '✎';
+    font-size: large;
+    color: darkgray;
+    border: darkgrey;
+    border-style: solid;
+    border-width: 1pt;
+    border-radius: 2pt;
+    margin: 0px 0px 3px 3px;
+    padding-left: 1pt;
+    padding-right: 1pt;
+    background-color: white;
+}
+span.ANewMSG:Before {
+    Content: '📩';
+	Content:'📝';
+	Content: '✎';
+    font-size: large;
+    color: lightsteelblue;
+    border: darkgrey;
+    border-style: solid;
+    border-width: 1pt;
+    border-radius: 4pt;
+    margin: 0pt;
+	margin-right:2pt;
+    padding-left: 1pt;
+    padding-right: 1pt;
+    background-color: white;
+}
+span.NewMSG {
+   float:right;
+}
+
+span.HasNew {
+    display: inline;
+    background: #DD0000;
+    color: #FFFFFF;
+    font-size: 9px;
+    font-weight: bold;
+    padding: 3px;
+    line-height: 1;
+}
