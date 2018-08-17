@@ -1,0 +1,229 @@
+#NOGRID {
+    width: -webkit-fill-available;
+  /*border-top: 0.8px dotted lightgray;
+    border-bottom: 0.8px dotted lightgray;
+  */
+}
+.gridtoggle {
+    font-size: 1em;
+}
+.gridicontoggle {
+    font-size: 1.2em;
+}
+.gridimage {
+    max-height: 130px;
+    max-width: 93%;
+    height: auto;
+    height: auto;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+    border: 0.8px dotted gray;
+    border-radius: 5px;
+    padding: 2px;
+    box-shadow: 1px 1px lightgrey;
+}
+div.gridbodytext {
+    font-size: 0.8em;
+    background-color: ghostwhite;
+    color:gray;
+    width: -webkit-fill-available;
+    word-break: break-word;
+    display: block;
+    border: 0.8px dotted gray;
+    border-radius: 5px;
+    padding: 3px;
+    max-height: 160px;
+    min-height: 28px;
+    box-shadow: 1px 1px lightgrey;
+}
+.gridtaglabel {
+    margin-right: 1px;
+}
+.gridtagstring:before {
+    content: "~~";
+    display: -webkit-inline-box;
+    -webkit-transform: rotate(-71deg);
+    margin-right: -14px;
+    margin-left: 2px;
+    z-index: 1;
+    vertical-align: -6px;
+    font-size: 12px;
+}
+.gridtagstring {
+    z-index: 1;
+    display:initial;
+}
+.gridtags:before {
+    content: "o";
+    font-size: 9px;
+    vertical-align: 1px;
+    margin-right: 2px;
+}
+.gridtags {
+    padding: 0px 2px 0px 3px;
+    word-break: break-word;
+    border: 1px solid lightgray;
+    border-radius: 17px 0px 0px 17px;
+    box-shadow: 1px 2px grey;
+}
+.gridvalues {
+    padding: 0px 2px 0px 3px;
+    word-break: break-word;
+    border: 1px solid lightgray;
+    border-radius: 3px;
+}
+.gridfieldTags:before {
+    content: "o";
+    font-size: 9px;
+    vertical-align: 1px;
+    margin-right: 2px;
+}
+.gridfieldTags {
+    padding: 0px 2px 0px 3px;
+    word-break: break-word;
+    border: 1px solid lightgray;
+    border-radius: 17px 0px 0px 17px;
+    box-shadow: 1px 2px grey;
+}
+.gridfieldPostitnote {
+    background-color: lightyellow;
+    border-width: 1px;
+    border-color: darkgray;
+    border-style: solid;
+    padding: 0px 3px 0px 4px;
+    border-radius: 1px 1px 8px 1px;
+    line-height: 150%;
+    max-width: unset;
+}
+.GridTitleWrap {
+  width: -webkit-fill-available;
+  word-break: break-word;
+}
+.GridTitle {
+  color:initial; 
+}
+.gridtagicon:before {
+    content: "o";
+    font-size: 9px;
+    vertical-align: 1px;
+    margin-right: 2px;
+}
+.gridtagicon {
+    padding: 0px 0px 0px 3px;
+    word-break: break-word;
+    border: 1px solid #0291db;
+    border-radius: 17px 0px 0px 17px;
+    box-shadow: 1px 1px #0291db;
+    min-width: 21px;
+    line-height: 9px;
+    color: #0291db;
+    display: inline-block;
+}
+.buttontagaside { 
+    line-height: 16px !important;
+    min-width: unset;
+    margin: 0px !important;
+    padding: 2px;
+}
+.titlestyle {
+    border: 2px solid red !important;
+    background:blue !important;
+    word-break: break-word;
+    width: unset;
+  overflow: hidden;
+  text-overflow: ellipsis ;*/
+}
+div#GRID.DiscussionsGrid {
+    display: inline-flex;
+    vertical-align: text-top;
+    border: 1px solid #4d90fe5e;
+    border-radius: 7px;
+    margin: 2px;
+    border: 1px solid orange;
+}
+#GRID .Item {
+    width:unset;
+    padding:2px;
+}
+/*
+#GRID {
+    overflow: hidden;
+}
+#GRID.#NOFDP.IndexPhoto {
+    height: 20px !important;
+    width: 20px !important;
+}
+#GRID.ProfilePhoto.ProfilePhotoMedium {
+     margin: 0px 0px 0px 0px;
+}
+#GRID .Item {
+    width:unset;
+    padding:2px;
+}
+#GRID .Title {
+    width: 100%;
+    word-break: break-word;
+}
+#GRID div.Meta.Meta-Discussion {
+    border-top: 1px inset lightgray;
+    border-radius: 0px 8px 0px 0px;
+}
+#GRID span.MItem.MCount {
+    right: unset;
+    left: unset;
+    position: relative;
+    font-size: 1em !Important;
+    border: none !important;
+    height:unset;
+    padding-right: 2px;
+    padding-left:0px;
+    padding-top: 1px;
+    padding-bottom:0px
+}
+#GRID span.MItem.MCount.ViewCount {;
+    display:table-cell;
+}
+#GRID span.MItem.MCount.CommentCount {;
+    display:table-cell;
+}
+#GRID span.MItem.LastCommentBy {
+    color:red !Important;
+    margin-left: 3px;
+    margin-right: 2px;
+}
+#GRID span.MItem.LastCommentDate {
+    color:red !Important;
+    margin-left: 3px;
+    margin-right: 2px;
+}
+#GRID span.MItem.Category {
+    color:red !Important;
+    margin-left: 3px;
+    margin-right: 2px;
+}
+#GRID span.Number {
+    font-size: 1em;
+    font-weight: bold;
+}
+#GRID .Notwit {
+    visibility: unset;
+}
+#GRID .Notwit:after {
+    visibility: hidden;
+}
+/*
+div#GRID.Meta Meta-Discussion {
+    display:none;
+}
+div#GRID.DataList .Title {
+    display: inline-grid;
+}
+div#GRID .Discussion.ItemContent {
+    padding-left: 4px;
+}
+div#GRID .IndexPhoto img {
+    width: 20px;
+    height: 20px;
+}
+*/

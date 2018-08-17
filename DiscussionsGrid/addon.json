@@ -1,0 +1,23 @@
+{
+    "name": "DiscussionsGrid",
+    "key":  "DiscussionsGrid",
+    "description": "Display Discussion Lists in a responsive grid format and on different themes.",
+    "version": "2.2.6",
+    "SettingsUrl": "/settings/DiscussionsGrid",
+    "SettingsPermission": "Garden.Settings.Manage",
+    "registerPermissions": ["Plugins.DiscussionsGrid.PermissionGrid","Plugins.DiscussionsGrid.PermissionToggle"],
+    "mobileFriendly": true,
+    "usePopupSettings":false,
+    "icon": "icon.png",
+    "License": "GPLv2",
+    "type": "addon",
+    "authors": [
+        {
+            "name": "Roger Brahmson",
+            "homepage": "https://github.com/rbrahmson/VanillaPlugins/tree/master/DiscussionsGrid"
+        }
+    ],
+    "require": {
+        "vanilla": ">=2.3"
+    }
+}
