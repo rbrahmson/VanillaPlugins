@@ -5,7 +5,7 @@ class TagRelatedModule extends Gdn_Module {
  protected $ConversationString;
 
 /////////////////////////////////////
-  public function toString ($Sender,$Args) {
+  public function toString ($Sender = null, $Args = null) {
 	global $ConversationString ;
 	//$Msg = __FUNCTION__.' '.__LINE__.' Called by: ' . debug_backtrace()[1]['function'].debug_backtrace()[0]['line'].' ---> '. 	debug_backtrace()[0]['function'];
 	//return $Msg;
