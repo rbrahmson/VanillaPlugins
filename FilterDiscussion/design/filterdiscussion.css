@@ -1,0 +1,11 @@
+.savedfilter {
+    padding: 2px 0px 2px 2px;
+    display: inline-block;
+}
+.savedfilterpad {
+    border: 1px solid #a9a9a9;
+    cursor: not-allowed;
+    display: inline-block;
+    margin: 0;
+    padding: 1px 0px;
+}
