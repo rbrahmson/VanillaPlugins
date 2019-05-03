@@ -3,17 +3,20 @@ echo $this->Form->Open();
 echo $this->Form->Errors();
 echo '<div>';
 
-$Plugininfo = Gdn::pluginManager()->getPluginInfo('FeedDiscussionsPlus');
+$Plugininfo = Gdn::pluginManager()->getPluginInfo('FilterDiscussion');
 $Title = 'DiscussionFilter '.Gdn::Translate('Version').' '.$Plugininfo["Version"].' '.Gdn::Translate('Settings');
-
+$Fields = implode(', ',$this->Data["Fields"]);
 echo "<h1>".$Title.'</h1><br>'; 
 echo '<b>General syntax of the url:</b>/discussions/filterdiscussion?column=operator:value&column=operator:value etc.<br>';
 echo '<b>Valid operators:</b> EQ, NE, GT, LT, NL, NN (equal, not equal, greater than, less than, null and not null)<br>';
-echo '<b>Example:</b>/discussions/filterdiscussion?Prefix=EQ:Video&InsertUserID=EQ:13&CategoryID=EQ:6 <br><br>';
-echo '<b>'.t('Optionally limit allowed Discussion table field names (column names):').'</b><br>';
+echo '<b>Example:</b>/discussions/filterdiscussion?Prefix=EQ:Video&InsertUserID=EQ:13&CategoryID=EQ:6 <br>';
+echo '<b>Special column names:</b> {\$category},{\$insertusername},{\$updateuserrname} - indicates that the value is the name rather than number<br>';
+echo '<b>Example:</b>/discussions/filterdiscussion?{\$category}=EQ:Sport&{\$insertusername}=EQ:Joe doe<br><br>';
 //
+echo '<b>'.t('Optionally limit allowed Discussion table field names (column names):').'</b><br>';
 echo $this->Form->TextBox('Plugins.FilterDiscussion.Fieldnames', array('class'=>'NameInput','size'=>"120"));
-echo '<br>'.t('(Use comma sepators between field names. Case Sensitive! Ensure you are accurate with SQL column names!)').'<br><br>';
+echo '<br>'.t('(Use comma sepators between field names. Case Sensitive! Ensure you are accurate with SQL column names!)');
+echo '<br><b>'.t('The full list of current columns in the Discussion table is shown below').'</b><br>'.$Fields.'<br><br>';
 //
 echo '<b>'.t('List the url parameters you want ignored (This is to accommodate other plugins that read url parameters):').'</b><br>';
 echo $this->Form->TextBox('Plugins.FilterDiscussion.Ignoreparms', array('class'=>'NameInput','size'=>"120"));
