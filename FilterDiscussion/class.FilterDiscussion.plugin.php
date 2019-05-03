@@ -2,7 +2,7 @@
 $PluginInfo['FilterDiscussion'] = array(
     'Name' => 'FilterDiscussion',
 	'Description' => "FilterDiscussion - A plugin that dynamically creates custom filtered / sorted discussion lists.",
-    'Version' => '1.8.1',
+    'Version' => '1.8.2',
     'RequiredApplications' => array('Vanilla' => '2.6'),       		    /*This is what I tested it on...*/
     'RequiredTheme' => FALSE,
 	'SettingsPermission' => 'Garden.Settings.Manage',	
@@ -52,10 +52,13 @@ Version 1.6 - Support for Vanilla 2.6.
             - Support for including {$username} and {$category} in the !msg title (if this is the last parameter)
               example: /discussions/filterdiscussion?InsertUserID=EQ:{$userid}&{$category}General&!msg={$category}
 Version 1.8.1 - Support for Vanilla 2.8.   
-            - Support for sorting fields (thanks to user donshakespeare who initiated this feature). 
+            - Support for sorting fields (thanks to user donshakespeare who requested this feature). 
               Example:   /discussions/filterdiscussion?InsertUserID=EQ:{$userid}:d
             - support for filtering by explicit user names (rather thantheir internal numbers)
               Example:   /discussions/filterdiscussion?{$insertusername}=EQ:Joe%20Doe:a
+              Example:   /discussions/filterdiscussion?{$updateusername}=EQ:Joe%20Doe:d
+            - Support for relative dates (number of dates from today in the value field entered as +nn or -nn)
+              Example:  /discussions/FilterDiscussion/?DateInserted=EQ:-1      //Display yesterday's discussions.
 
 No warranty whatsoever is implied by releasing this plugin to the Vanilla community.
 */
@@ -83,7 +86,8 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
 	$i=0;
     $query = $this->getquery();
     $Parameters = implode("&", $query);
-    $Sender->SetData('_PagerUrl', 'discussions/FilterDiscussion/'.$Page.$Parameters);
+    $Sender->SetData('_PagerUrl', 'discussions/FilterDiscussion/'.$Page.'?'.$Parameters);
+    $Sender->SetData('_PagerUrl', 'discussions/FilterDiscussion/'.$Page.'?!!');
     if (Gdn::request()->get('!msg')){
         Gdn::Controller()->Title(t(Gdn::request()->get('!msg')));
     }
@@ -98,7 +102,7 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
   }
   ///////////////////////////////////////////////
   // Main processing of the custom view
-	public function DiscussionModel_BeforeGet_Handler($Sender) {
+	public function DiscussionModel_BeforeGet_Handler($Sender,$args) {
 		$Debug = false;
 		if($this->CustomView != TRUE)  return;
         $query = $this->getquery();
@@ -171,6 +175,7 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
 		//Get the Discussion Table field names
 		$Table = 'Discussion';
 		$Fields = $this->GetColumns($Table,$Debug);
+        //decho (array_keys($Fields));
 		//echo '<BR>'.__FUNCTION__.__LINE__.' $Table:'.$Table.'<br>';
 		//var_dump($Fields);
 		//echo '<BR>'.__FUNCTION__.__LINE__.' $Table:'.$Table.'<br>';
@@ -230,7 +235,7 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
 					return;
                 }
                 $category =  $this->getcategoryid(urldecode($value));    //Get category object for the named category 
-               //decho ($category);
+                //decho ($category);
                 $categoryname = '';
                 if ($category) {
                     $key  = 'CategoryID';
@@ -283,7 +288,7 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
 				if ($Debug) echo '<br>'.__LINE__.' CurrentparmNum:'.$CurrentparmNum.'<br>';
 				continue;
 			} 
-			elseif (!in_array($key, $Fields)) {					//Not in the current table?
+			elseif (!isset($key, $Fields)) {					//Not in the current table?
 				$this->HelpMessage($key. ' '.Gdn::Translate('Not in the '.$Table.' table'),$Fields);  //Throw error as well as some help
 				echo '<br>Parameter '.$CurrentparmNum.' "'.$key.'" '.Gdn::Translate('Not allowed');
 				if ($Debug) {
@@ -322,29 +327,49 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
             }
 			// Handle the special case where the filter field is a date (DateInserted, DateUpdated, DateLastComment)
 			if ($Debug) 
-				echo '<BR>'.__FUNCTION__.__LINE__.' action:'.$action.' key:'.$key.' searchvalue:'.$searchvalue;
-			if (substr($key.'    ',0,4) == 'Date') {
-				if ($key == 'DateInserted') {
-					$Basedate=date_create($Discussion->DateInserted);
-				} elseif ($key == 'DateUpdated') {
-					$Basedate=date_create($Discussion->DateUpdated);
-				} elseif ($key == 'DateLastComment') {
-					$Basedate=date_create($Discussion->DateLastComment);
-				}
-				$Basedate = new DateTime();
+				echo '<BR>'.__FUNCTION__.__LINE__.' key:'.$key.' action:'.$action.' searchvalue:'.$searchvalue;
+            if ($Fields[$key] == 'datetime') {
+                $action = urldecode($action);
+                if ($Debug) echo '<BR>'.__FUNCTION__.__LINE__.' key:'.$key.' Fields[$key]:'.$Fields[$key].
+                     ' action:'.$action.' searchvalue:'.$searchvalue;
+                $Basedate=date_create($Discussion->$key);
+                $Basedate = new DateTime();
 				$cdate = date_add($Basedate,date_interval_create_from_date_string($searchvalue.' days'));
-				if ($action == 'd>') {
+                $searchvalue = date_format($cdate,'Y-m-d H:i:s');
+				if ($action == 'd>') {          //compatibility with older plugin version
 					$action = 'GT';
-					$searchvalue = date_format($cdate,'Y-m-d H:i:s');
-				} elseif ($action == 'd<') {
+				} elseif ($action == 'd<') {    //compatibility with older plugin version
 					$action = 'LT';
-					$searchvalue = date_format($cdate,'Y-m-d H:i:s');
 				}
-			}
+                if ($action == "NE") {
+                    $searchvalue = date_format($cdate,'Y-m-d');
+                } elseif ($action == "EQ") {
+                    $raction = $action;
+                    $action = "RN";
+                    $searchvalue = date_format($cdate,'Y-m-d');
+                    $Prevdate = $cdate->modify("-1 day");
+                    $searchvalue1 = date_format($Prevdate,'Y-m-d');
+                    $Nextdate = $cdate->modify("+2 day");
+                    $searchvalue2 = date_format($Nextdate,'Y-m-d');
+                } else {
+                    $searchvalue = date_format($cdate,'Y-m-d H:i:s');
+                }
+            }
 			//
 			if ($Debug) 
-				echo '<BR>'.__FUNCTION__.__LINE__.' action:'.$action.' key:'.$key.' searchvalue:'.$searchvalue;		
+				echo '<BR>'.__FUNCTION__.__LINE__.' key:'.$key.' action:'.$action.' searchvalue:'.$searchvalue;	
 			switch  ($action) {											//Build the SQL and title based on the operation
+				case "!A":
+                    $Sender->EventArguments['Wheres']['Announce'] = 0;
+					$Title=$Title . "  " . t("without announcements");
+                    $and = " & ";
+					break;
+				case "RN":                                  //Date Range
+					$Sender->SQL->Where($Searchcolumn." > ", $searchvalue1); 
+					$Sender->SQL->Where($Searchcolumn." < ", $searchvalue2);
+					$Title = $Title . $and . $key . " " . $raction ." " . $searchvalue."  ";
+                    $and = " & ";
+					break;
 				case "NL":
 					$Sender->SQL->Where('d.'.$key,NULL);			
 					$Title=$Title . $and . $key." is NULL ";
@@ -412,6 +437,8 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
             $Title = $Titlemsg;
         }
 		Gdn::Controller()->Title($Title);
+        
+        //if ($Debug) var_dump ($Sender->SQL->Where);
 		//That's all folks!
 	}
 	///////////////////////////////////////////////
@@ -438,10 +465,10 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
 		if ($Debug) echo '<br><h>'.__LINE__.' Table:'.$Table;
 		$database = new Gdn_Database();
 		$schema = new Gdn_Schema($Table, $database);
-		$Fields = array_keys($schema->fields());
-		if ($Debug) echo '<br><h>'.__LINE__.' Table:'.$Table;
-		if ($Debug) var_dump($Fields);
-		return $Fields;	
+        //decho ($schema);
+		$Fieldsandtypes  = array_column($schema->fields(),"Type","Name");
+        //decho ($Fieldsandtypes);
+        return $Fieldsandtypes;
 	}
 	///////////////////////////////////////////////
 	// Display data for debugging
@@ -467,6 +494,7 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
 	///////////////////////////////////////////////
    	// Display help messages
 	public function HelpMessage($Message,$Fields = array()) {
+        setcookie("IBPDfilter", null, time()+86400, "/");
 		if (!$Message == "") echo "<P><H1><B>FilterDiscussion Plugin Message:".$Message."<N></H1></P>";
 		echo '<div>'.'<BR>Syntax: &'. 'fieldname=operator:value:sortorder,...(can specify several field name combinations)';
 		if (is_array($Fields) && !empty($Fields))
@@ -533,6 +561,10 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
             'Plugins.FilterDiscussion.Fieldnames',
 			'Plugins.FilterDiscussion.Ignoreparms',
 			'Plugins.FilterDiscussion.DefaultFilter'));
+        $Table = 'Discussion';
+		$Fields = $this->GetColumns($Table,$Debug);
+        //decho (array_keys($Fields));
+        $Sender->SetData('Fields', array_keys($Fields));
 		for ($x = 1; $x <= 20; $x++) {	
 			$ConfigurationModel->SetField(array(
 				'Plugins.FilterDiscussion.SavedName'.$x,
@@ -556,8 +588,12 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
         $query = $_SERVER['QUERY_STRING'];
         //decho (explode("&", $query));
         if ($query == "!!") {
-            $query = Gdn::request()->get();
-            //decho ($query);
+            if (isset($_COOKIE["IBPDfilter"])) {
+                $query = $_COOKIE["IBPDfilter"];
+                //decho ($query);
+            } else {
+                $query = '';
+            }
         }
         //  Substitute saved filters (if !filter specified)
         if (Gdn::request()->get('!filter')){
@@ -572,10 +608,12 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
         }
         //
         if ($Duplicates) {
+            setcookie("IBPDfilter", trim($query), time()+86400, "/");
             return explode("&", $query);
         } else {
             $query = Gdn::request()->get();
             //decho ($query);
+            setcookie("IBPDfilter", trim($query), time()+86400, "/");
             return $query;
         }
     }

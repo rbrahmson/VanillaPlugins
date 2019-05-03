@@ -21,16 +21,20 @@
 <p><code spellcheck="false">&amp;Name=GE:A:a&amp;Name=LE:B</code></p>
 <p><em>Column-name</em> - a column name from the discussion table.&nbsp;Note that few plugins add additional columns to the discussion table and those are eligible for processing.</p>
 <p><em>OP </em>- one of these comparison operators:&nbsp;EQ, NE, GT, LT, NL, NN (equal, not equal, greater than, less than, null and not null)</p>
-<p><em>value </em>- the value to compare with</p>
+<p><em>value </em>- the value to compare with.</p>
 <p><em>sort-order</em> - either "a" for ascending or "d" for descending.</p>
 <p><strong>Symbolic Substitution</strong></p>
 <p>Three column names can be specified symbolically:</p>
 <ul>
-<li>{$category} in the column field indicates that the Value field contains the category name. Example: <em>{$category}=EQ:Sport</em> If the associated "Sport" CategoryID number is "5" then the example is equivalent to entering <em>CategoryID=EQ:5</em></li>
-<li>{$insertusername} in the column field indicates that the Value field contains the user name of the user who created the discussion. Example: <em>{$insertusername}=EQ:Joe Doe </em>If the associated "Joe Doe" UserID number is "15" then the example is equivalent to entering <em>InsertUserID=EQ:15</em> </li>
-<li>{$updateuserrname} in the column field indicates that the Value field contains the user name of the user who last updated the discussion. Example: <em>{$updateuserrname}=EQ:Joe Doe&amp;CategoryID=2 </em> If the associated "Joe Doe" UserID number is "15" then the example is equivalent to entering <em>UpdateUserID=EQ:15 </em></li>
+<li>{$category} in the column field indicates that the Value field contains the category name. Example: <em>{$category}=EQ:Sport</em> If the associated "Sport" CategoryID number is "5" then the example is equivalent to entering <code spellcheck="false"><em>CategoryID=EQ:5</em></code></li>
+<li>{$insertusername} in the column field indicates that the Value field contains the user name of the user who created the discussion. Example: <em>{$insertusername}=EQ:Joe Doe </em>If the associated "Joe Doe" UserID number is "15" then the example is equivalent to entering<code spellcheck="false">&nbsp;<em>InsertUserID=EQ:15</em>&nbsp;</code>&nbsp;</li>
+<li>{$updateuserrname} in the column field indicates that the Value field contains the user name of the user who last updated the discussion. Example:&nbsp;<code spellcheck="false">&nbsp;<em>{$updateuserrname}=EQ:Joe Doe&amp;CategoryID=2</em></code> If the associated "Joe Doe" UserID number is "15" then the example is equivalent to entering <code spellcheck="false"><em>UpdateUserID=EQ:15</em></code><em> </em></li>
 </ul>
-<p>There is also a "{$userid}" symbolic value that can be specified in the Value field.&nbsp;The symbolic value is referring to the logged in UserID number. Example:&nbsp;<em>UpdateUserID=EQ:{$userid}</em> will show all discussions updated by own user.</p>
+<p>Additionally these symbolic substitutions are also available in the <em>value </em>parameter:</p>
+<ul>
+<li>a positive or negative number can be specified in date column fields in the format -nnn or +nnn. For example: <code spellcheck="false">/discussions/FilterDiscussion/?DateInserted=EQ:0</code> can be used to filter on discussions created today and <code spellcheck="false">/discussions/FilterDiscussion/?DateInserted=EQ:-2</code> will display discussions created two days ago</li>
+<li>{$userid} in the value field is substituted for the logged in UserID number. Example:&nbsp;<code spellcheck="false"><em>UpdateUserID=EQ:{$userid}</em></code> will show all discussions updated by own user.</li>
+</ul>
 <p><strong>Discussion List Title</strong></p>
 <p>You can specify the discussion list title via the !msg= parameter.</p>
 <p>Example: <code spellcheck="false"><em>InsertUserID=EQ:{$userid}&amp;!msg=My Discussions</em></code></p>
@@ -41,7 +45,7 @@
 <li>{$username} - for the current username</li>
 <li>{$rusername} - for the Referred username in the last specified&nbsp;InsertUserID&nbsp;or&nbsp;UpdateUserID&nbsp;parameter.</li>
 </ul>
-<p>Example:&nbsp;<em>InsertUserID=EQ:4&amp;!msg={$rusername} Discussions</em></p>
+<p>Example:&nbsp;<code spellcheck="false"><em>InsertUserID=EQ:4&amp;!msg={$rusername} Discussions</em></code></p>
 <p>Note: The plugin does not validate that the title makes sense - it is all up to you. </p>
 <p><strong>Use Cases:</strong></p>
 <ul>
@@ -49,7 +53,7 @@
 <li>For administrators - to add menu options or side panel links for specialized views (see the&nbsp;<a href="https://open.vanillaforums.com/addon/addmenuitem-plugin" target="_blank" rel="noopener">Add Menu Item</a>&nbsp;and&nbsp;<a href="https://open.vanillaforums.com/addon/sidepanellinks-plugin" target="_blank" rel="noopener">Side Panel Links</a>&nbsp;plugins).</li>
 <li>For developers - to link to filtered views from web pages (e.g. The userid field in a discussion can link to a filtered view that shows discussions by that userid)&nbsp;</li>
 </ul>
-<p>Note: You may have other plugins that use URL parameters and you will need to define them in the "ignore list" on&nbsp;the dashboard setting for FilterDiscussion plugin so that it will ignore them and won't throw an error for undefined parameter.</p>
+<p>Note: You may have other plugins that use URL parameters and you will need to define them in the "ignore list" on&nbsp;the dashboard setting for FilterDiscussion plugin so that it will ignore them and won't throw an error for an undefined parameter.</p>
 <p><strong>Change log:</strong></p>
 <p>Version 1.2 - Added ignore list (ignored url parameters that may be used by other plugins/applications)</p>
 <p>Version 1.3 - Added saved filters (to use a named parameter to invoke multiple filters while hiding the filters from the user)</p>
@@ -59,7 +63,8 @@
 <p>- Support for using {$userid} in the value field to refer to one's own userid number.</p>
 <p>- Support for using named categories.</p>
 <p>- Support for including {username} and {category} in the title)</p>
-<p>Version 1.8.1 - Support for Vanilla 2.8. </p>
+<p>Version 1.8.2 - Support for Vanilla 2.8. </p>
 <p> - Support for sorting fields (thanks to user donshakespeare).&nbsp;</p>
 <p> - Support for filtering by explicit user names (rather than their internal numbers</p>
 <p> - Support for multiple filters on the same column name</p>
+<p> - Enhanced support for filtering with relative dates on date columns</p>
