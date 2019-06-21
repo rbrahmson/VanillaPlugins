@@ -1,0 +1,2 @@
+This is a simple add-on plugin to the CivilTongueEx plugin.  It alerts the discussion/comment creator to avoid the banned words defined via the CivilTongueEx plugin.
+This is suited for communities that do not have members that would try to circumvent the banned words.  Common use case: misspellings tha​​t ina​a​dvertently create a banned word.
