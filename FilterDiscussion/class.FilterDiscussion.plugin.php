@@ -2,9 +2,9 @@
 $PluginInfo['FilterDiscussion'] = array(
     'Name' => 'FilterDiscussion',
 	'Description' => "FilterDiscussion - A plugin that dynamically creates custom filtered / sorted discussion lists.",
-    'Version' => '1.8.2',
+    'Version' => '1.8.5',
     'RequiredApplications' => array('Vanilla' => '2.6'),       		    /*This is what I tested it on...*/
-    'RequiredTheme' => FALSE,
+    'RequiredTheme' => false,
 	'SettingsPermission' => 'Garden.Settings.Manage',	
     'SettingsUrl' => '/settings/filterdiscussion',
 	'RegisterPermissions' => array('Plugins.FilterDiscussion.View'),  	/*Permission to filter on fields*/
@@ -59,14 +59,34 @@ Version 1.8.1 - Support for Vanilla 2.8.
               Example:   /discussions/filterdiscussion?{$updateusername}=EQ:Joe%20Doe:d
             - Support for relative dates (number of dates from today in the value field entered as +nn or -nn)
               Example:  /discussions/FilterDiscussion/?DateInserted=EQ:-1      //Display yesterday's discussions.
-
+Version 1.8.3 - Support for date fields without time (just "Date").   
+Version 1.8.4 - retracted: filtering on unread discussions (use operator !R).   
+Version 1.8.5 - (1) Passing symbolic paameters to saved filters.
+                    Example: Assume save named "RecentinCategory" defined as: DateInserted=EQ:-10&{$category}=EQ:{1}
+                    Then invoking a url like "/discussions/filterdiscussion?!filter=RecentinCategory&{1}=books"
+                    will be equivalent to  "/discussions/filterdiscussion?DateInserted=EQ:-10&{$category}=EQ:books"
+                    The {$category} is explaied above (indicates category name filtering).  -10 represents ten days backward.
+                    This is useful when invoking filters from menus or other urls.
+                (2) Sorting without filtering: New operand: "sort". Syntax: fieldname=sort:order.  
+                    Example: "/discussions/filterdiscussion?DiscussionID=sort:a" to sort discussions in reverse order
+                    it's a clearer way of sorting than using "/discussions/filterdiscussion?InsertUserID=EQ::d" (omitting the comparison and specifying sort order)
+                (3) Admin only parameter: !info - will display database info on the title line (ignored if user is not admin)
+                    Sample output: "PHP Version:7.4.b2 Database Version:6.8.1b-cll-lve Database Name:abcd Database HostName:abcd Server Software: Apache"
+                (4) Ignore key case (e.g. allow use of discussionId instead of DiscussionID).  This is more than a trivial change - it allows the use of multiple
+                    filter parameters on the same field.  Example: "/discussions/filterdiscussion?DiscussionID=GT:2000&DISCUSSIONID=LT:2020
+                    It will shows discussions with IDs between 2000 and 2020.  Note that if both DiscussionID parameters would have been specified in the same case
+                    only one (usually the last) parameter would be passed to the server preventing the use of multiple conditions on the same field.
+                (5) New "-a!" parameter that rmoves announcements from the resulting data. Example: "/discussions/filterdiscussion?DiscussionID=GT:2000&!a-"
+                    (To show just the announcement use the Announce=EQ:1 parameter as in "/discussions/filterdiscussion?Announce=EQ:1"
+                    
+                    
 No warranty whatsoever is implied by releasing this plugin to the Vanilla community.
 */
 
 class FilterDiscussionPlugin extends Gdn_Plugin {
 
   // Indicates whether or not we are in the Filtered view
-  private $CustomView = FALSE;
+  private $CustomView = false;
   ///////////////////////////////////////////////
     public function plugincontroller_filterdiscussion_create($Sender, $Args = '') {
         $this->settingsController_FilterDiscussion_Create($Sender, $Args);
@@ -101,6 +121,53 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
     }
   }
   ///////////////////////////////////////////////
+  // Handle additional columns
+	public function zzzDiscussionModel_AfterDiscussionSummaryQuery_Handler($Sender,$args) {
+        $IsAdmin = Gdn::Session()->CheckPermission('Garden.Settings.Manage');
+        if (!$IsAdmin) return;
+        $parms = array_change_key_case($_GET);
+        if (!isset($parms["!r"])) return;
+        //decho ($Sender->EventArguments);
+        //decho ($Sender->SQL);
+        //$sql = $Sender->SQL->query($Sender->SQL);
+        //decho (__LINE__);
+        //decho ($sql);
+        //Gdn::sql
+        //$this->ShowSQL($Sender->SQL,__LINE__."Sender->SQL",'');
+  }
+  ///////////////////////////////////////////////
+  // Handle annoncements 
+	public function DiscussionModel_AfterAddColumns_Handler($Sender,$args) {
+        $parms = array_change_key_case($_GET);
+        if (isset($parms["!a-"])) {
+            $Sender->removeAnnouncements($Sender->EventArguments['Data']);
+            if (isset($parms["!msg"]) OR isset($parms["!filter"])) {
+                return;
+            }
+            $Title = Gdn::Controller()->Title($Title) . " " .t("without announcements");
+            Gdn::Controller()->Title($Title);
+        } elseif (isset($parms["!a+"])) {                           //By default announcements are included so just add the title
+            if (isset($parms["!msg"]) OR isset($parms["!filter"])) {
+                return;
+            }
+            $Title = Gdn::Controller()->Title($Title) . " " .t("with announcements");
+            Gdn::Controller()->Title($Title);
+        }
+  }
+  ///////////////////////////////////////////////
+  // Check the query for debugging
+	private function ShowSQL($Sender,$args) {
+        $IsAdmin = Gdn::Session()->CheckPermission('Garden.Settings.Manage');
+        if (!$IsAdmin) return;
+        //$this->Showdata($Sender->SQL,"Sender->SQL",''); 
+        //$Where = val($Sender->SQL,"Where");
+        //decho ($Sender->SQL);
+        //$this->Showdata($Sender->SQL->Wheres,$args." Sender->SQL->Wheres'",''); 
+        //decho ($args);
+        //decho ($Sender->EventArguments);
+        //die(0);
+  }
+  ///////////////////////////////////////////////
   // Main processing of the custom view
 	public function DiscussionModel_BeforeGet_Handler($Sender,$args) {
 		$Debug = false;
@@ -111,6 +178,7 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
 			Gdn::Controller()->Title($Title);
 			return;														// and return without any custom view
 		}
+        $IsAdmin = Gdn::Session()->CheckPermission('Garden.Settings.Manage');
         //
 		/* As of Version 1.5 the list of allowable filter fields is optional.
 		// Validate that passed column named are prelisted in the administrator configuration screen 
@@ -201,6 +269,14 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
             $entry = explode("=", $element);
             //decho ($entry);
             $key = trim($entry[0]);
+            $prefix = "";
+            if (substr($key,1,1) == "_") {
+                $keyparts = explode("_", $key);
+                if ($keyparts[0] != $key) {
+                    $prefix = $keyparts[0];
+                    $key = $keyparts[1];
+                }
+            }
             if (substr($key.' ',0,1) == "!") {
                 $value = $entry[1];
                 $action = '';
@@ -208,7 +284,7 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
             } else {
                 $Valuearray = explode(":",$entry[1]);
                 //decho ($Valuearray);
-                $action = $Valuearray[0];
+                $action = strtoupper($Valuearray[0]);
                 $value = $Valuearray[1];
                 $order = $Valuearray[2];
             }
@@ -279,56 +355,93 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
 			}
 			// Special parameter to create the title for the result screen (may include some HTML)
 			// e.g. discussions/filterdiscussion?Alert=NN&!msg=<span%20style="color:white;background-color:blue">Alerts</span>
-			elseif ($key == "!msg") {				
-				$Titlemsg = urldecode($value);
+			elseif ($key == "!info") {
+                if ($IsAdmin) {
+                    $rsql = clone Gdn::sql();
+                    $rsql->reset();
+                    $Titlemsg .= "<h2>PHP Version:" . PHP_VERSION .
+                                " Database Version:".$rsql->information('Version').
+                                " Database Name:".$rsql->information('DatabaseName').
+                                " Database HostName:".$rsql->information('HostName').
+                                " Server Software: ". Gdn::request()->getRequestArguments('server')["SERVER_SOFTWARE"].
+                                "</H2>";
+                    if ($Debug) echo '<br>'.__LINE__.' CurrentparmNum:'.$CurrentparmNum.'<br>';
+                }
+				continue;
+			} 
+			elseif ($key == "!r") {
+				continue;
+			} 
+			elseif ($key == "!a-") {
+				continue;
+			}
+			elseif ($key == "!new") {
+                $Sender->SQL->Where("w.CountComments",' > ', '0');
+                $Title=$Title . " New ";
+                $and = " & ";
+                if ($Debug) echo '<BR> EQ.  Title='.$Title.'<br>';
+				continue;
+			} 
+			elseif ($key == "!read") {
+                $Sender->SQL->Where("w.CountComments",' = ', '0');
+                $Title=$Title . " read ";
+                $and = " & ";
+                if ($Debug) echo '<BR> EQ.  Title='.$Title.'<br>';
+				continue;
+			} 
+			elseif ($key == "!msg") {
+				$Titlemsg .= urldecode($value);
                 $vars['{$category}'] = $categoryname;
                 $vars['{$username}'] = $Username;
                 $vars['{$rusername}'] = $rUsername;
+                $vars['{$filter}'] = Gdn::request()->get('!filter');
                 $Titlemsg = strtr($Titlemsg, $vars);  // 1.6 - support for dynamic reference to self userid and category name in title
 				if ($Debug) echo '<br>'.__LINE__.' CurrentparmNum:'.$CurrentparmNum.'<br>';
 				continue;
-			} 
-			elseif (!isset($key, $Fields)) {					//Not in the current table?
-				$this->HelpMessage($key. ' '.Gdn::Translate('Not in the '.$Table.' table'),$Fields);  //Throw error as well as some help
-				echo '<br>Parameter '.$CurrentparmNum.' "'.$key.'" '.Gdn::Translate('Not allowed');
-				if ($Debug) {
-						echo '<br>'.__LINE__.' key:'.$key;
-						echo "<BR>'.__LINE__.'Defined fields: " . implode(",", $Fields);
-						//var_dump($Fields);
-				}
-				return;
 			}
-			elseif (is_array($ValidFields) && !empty($ValidFields) && !in_array($key, $ValidFields)) {					//Not in the list?
+            elseif ($prefix == "") {                        //Experimental
+                if (!array_key_exists($key, $Fields)) {
+                    $lcfields = array_change_key_case($Fields);
+                    if (array_key_exists(strtolower($key), $lcfields)) {                    //Ignore case of key (Version 1.8.5)
+                        $nameindex = array_search(strtolower($key),array_keys($lcfields));  
+                        $key = array_keys($Fields)[$nameindex];                             //Use correct key case
+                    } else {
+                        $this->HelpMessage($key. ' '.Gdn::Translate('Not in the '.$Table.' table'),$Fields);  //Throw error as well as some help
+                        return;
+                    }
+                }
+            }
+			if (is_array($ValidFields) && !empty($ValidFields) && !in_array($key, $ValidFields)) {					//Not in the allowed list?
 				$this->HelpMessage($key. " ".Gdn::Translate('Not allowed'),$ValidFields);  //Throw error as well as some help
 				echo "<br>Parameter ".$CurrentparmNum." ".$key. " ".Gdn::Translate('Not allowed');
 				return;
 			}
-            $value = strtr($value, $vars);  // 1.6 - support for dynamic reference to self userid
-			$Searchcolumn = 'd.'.$key;					//For now just the discussion table
-			$searchvalue = $value;
+            $value = strtr($value, $vars);                          // 1.6 - support for dynamic reference to self userid
+            if ($prefix) {                                          //Experimental
+                $Searchcolumn = $prefix.'.'.$key;					//Take parameter table prefix (at caller's risk...)
+            } else {
+                $Searchcolumn = 'd.'.$key;					        //Default is the discussion table
+            }
+			$searchvalue = $value; 
 			if ($order) {
-                if ($order == "d") {
-                    $order = 'desc';
-                } elseif ($order == "a") {
-                    $order = 'asc';
-                } elseif ($order == "") {
-                } else {
-                    echo "<br> ".Gdn::Translate('Use + or - for sorting order');
+                $direction = str_ireplace(["a","d"], ["asc","desc"], $order, $repcount);
+                if (!$repcount) {
+                    echo "<br> ".Gdn::Translate('Use a or d for sorting order');
                     $this->HelpMessage($order. " ".Gdn::Translate(' is not a valid sort order'),$ValidFields);  //Throw error as well as some help
                     return;
-                }						
+                }			
                 if ($Debug) {
-                    echo '<BR>'.__LINE__.' key:'.$key.' operand:'.$action.' value:'.$searchvalue.' order:'.$order.'<br>';
+                    echo '<BR>'.__LINE__.' key:'.$key.' operand:'.$action.' value:'.$searchvalue.' order:'.$order.' direction:'.$direction.'<br>';
                 }
-                if ($order) {
-                    $Sender->SQL->orderBy('d.'.$key,$order);
+                if ($direction) {
+                    $Sender->SQL->orderBy('d.'.$key,$direction);
                 }
-                if ($searchvalue === "" || !$action) continue;
+                if ($searchvalue === "" || !$action) continue;                  //Allow sort order without filtering
             }
 			// Handle the special case where the filter field is a date (DateInserted, DateUpdated, DateLastComment)
 			if ($Debug) 
 				echo '<BR>'.__FUNCTION__.__LINE__.' key:'.$key.' action:'.$action.' searchvalue:'.$searchvalue;
-            if ($Fields[$key] == 'datetime') {
+            if ($Fields[$key] == 'datetime' || $Fields[$key] == 'date') {
                 $action = urldecode($action);
                 if ($Debug) echo '<BR>'.__FUNCTION__.__LINE__.' key:'.$key.' Fields[$key]:'.$Fields[$key].
                      ' action:'.$action.' searchvalue:'.$searchvalue;
@@ -357,12 +470,48 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
             }
 			//
 			if ($Debug) 
-				echo '<BR>'.__FUNCTION__.__LINE__.' key:'.$key.' action:'.$action.' searchvalue:'.$searchvalue;	
+				echo '<BR>'.__LINE__.' Searchcolumn:'.$Searchcolumn.' action:'.$action.' searchvalue:'.$searchvalue;	
 			switch  ($action) {											//Build the SQL and title based on the operation
-				case "!A":
-                    $Sender->EventArguments['Wheres']['Announce'] = 0;
-					$Title=$Title . "  " . t("without announcements");
+				case "SORT":                                               //Special case - no filter, just sort
+                    $direction = str_ireplace(["a","d"], ["asc","desc"], $searchvalue, $repcount);
+                    if (!$repcount) {
+                        echo "<br> ".Gdn::Translate('Use a or d for sorting order');
+                        $this->HelpMessage($searchvalue. " ".Gdn::Translate(' is not a valid sort order'),$ValidFields);  //Throw error as well as some help
+                        return;
+                    }
+                    if ($direction) {
+                        $Sender->SQL->orderBy('d.'.$key,$direction);
+                    }
+					break;	
+                case "LIMIT":                                               //For future development
+                case "OFFSET":  
+                    (is_numeric($searchvalue) && $searchvalue > 0) ? $amount = $searchvalue : $amount = 0;
+                    if (!is_numeric($searchvalue)) {
+                        echo "<br> ".Gdn::Translate('Use a numeric value for '.$action);
+                        $this->HelpMessage($searchvalue. " ".Gdn::Translate(' is not a valid amount'));  //Throw error as well as some help
+                        return;
+                    }
+                    //decho ($amount);
+                    if ($action == "LIMIT") {
+                        $Sender->SQL->limit($amount);   //FFU -- does not seem to work
+                    } else {
+                        $Sender->SQL->offset($amount);   //FFU -- does not seem to work
+                    }
+					break;											//Build the SQL and title based on the operation
+				case "!R":
+                    ///$Sender->SQL->Where('w.UserID  ', Gdn::Session()->UserID);	 
+                    //$Sender->EventArguments['Wheres']['d.DiscussionID'] = " > " . $searchvalue;
+                    $args['Wheres']['d.DiscussionID'] = " <> " . $searchvalue;
+                    //$args['Wheres']['userID'] = " > " . $searchvalue;
+                    //$args['Wheres']['d.DiscussionID'] = ' < 685' ;
+                    //$this->Showdata($Sender->EventArguments['Wheres']," Sender->EventArguments['Wheres']",''); 
+                    //$this->Showdata($Sender->EventArguments," Sender->EventArguments",''); 
+                    decho ($args);
+                    decho ($Sender->EventArguments['Wheres']);
+					$Title=$Title . "  " . t("Unread Discussions");
                     $and = " & ";
+                    $Getfilters = $Sender->getFilters();
+                    decho ($Getfilters);
 					break;
 				case "RN":                                  //Date Range
 					$Sender->SQL->Where($Searchcolumn." > ", $searchvalue1); 
@@ -437,14 +586,14 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
             $Title = $Titlemsg;
         }
 		Gdn::Controller()->Title($Title);
-        
+        //$this->ShowSQL($Sender,__LINE__."Sender->SQL",'');
         //if ($Debug) var_dump ($Sender->SQL->Where);
 		//That's all folks!
 	}
 	///////////////////////////////////////////////
 	public function getcategoryid($categoryname, $Debug = false) {
 		if ($Debug) echo '<br><h>'.__LINE__.' categoryname:'.$categoryname;
-        //We need to use new DB access (to endure we don't destroy th in-flight SQL set by DiscussionModel_BeforeGet)
+        //We need to use new DB access (to ensure we don't destroy th in-flight SQL set by DiscussionModel_BeforeGet)
         $Sql = clone Gdn::sql(); 
         $Sql->reset();
         $User = '0';
@@ -459,7 +608,6 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
         //decho ($Results);
         return $Results;
 	}
-	///////////////////////////////////////////////
 	///////////////////////////////////////////////
 	public function GetColumns($Table = 'Discussion', $Debug = false) {
 		if ($Debug) echo '<br><h>'.__LINE__.' Table:'.$Table;
@@ -495,10 +643,17 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
    	// Display help messages
 	public function HelpMessage($Message,$Fields = array()) {
         setcookie("IBPDfilter", null, time()+86400, "/");
-		if (!$Message == "") echo "<P><H1><B>FilterDiscussion Plugin Message:".$Message."<N></H1></P>";
+        (isset(debug_backtrace()[0]['line'])) ? $line = debug_backtrace()[0]['line'] : $line = __LINE__;
+		if (!$Message == "") echo "<P><H1><B>".$line." FilterDiscussion Plugin Message:".$Message."<N></H1></P>";
 		echo '<div>'.'<BR>Syntax: &'. 'fieldname=operator:value:sortorder,...(can specify several field name combinations)';
-		if (is_array($Fields) && !empty($Fields))
-			echo '<BR><b><span>Defined fields:</b><n></span><span style="color:#0000FF"> ' . implode(", ", $Fields).'</span>';
+		if (is_array($Fields) && !empty($Fields)) {
+            if ( count(array_filter(array_keys($Fields), 'is_string')) > 0) {
+                $fieldnames =  implode(", ", array_keys($Fields));
+            } else {
+                $fieldnames =  implode(", ", $Fields);
+            }
+			echo '<BR><b><span>Defined fields:</b><n></span><span style="color:#0000FF"> ' . $fieldnames . '</span>';
+        }
 		//$this->Showdata($Fields,'Defined fields:','');
 		echo "<p><b>Valid operators: EQ, NE, GT, LT, NL, NN, LK, NK";
 		echo "<br><b>For date fields these additional operators apply: d&gt, d&lt.  If used the value field is the +or - followed by the number of days from the current date";
@@ -573,12 +728,12 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
         $Sender->Form->SetModel($ConfigurationModel);
 
 
-        if ($Sender->Form->AuthenticatedPostBack() === FALSE) {
+        if ($Sender->Form->AuthenticatedPostBack() === false) {
             $Sender->Form->SetData($ConfigurationModel->Data);
         } else {
             $Data = $Sender->Form->FormValues();
 
-            if ($Sender->Form->Save() !== FALSE)
+            if ($Sender->Form->Save() !== false)
                 $Sender->StatusMessage = Gdn::Translate("Your settings have been saved.");
         }
         $this->renderview($Sender, 'filterdiscussionsettings');
@@ -586,33 +741,51 @@ class FilterDiscussionPlugin extends Gdn_Plugin {
 	///////////////////////////////////////////////
     private function getquery($Duplicates = true) {
         $query = $_SERVER['QUERY_STRING'];
-        //decho (explode("&", $query));
         if ($query == "!!") {
             if (isset($_COOKIE["IBPDfilter"])) {
                 $query = $_COOKIE["IBPDfilter"];
-                //decho ($query);
             } else {
                 $query = '';
             }
         }
         //  Substitute saved filters (if !filter specified)
-        if (Gdn::request()->get('!filter')){
-            $filtername = Gdn::request()->get('!filter');
-            //decho ($filtername);
+        $request = Gdn::request()->get();
+        if (isset($request['!filter'])){
+            $filtername = $request['!filter'];
             $query = GetSavedFilter($filtername);
             if ($query == "") {
                 $this->HelpMessage(Gdn::Translate('Named Filter "').$filtername. '" '.Gdn::Translate('Not defined'));  //Throw error as well as some help
                 return null;
             }
-            //decho ($query);
         }
+        parse_str($_SERVER['QUERY_STRING'], $Original);
+        parse_str($query, $Parsed);
+        $newrequest = '';
+        foreach ($Parsed as $keyword => $value) {
+            $parts = explode(':',$value);
+            if (in_array($parts[0],["{0}","{1}","{2}","{3}","{4}","{5}","{6}","{7}","{8},{9}"]) OR 
+                in_array($parts[1],["{0}","{1}","{2}","{3}","{4}","{5}","{6}","{7}","{8},{9}"])) {
+                if (isset($Original[$parts[0]])) {
+                    $parts[0] = $Original[$parts[0]];
+                    $value = implode(':',$parts);
+                    $newrequest .= "&".$keyword.'='.$value;
+                }
+                if (isset($Original[$parts[1]])) {
+                    $parts[1] = $Original[$parts[1]];
+                    $value = implode(':',$parts);
+                    $newrequest .= "&".$keyword.'='.$value;
+                }
+            } else {
+                $newrequest .= "&".$keyword.'='.$value;
+            }
+        }
+        if ($newrequest) $query = $newrequest;
         //
         if ($Duplicates) {
             setcookie("IBPDfilter", trim($query), time()+86400, "/");
             return explode("&", $query);
         } else {
             $query = Gdn::request()->get();
-            //decho ($query);
             setcookie("IBPDfilter", trim($query), time()+86400, "/");
             return $query;
         }

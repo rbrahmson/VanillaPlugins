@@ -1,70 +1,64 @@
-<p>The plugin creates custom filtered and optionally sorted discussions lists. The customized lists can be invoked through other plugins, menu options or panel links.</p>
-<p>The filtered/sorted lists are specified via url parameters which can be concealed from the end user via pre-saved named filtered lists. </p>
-<p><strong>Security</strong>: </p>
-<ol>
-<li>The plugin complies with the built-in Vanilla security model -- it can only display what the user is already permitted to see.</li>
-<li>The use of the plugin requires additional permission set by the admin in "Roles and Permission" ('Plugins.FilterDiscussion.View'). An admin testing the plugin may not notice this requirement because admins are authorized to see everything.</li>
-<li>The plugin settings defines which columns are eligible for filtering preventing any attempt to filter on other columns.</li>
-<li>As mentioned above, filters can be named and saved so that the filtering/sorting parameters are concealed from the end user.</li>
-</ol>
-<p><strong>Filtering Specification:</strong></p>
-<p>The basic syntax of a filter is:&nbsp;<em>column-name=OP:value:sort-order</em> </p>
-<p>this set can be repeated to specify multiple conditions.</p>
-<p>The only required parameter is the <em>column</em>-<em>name </em>and one of the operands following the equal sign.</p>
-<p>All parameters are AND conditions -- all filters must be satisfied to display a discussion on the list </p>
-<p>Example: </p>
-<p><code spellcheck="false">Prefix=EQ:Video&amp;InsertUserID=EQ:13&amp;CategoryID=EQ:6&amp;Name=::a </code></p>
-<p><em>Prefix </em>is a column name (created by the&nbsp;<a href="https://open.vanillaforums.com/addon/prefixdiscussion-plugin" target="_blank" rel="noopener">Prefix Discussion</a>&nbsp;plugin).&nbsp;In this example the filtered list shows discussions with the prefix "Video" which were created by user 13 and saved in category 6, and the list is sorted by the discussion title (<em>name</em>) in ascending order. Clearly this need to know the user and category numbers is inconvenient and for that reason the plugin offers symbolic substitution that allows to filter on user and category names instead of their internal numbers.&nbsp;More about that later.</p>
-<p>The full URL of that filter is:</p>
-<p><code spellcheck="false"><em>your-forum/discussions/filterdiscussion?Prefix=EQ:Video&amp;InsertUserID=EQ:13&amp;CategoryID=EQ:6&amp;Name=::a</em></code></p>
-<p>The plugin supports multiple conditions on the same column.&nbsp;For example, the following filter displays discussions with titles starting with the letters A through B:</p>
-<p><code spellcheck="false">&amp;Name=GE:A:a&amp;Name=LE:B</code></p>
-<p><em>Column-name</em> - a column name from the discussion table.&nbsp;Note that few plugins add additional columns to the discussion table and those are eligible for processing.</p>
-<p><em>OP </em>- one of these comparison operators:&nbsp;EQ, NE, GT, LT, NL, NN (equal, not equal, greater than, less than, null and not null)</p>
-<p><em>value </em>- the value to compare with.</p>
-<p><em>sort-order</em> - either "a" for ascending or "d" for descending.</p>
-<p><strong>Symbolic Substitution</strong></p>
-<p>Three column names can be specified symbolically:</p>
-<ul>
-<li>{$category} in the column field indicates that the Value field contains the category name. Example: <em>{$category}=EQ:Sport</em> If the associated "Sport" CategoryID number is "5" then the example is equivalent to entering <code spellcheck="false"><em>CategoryID=EQ:5</em></code></li>
-<li>{$insertusername} in the column field indicates that the Value field contains the user name of the user who created the discussion. Example: <em>{$insertusername}=EQ:Joe Doe </em>If the associated "Joe Doe" UserID number is "15" then the example is equivalent to entering<code spellcheck="false">&nbsp;<em>InsertUserID=EQ:15</em>&nbsp;</code>&nbsp;</li>
-<li>{$updateuserrname} in the column field indicates that the Value field contains the user name of the user who last updated the discussion. Example:&nbsp;<code spellcheck="false">&nbsp;<em>{$updateuserrname}=EQ:Joe Doe&amp;CategoryID=2</em></code> If the associated "Joe Doe" UserID number is "15" then the example is equivalent to entering <code spellcheck="false"><em>UpdateUserID=EQ:15</em></code><em> </em></li>
-</ul>
-<p>Additionally these symbolic substitutions are also available in the <em>value </em>parameter:</p>
-<ul>
-<li>a positive or negative number can be specified in date column fields in the format -nnn or +nnn. For example: <code spellcheck="false">/discussions/FilterDiscussion/?DateInserted=EQ:0</code> can be used to filter on discussions created today and <code spellcheck="false">/discussions/FilterDiscussion/?DateInserted=EQ:-2</code> will display discussions created two days ago</li>
-<li>{$userid} in the value field is substituted for the logged in UserID number. Example:&nbsp;<code spellcheck="false"><em>UpdateUserID=EQ:{$userid}</em></code> will show all discussions updated by own user.</li>
-</ul>
-<p><strong>Discussion List Title</strong></p>
-<p>You can specify the discussion list title via the !msg= parameter.</p>
-<p>Example: <code spellcheck="false"><em>InsertUserID=EQ:{$userid}&amp;!msg=My Discussions</em></code></p>
-<p>The !msg parameter should be the last one specified.&nbsp;If it is omitted the plugin builds a message reflecting the filter.</p>
-<p>The following symbolic parameters can be specified in the !msg parameter:</p>
-<ul>
-<li>{$userid} - for the current userid&nbsp;</li>
-<li>{$username} - for the current username</li>
-<li>{$rusername} - for the Referred username in the last specified&nbsp;InsertUserID&nbsp;or&nbsp;UpdateUserID&nbsp;parameter.</li>
-</ul>
-<p>Example:&nbsp;<code spellcheck="false"><em>InsertUserID=EQ:4&amp;!msg={$rusername} Discussions</em></code></p>
-<p>Note: The plugin does not validate that the title makes sense - it is all up to you. </p>
-<p><strong>Use Cases:</strong></p>
-<ul>
-<li>For administrators - to check on content without having to go to the SQL database</li>
-<li>For administrators - to add menu options or side panel links for specialized views (see the&nbsp;<a href="https://open.vanillaforums.com/addon/addmenuitem-plugin" target="_blank" rel="noopener">Add Menu Item</a>&nbsp;and&nbsp;<a href="https://open.vanillaforums.com/addon/sidepanellinks-plugin" target="_blank" rel="noopener">Side Panel Links</a>&nbsp;plugins).</li>
-<li>For developers - to link to filtered views from web pages (e.g. The userid field in a discussion can link to a filtered view that shows discussions by that userid)&nbsp;</li>
-</ul>
-<p>Note: You may have other plugins that use URL parameters and you will need to define them in the "ignore list" on&nbsp;the dashboard setting for FilterDiscussion plugin so that it will ignore them and won't throw an error for an undefined parameter.</p>
-<p><strong>Change log:</strong></p>
-<p>Version 1.2 - Added ignore list (ignored url parameters that may be used by other plugins/applications)</p>
-<p>Version 1.3 - Added saved filters (to use a named parameter to invoke multiple filters while hiding the filters from the user)</p>
-<p>Version 1.4 - Restructured internal functions, out of array index bug fix, increased number of defined filters</p>
-<p>Version 1.5 - Added relative date filtering for discussion date columns (for example, DateInserted=d&gt;:-7 filters on discussions created in the last seven days)</p>
-<p>Version 1.6 - Support for Vanilla 2.6.</p>
-<p>- Support for using {$userid} in the value field to refer to one's own userid number.</p>
-<p>- Support for using named categories.</p>
-<p>- Support for including {username} and {category} in the title)</p>
-<p>Version 1.8.2 - Support for Vanilla 2.8. </p>
-<p> - Support for sorting fields (thanks to user donshakespeare).&nbsp;</p>
-<p> - Support for filtering by explicit user names (rather than their internal numbers</p>
-<p> - Support for multiple filters on the same column name</p>
-<p> - Enhanced support for filtering with relative dates on date columns</p>
+The plugin filters the discussion list based on the value of the fields in the discussions database. The filtered view is flexible as the filters are specified via URL parameters using flexible syntax. For example, filtering by the CategoryID field is equivalent to display discussions for a particular category. A combination of fields is allowed and the list of supported fields is specified in the administration dashboard. 
+
+Combination field names can be specified to create refined filters.  If the Discussion table in the database has been extended with additional fields, then these can be used as well. For example, the PrefixDiscussion plugin adds a field called "Prefix", so it is possible to filter with the "Prefix=" parameter. Example: /discussions/filterdiscussion&Prefix=EQ:Video&InsertUserID=EQ:13&CategoryID=EQ:6
+
+The title of the resulting filtered screen can also be specified via the &!msg= parameter. Some html tags can be specified (at your risk).
+Example: /discussions/filterdiscussion&Prefix=EQ:Video&!msg=<span%20style="color:white;background-color:blue">Highlighted%20Videos</span>
+
+Named filters can be globally saved via the plugin settings through the admin dashboard. Saved filters provide the ability to apply filters
+without exposing to the end user the actual parameters being used.   
+For example, assume a saved filter named "AlertedVideos" is defined as "&Prefix=EQ:Video&Alert=NN&!msg=Videos of interest"
+To invoke that view the following url is needed "/discussions/filterdiscussion&!filter=AlertedVideos
+(The above example assumed that both PrefixDiscussion and DicsussionAlert plugins are installed 
+	-- they add the Prefix and Alert fields to the discussion table).
+
+
+There are three types of use cases for this plugin:
+1. For administrators  - to check on content without having to go to the SQL database
+2. For developers - to link to filtered views from web pages (e.g. The userid field in a discussion can link to a filtered view that shows discussions by that userid) 
+3. For administrators - to add menu options for specialized views 
+
+Special permission must be set to allow users to use the plugin.  After enabling the plugin see "Roles & Permission" in the admin dashboard.
+
+Note: You may have other plugins that use URL parameters and you will need to define them in the "ignore list" on 
+the dashboard setting for FilterDiscussion plugin so that it will ignore them and won't throw an error for undefined parameter.   This ignore list has been added in Version 1.2.
+
+Change log:
+Version 1.2 - Added ignore list (ignored url parameters that may be used by other plugins/applications)
+Version 1.3 - Added saved filters (to use a named parameter to invoke multiple filters while hiding the filters from the user)
+Version 1.4 - Restructured internal functions, out of arrary index bug fix, increased number of defined filters
+Version 1.5 - Added relative date filtering for discussion date columns (for example, DateInserted=d>:-7 filters on discussions created in the last seven days)
+Version 1.6 - Support for Vanilla 2.6.   
+            - Support for using {$userid} in the value field to refer to one's own userid number. Example: /discussions/filterdiscussion?InsertUserID=EQ:{$userid}
+            - Support for using {$category} in the column name and then the caegory name in the value to mean "EQ:caegory-number-corresponding-to-the-name".
+              example: /discussions/filterdiscussion?InsertUserID=EQ:{$userid}&{$category}=General
+            - Support for including {$username} and {$category} in the !msg title (if this is the last parameter)
+              example: /discussions/filterdiscussion?InsertUserID=EQ:{$userid}&{$category}General&!msg={$category}
+Version 1.8.1 - Support for Vanilla 2.8.   
+            - Support for sorting fields (thanks to user donshakespeare who requested this feature). 
+              Example:   /discussions/filterdiscussion?InsertUserID=EQ:{$userid}:d
+            - support for filtering by explicit user names (rather thantheir internal numbers)
+              Example:   /discussions/filterdiscussion?{$insertusername}=EQ:Joe%20Doe:a
+              Example:   /discussions/filterdiscussion?{$updateusername}=EQ:Joe%20Doe:d
+            - Support for relative dates (number of dates from today in the value field entered as +nn or -nn)
+              Example:  /discussions/FilterDiscussion/?DateInserted=EQ:-1      //Display yesterday's discussions.
+Version 1.8.3 - Support for date fields without time (just "Date").   
+Version 1.8.4 - filtering on unread discussions (use operator !R).   
+Version 1.8.5 - (1) Passing symbolic paameters to saved filters.
+                    Example: Assume save named "RecentinCategory" defined as: DateInserted=EQ:-10&{$category}=EQ:{1}
+                    Then invoking a url like "/discussions/filterdiscussion?!filter=RecentinCategory&{1}=books"
+                    will be equivalent to  "/discussions/filterdiscussion?DateInserted=EQ:-10&{$category}=EQ:books"
+                    The {$category} is explaied above (indicates category name filtering).  -10 represents ten days backward.
+                    This is useful when invoking filters from menus or other urls.
+                (2) Sorting without filtering: New operand: "sort". Syntax: fieldname=sort:order.  
+                    Example: "/discussions/filterdiscussion?DiscussionID=sort:a" to sort discussions in reverse order
+                    it's a clearer way of sorting than using "/discussions/filterdiscussion?InsertUserID=EQ::d" (omitting the comparison and specifying sort order)
+                (3) Admin only parameter: !info - will display database info on the title line (ignored if user is not admin)
+                    Sample output: "PHP Version:7.4.b2 Database Version:6.8.1b-cll-lve Database Name:abcd Database HostName:abcd Server Software: Apache"
+                (4) Ignore key case (e.g. allow use of discussionId instead of DiscussionID).  This is more than a trivial change - it allows the use of multiple
+                    filter parameters on the same field.  Example: "/discussions/filterdiscussion?DiscussionID=GT:2000&DISCUSSIONID=LT:2020
+                    It will shows discussions with IDs between 2000 and 2020.  Note that if both DiscussionID parameters would have been specified in the same case
+                    only one (usually the last) parameter would be passed to the server preventing the use of multiple conditions on the same field.
+                (5) New "-a!" parameter that rmoves announcements from the resulting data. Example: "/discussions/filterdiscussion?DiscussionID=GT:2000&!a-"
+                    (To show just the announcement use the Announce=EQ:1 parameter as in "/discussions/filterdiscussion?Announce=EQ:1"
+                    
