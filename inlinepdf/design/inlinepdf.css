@@ -1,0 +1,47 @@
+.pdfobject {
+    margin-bottom: 1px;
+}
+.pdfobject-container {
+        background: white;
+    font-size: smaller;
+    color: white;
+    text-shadow: 0px 1px #333;
+}
+.pdfobject-container:before {
+    content: "Click to open file in new tab";
+    color: initial;
+    background: initial;
+    padding: 3px;
+    border: 1px solid rgb(33, 150, 243);
+    border-radius: 4px;
+}
+.pdfobject-container:hover {
+    background: #43b8ff;
+    font-weight: bold;
+    border: 0px;
+    border-radius: 4px;
+    padding: 0px;
+    margin: 0px;
+    text-shadow: 1px -1px #333;
+}
+.inlinepdf {
+    margin-top: 2px;
+    z-index:2000;
+}
+.pdfobject:before {
+    content: "Click to open file";
+    color: initial;     
+    background: initial;
+    height: -webkit-fill-available;
+    margin: 2px;
+    padding: 3px;
+}
+.pdfobject:after {
+    content: "Click to open file";
+    color: initial;
+    background: initial;
+    height: -webkit-fill-available;
+    margin: 2px;
+    padding: 3px;
+}
+
